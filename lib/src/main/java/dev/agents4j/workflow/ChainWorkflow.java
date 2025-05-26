@@ -168,7 +168,7 @@ public class ChainWorkflow<I, O> implements AgentWorkflow<I, O> {
          * Add the first node to the chain.
          *
          * @param node The first agent node to add
-         * @param <O> The output type of the first node
+         * @param <N> The output type of the first node
          * @return A new builder instance with the updated generic type
          */
         public <N> Builder<I, O> firstNode(AgentNode<? super I, N> node) {
