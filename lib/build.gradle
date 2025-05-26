@@ -72,7 +72,7 @@ jreleaser {
 publishing {
     publications {
         mavenJava(MavenPublication) {
-            groupId = 'cloud.savantly'
+            groupId = 'dev.agents4j'
             artifactId = 'agents4j'
 
             from components.java
