@@ -1,3 +1,5 @@
+![Agents4J Logo](./docs/logo.png)
+
 # Agents4J
 
 A Java library for building AI agent-based workflows using LangChain4J.
