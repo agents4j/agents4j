@@ -98,6 +98,10 @@ publishing {
                         id = 'jdbranham'
                         name = 'Jeremy Branham'
                     }
+                    developer {
+                        id = 'charathram'
+                        name = 'Charath Ranganathan'
+                    }
                 }
 
                 scm {
@@ -112,17 +116,5 @@ publishing {
         maven {
             url = layout.buildDirectory.dir('staging-deploy')
         }
-    }
-}
-
-signing {
-    sign publishing.publications.mavenJava
-}
-
-tasks.withType(Sign).configureEach {
-    onlyIf {
-        project.hasProperty('signing.keyId') ||
-        project.hasProperty('signing.secretKeyRingFile') ||
-        project.hasProperty('signing.password')
     }
 }
