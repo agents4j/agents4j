@@ -6,8 +6,6 @@ plugins {
     id 'org.jreleaser' version '1.18.0'
 }
 
-version = '0.1.0'
-
 java {
     sourceCompatibility = JavaVersion.VERSION_17
     targetCompatibility = JavaVersion.VERSION_17
