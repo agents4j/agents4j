@@ -4,8 +4,8 @@ export PROJECT_DIR = $(shell pwd)
 
 SNAPSHOT_VERSION := $(shell cat VERSION)
 # Strip -SNAPSHOT from version
-FINAL_VERSION := $(shell echo $(VERSION) | sed 's/-SNAPSHOT//')
-NEXT_VERSION := $(shell echo $(VERSION) | awk -F. '{$$NF = $$NF + 1;} 1' | sed 's/ /./g')-SNAPSHOT
+FINAL_VERSION := $(shell echo $(SNAPSHOT_VERSION) | sed 's/-SNAPSHOT//')
+NEXT_VERSION := $(shell echo $(FINAL_VERSION) | awk -F. '{$$NF = $$NF + 1;} 1' | sed 's/ /./g')-SNAPSHOT
 GIT_COMMIT := $(shell git rev-parse --short HEAD)
 
 .PHONY publish-local:
