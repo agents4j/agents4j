@@ -17,7 +17,7 @@ publish-local:
 	@echo "Local Release published successfully."
 
 .PHONY publish:
-publish:
+publish: publish-local
 	@echo "Releasing..."
 	./gradlew jreleaserFullRelease --stacktrace
 	@echo "Release completed successfully."
