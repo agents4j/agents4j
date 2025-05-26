@@ -39,7 +39,6 @@ tag-version:
 	@echo "Preparing release..."
 	@echo "Version: $(FINAL_VERSION)"
 	@echo "Commit: $(GIT_COMMIT)"
-	@echo "Image Tag: $(IMAGE_TAG)"
 	@echo $(FINAL_VERSION) > VERSION
 	git add VERSION
 	git commit -m "Published $(FINAL_VERSION)"
