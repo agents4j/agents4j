@@ -1,0 +1,28 @@
+plugins {
+    id 'java'
+}
+
+allprojects {
+    repositories {
+        mavenCentral()
+        mavenLocal()
+    }
+}
+
+subprojects {
+    apply plugin: 'java'
+
+    java {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    configurations.all {
+        resolutionStrategy {
+            // Force specific versions of Jackson to avoid multi-release JAR issues
+            force 'com.fasterxml.jackson.core:jackson-core:2.14.2'
+            force 'com.fasterxml.jackson.core:jackson-databind:2.14.2' 
+            force 'com.fasterxml.jackson.core:jackson-annotations:2.14.2'
+        }
+    }
+}
