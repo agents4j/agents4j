@@ -129,15 +129,22 @@ public class RoutingWorkflow<I, O> implements AgentWorkflow<I, O> {
             // Step 4: Record analytics and metrics
             recordExecutionMetrics(decision, selectedRoute, workflowStartTime, mergedContext);
             
+            // Copy relevant context back to original context
+            context.putAll(mergedContext);
+            
             return result;
             
         } catch (WorkflowExecutionException e) {
             mergedContext.put("execution_successful", false);
             mergedContext.put("error_message", e.getMessage());
+            // Copy context back even on failure
+            context.putAll(mergedContext);
             throw e;
         } catch (Exception e) {
             mergedContext.put("execution_successful", false);
             mergedContext.put("error_message", e.getMessage());
+            // Copy context back even on failure
+            context.putAll(mergedContext);
             throw new WorkflowExecutionException(
                 name, 
                 "Routing workflow execution failed: " + e.getMessage(), 
