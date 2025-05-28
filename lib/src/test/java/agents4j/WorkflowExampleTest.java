@@ -4,10 +4,13 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
+import dev.agents4j.api.AgentNode;
+import dev.agents4j.api.exception.WorkflowExecutionException;
 import dev.agents4j.impl.ComplexLangChain4JAgentNode;
 import dev.agents4j.impl.StringLangChain4JAgentNode;
 import dev.agents4j.model.AgentInput;
 import dev.agents4j.model.AgentOutput;
+import dev.agents4j.workflow.AgentWorkflowFactory;
 import dev.agents4j.workflow.ChainWorkflow;
 import dev.agents4j.workflow.WorkflowConfiguration;
 import dev.langchain4j.data.message.AiMessage;
@@ -71,7 +74,7 @@ public class WorkflowExampleTest {
     }
 
     @Test
-    void testCompleteAIResearchWorkflow() {
+    void testCompleteAIResearchWorkflow() throws WorkflowExecutionException {
         // Create a workflow configuration
         WorkflowConfiguration config = WorkflowConfiguration.builder()
             .defaultModel(mockModel)
@@ -162,7 +165,7 @@ public class WorkflowExampleTest {
     }
 
     @Test
-    void testSimpleStringWorkflow() {
+    void testSimpleStringWorkflow() throws WorkflowExecutionException {
         // Create a simple string-based workflow
         StringLangChain4JAgentNode firstNode =
             StringLangChain4JAgentNode.builder()
@@ -210,7 +213,7 @@ public class WorkflowExampleTest {
     }
 
     @Test
-    void testWorkflowWithMemory() {
+    void testChainWorkflowWithMemory() throws WorkflowExecutionException {
         // Reset the mock to return the same response for both calls
         AiMessage testResponse = Mockito.mock(AiMessage.class);
         when(testResponse.text()).thenReturn(
@@ -267,7 +270,7 @@ public class WorkflowExampleTest {
     }
 
     @Test
-    void testLibraryFacadeMethods() {
+    void testLibraryFacadeMethods() throws WorkflowExecutionException {
         // Create new responses for this test to ensure isolation
         AiMessage response1Message = Mockito.mock(AiMessage.class);
         when(response1Message.text()).thenReturn(

@@ -1,6 +1,7 @@
 package agents4j;
 
 import dev.agents4j.Agents4J;
+import dev.agents4j.api.exception.WorkflowExecutionException;
 import dev.agents4j.workflow.ParallelizationWorkflow;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.ChatModel;
@@ -124,7 +125,7 @@ class ParallelizationWorkflowExampleTest {
     }
 
     @Test
-    void exampleDocumentAnalysisSectioning() {
+    void exampleDocumentAnalysisSectioning() throws WorkflowExecutionException {
         /*
          * EXAMPLE 2: Document Analysis Sectioning
          * Scenario: Analyze different sections of a large document in parallel
@@ -213,7 +214,7 @@ class ParallelizationWorkflowExampleTest {
     }
 
     @Test
-    void exampleContentGenerationBatch() {
+    void exampleContentGenerationBatch() throws WorkflowExecutionException {
         /*
          * EXAMPLE 4: Batch Content Generation
          * Scenario: Generate multiple pieces of content simultaneously

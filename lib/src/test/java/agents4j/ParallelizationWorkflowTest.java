@@ -1,5 +1,6 @@
 package agents4j;
 
+import dev.agents4j.api.exception.WorkflowExecutionException;
 import dev.agents4j.workflow.ParallelizationWorkflow;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -151,7 +152,7 @@ class ParallelizationWorkflowTest {
     }
 
     @Test
-    void testExecuteMethod() {
+    void testExecuteMethod() throws WorkflowExecutionException {
         String prompt = "Analyze the following text:";
         List<String> inputs = Arrays.asList("Text 1", "Text 2");
         ParallelizationWorkflow.ParallelInput parallelInput = 

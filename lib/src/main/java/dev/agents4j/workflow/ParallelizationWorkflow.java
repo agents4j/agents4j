@@ -4,6 +4,7 @@
 package dev.agents4j.workflow;
 
 import dev.agents4j.api.AgentWorkflow;
+import dev.agents4j.api.exception.WorkflowExecutionException;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -11,6 +12,7 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -92,25 +94,34 @@ public class ParallelizationWorkflow implements AgentWorkflow<ParallelizationWor
      * {@inheritDoc}
      */
     @Override
-    public List<String> execute(ParallelInput input) {
-        return parallel(input.getPrompt(), input.getInputs(), input.getNumWorkers());
+    public List<String> execute(ParallelInput input) throws WorkflowExecutionException {
+        try {
+            return parallel(input.getPrompt(), input.getInputs(), input.getNumWorkers());
+        } catch (Exception e) {
+            Map<String, Object> errorContext = new HashMap<>();
+            errorContext.put("inputCount", input.getInputs().size());
+            errorContext.put("numWorkers", input.getNumWorkers());
+            throw new WorkflowExecutionException(name, "Parallelization workflow execution failed", e);
+        }
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public List<String> execute(ParallelInput input, Map<String, Object> context) {
+    public List<String> execute(ParallelInput input, Map<String, Object> context) throws WorkflowExecutionException {
         // Store execution context for potential debugging or tracking
         context.put("workflow_name", name);
         context.put("num_inputs", input.getInputs().size());
         context.put("num_workers", input.getNumWorkers());
         
+        long startTime = System.currentTimeMillis();
         List<String> results = execute(input);
+        long endTime = System.currentTimeMillis();
         
         // Store results in context
         context.put("results", results);
-        context.put("execution_time", System.currentTimeMillis());
+        context.put("execution_time", endTime - startTime);
         
         return results;
     }
@@ -120,7 +131,13 @@ public class ParallelizationWorkflow implements AgentWorkflow<ParallelizationWor
      */
     @Override
     public CompletableFuture<List<String>> executeAsync(ParallelInput input) {
-        return CompletableFuture.supplyAsync(() -> execute(input));
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                return execute(input);
+            } catch (WorkflowExecutionException e) {
+                throw new RuntimeException(e);
+            }
+        });
     }
 
     /**
@@ -128,7 +145,13 @@ public class ParallelizationWorkflow implements AgentWorkflow<ParallelizationWor
      */
     @Override
     public CompletableFuture<List<String>> executeAsync(ParallelInput input, Map<String, Object> context) {
-        return CompletableFuture.supplyAsync(() -> execute(input, context));
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                return execute(input, context);
+            } catch (WorkflowExecutionException e) {
+                throw new RuntimeException(e);
+            }
+        });
     }
 
     /**
@@ -300,5 +323,25 @@ public class ParallelizationWorkflow implements AgentWorkflow<ParallelizationWor
      */
     public static Builder builder() {
         return new Builder();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Map<String, Object> getConfiguration() {
+        Map<String, Object> config = new HashMap<>();
+        config.put("workflowType", "parallelization");
+        config.put("maxConcurrency", Runtime.getRuntime().availableProcessors());
+        return config;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    @SuppressWarnings("unchecked")
+    public <T> T getConfigurationProperty(String key, T defaultValue) {
+        return (T) getConfiguration().getOrDefault(key, defaultValue);
     }
 }

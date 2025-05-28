@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 import dev.agents4j.api.AgentNode;
+import dev.agents4j.api.exception.WorkflowExecutionException;
 import dev.agents4j.workflow.AgentWorkflowFactory;
 import dev.agents4j.workflow.ChainWorkflow;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
@@ -18,7 +19,7 @@ import org.mockito.Mockito;
 class ChainWorkflowTest {
 
     @Test
-    void testChainWorkflowExecution() {
+    void testChainWorkflowExecution() throws WorkflowExecutionException {
         // Create mock agent nodes
         @SuppressWarnings("unchecked")
         AgentNode<String, String> firstNode = Mockito.mock(AgentNode.class);
@@ -58,7 +59,7 @@ class ChainWorkflowTest {
     }
 
     @Test
-    void testChainWorkflowWithContext() {
+    void testChainWorkflowWithContext() throws WorkflowExecutionException {
         // Create mock agent nodes
         @SuppressWarnings("unchecked")
         AgentNode<String, String> firstNode = Mockito.mock(AgentNode.class);

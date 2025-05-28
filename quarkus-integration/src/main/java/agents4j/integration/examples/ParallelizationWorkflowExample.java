@@ -1,6 +1,7 @@
 package agents4j.integration.examples;
 
 import dev.agents4j.Agents4J;
+import dev.agents4j.api.exception.WorkflowExecutionException;
 import dev.agents4j.workflow.ParallelizationWorkflow;
 import dev.langchain4j.model.chat.ChatModel;
 import org.jboss.logging.Logger;
@@ -152,25 +153,30 @@ public class ParallelizationWorkflowExample {
                                "3. One actionable recommendation\n\n" +
                                "Section:";
         
-        ParallelizationWorkflow workflow = Agents4J.createParallelizationWorkflow(
-            "DocumentAnalysisWorkflow",
-            chatModel
-        );
-        
-        ParallelizationWorkflow.ParallelInput input = new ParallelizationWorkflow.ParallelInput(
-            analysisPrompt,
-            documentSections,
-            2
-        );
-        
-        List<String> analyses = workflow.execute(input);
-        
-        System.out.println("Document Analysis Results:");
-        String[] sectionNames = {"Executive Summary", "Financial Performance", "Market Outlook"};
-        for (int i = 0; i < analyses.size(); i++) {
-            System.out.println("Section: " + sectionNames[i]);
-            System.out.println("Analysis: " + analyses.get(i));
-            System.out.println();
+        try {
+            ParallelizationWorkflow workflow = Agents4J.createParallelizationWorkflow(
+                "DocumentAnalysisWorkflow",
+                chatModel
+            );
+            
+            ParallelizationWorkflow.ParallelInput input = new ParallelizationWorkflow.ParallelInput(
+                analysisPrompt,
+                documentSections,
+                2
+            );
+            
+            List<String> analyses = workflow.execute(input);
+            
+            System.out.println("Document Analysis Results:");
+            String[] sectionNames = {"Executive Summary", "Financial Performance", "Market Outlook"};
+            for (int i = 0; i < analyses.size(); i++) {
+                System.out.println("Section: " + sectionNames[i]);
+                System.out.println("Analysis: " + analyses.get(i));
+                System.out.println();
+            }
+        } catch (WorkflowExecutionException e) {
+            LOG.error("Document analysis failed", e);
+            System.err.println("Document analysis failed: " + e.getMessage());
         }
     }
 
@@ -236,42 +242,47 @@ public class ParallelizationWorkflowExample {
         System.out.println("5. Custom Workflow");
         System.out.println("-----------------");
         
-        // Build a custom workflow
-        ParallelizationWorkflow workflow = ParallelizationWorkflow.builder()
-            .name("ContentGenerationWorkflow")
-            .chatModel(chatModel)
-            .build();
-        
-        List<String> contentTopics = Arrays.asList(
-            "Benefits of remote work for productivity",
-            "Impact of AI on customer service",
-            "Sustainable technology trends in 2024"
-        );
-        
-        String contentPrompt = "Write a compelling 50-word social media post about this topic. " +
-                              "Include relevant hashtags:";
-        
-        // Create input with specific worker configuration
-        ParallelizationWorkflow.ParallelInput input = new ParallelizationWorkflow.ParallelInput(
-            contentPrompt,
-            contentTopics,
-            2 // Conservative worker count for content generation
-        );
-        
-        // Execute and measure performance
-        long startTime = System.currentTimeMillis();
-        List<String> posts = workflow.execute(input);
-        long endTime = System.currentTimeMillis();
-        
-        System.out.println("Generated Social Media Posts:");
-        for (int i = 0; i < contentTopics.size(); i++) {
-            System.out.println("Topic: " + contentTopics.get(i));
-            System.out.println("Post: " + posts.get(i));
-            System.out.println();
+        try {
+            // Build a custom workflow
+            ParallelizationWorkflow workflow = ParallelizationWorkflow.builder()
+                .name("ContentGenerationWorkflow")
+                .chatModel(chatModel)
+                .build();
+            
+            List<String> contentTopics = Arrays.asList(
+                "Benefits of remote work for productivity",
+                "Impact of AI on customer service",
+                "Sustainable technology trends in 2024"
+            );
+            
+            String contentPrompt = "Write a compelling 50-word social media post about this topic. " +
+                                  "Include relevant hashtags:";
+            
+            // Create input with specific worker configuration
+            ParallelizationWorkflow.ParallelInput input = new ParallelizationWorkflow.ParallelInput(
+                contentPrompt,
+                contentTopics,
+                2 // Conservative worker count for content generation
+            );
+            
+            // Execute and measure performance
+            long startTime = System.currentTimeMillis();
+            List<String> posts = workflow.execute(input);
+            long endTime = System.currentTimeMillis();
+            
+            System.out.println("Generated Social Media Posts:");
+            for (int i = 0; i < contentTopics.size(); i++) {
+                System.out.println("Topic: " + contentTopics.get(i));
+                System.out.println("Post: " + posts.get(i));
+                System.out.println();
+            }
+            
+            System.out.println("Processing completed in " + (endTime - startTime) + "ms");
+            System.out.println("Workflow name: " + workflow.getName());
+        } catch (WorkflowExecutionException e) {
+            LOG.error("Custom workflow failed", e);
+            System.err.println("Custom workflow failed: " + e.getMessage());
         }
-        
-        System.out.println("Processing completed in " + (endTime - startTime) + "ms");
-        System.out.println("Workflow name: " + workflow.getName());
     }
 
     /**

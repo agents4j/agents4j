@@ -6,6 +6,7 @@ import static org.mockito.Mockito.*;
 
 import dev.agents4j.api.AgentNode;
 import dev.agents4j.api.AgentWorkflow;
+import dev.agents4j.api.exception.WorkflowExecutionException;
 import dev.agents4j.impl.ComplexLangChain4JAgentNode;
 import dev.agents4j.impl.StringLangChain4JAgentNode;
 import dev.agents4j.model.AgentInput;
@@ -23,6 +24,12 @@ import java.util.function.Function;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
+
+import java.util.concurrent.CompletableFuture;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.Mockito.when;
 
 class ComplexChainWorkflowTest {
 
@@ -57,7 +64,7 @@ class ComplexChainWorkflowTest {
     }
 
     @Test
-    void testComplexChainWorkflow() {
+    void testComplexChainWorkflow() throws WorkflowExecutionException {
         // Create research node with custom input processor
         ComplexLangChain4JAgentNode researchNode =
             ComplexLangChain4JAgentNode.builder()
@@ -150,7 +157,7 @@ class ComplexChainWorkflowTest {
     }
 
     @Test
-    void testWorkflowWithContext() {
+    void testWorkflowWithContext() throws WorkflowExecutionException {
         // Create mock nodes that interact with context
         @SuppressWarnings("unchecked")
         AgentNode<String, String> firstNode = Mockito.mock(AgentNode.class);
@@ -201,7 +208,7 @@ class ComplexChainWorkflowTest {
     }
 
     @Test
-    void testErrorHandling() {
+    void testErrorHandling() throws WorkflowExecutionException {
         // Create a node that throws an exception
         ComplexLangChain4JAgentNode errorNode =
             ComplexLangChain4JAgentNode.builder()
@@ -246,7 +253,7 @@ class ComplexChainWorkflowTest {
     }
 
     @Test
-    void testCustomTypeConversion() {
+    void testCustomTypeConversion() throws WorkflowExecutionException {
         // Create a function to convert between custom types
         Function<CustomInputType, AgentInput> inputConverter = customInput ->
             AgentInput.builder(customInput.getQuery())
@@ -278,7 +285,7 @@ class ComplexChainWorkflowTest {
         AgentWorkflow<CustomInputType, CustomOutputType> customWorkflow =
             new AgentWorkflow<>() {
                 @Override
-                public CustomOutputType execute(CustomInputType input) {
+                public CustomOutputType execute(CustomInputType input) throws WorkflowExecutionException {
                     AgentInput convertedInput = inputConverter.apply(input);
                     AgentOutput output = baseWorkflow.execute(convertedInput);
                     return outputConverter.apply(output);
@@ -288,7 +295,7 @@ class ComplexChainWorkflowTest {
                 public CustomOutputType execute(
                     CustomInputType input,
                     Map<String, Object> context
-                ) {
+                ) throws WorkflowExecutionException {
                     AgentInput convertedInput = inputConverter.apply(input);
                     AgentOutput output = baseWorkflow.execute(
                         convertedInput,
@@ -298,8 +305,42 @@ class ComplexChainWorkflowTest {
                 }
 
                 @Override
+                public CompletableFuture<CustomOutputType> executeAsync(CustomInputType input) {
+                    return CompletableFuture.supplyAsync(() -> {
+                        try {
+                            return execute(input);
+                        } catch (WorkflowExecutionException e) {
+                            throw new RuntimeException(e);
+                        }
+                    });
+                }
+
+                @Override
+                public CompletableFuture<CustomOutputType> executeAsync(CustomInputType input, Map<String, Object> context) {
+                    return CompletableFuture.supplyAsync(() -> {
+                        try {
+                            return execute(input, context);
+                        } catch (WorkflowExecutionException e) {
+                            throw new RuntimeException(e);
+                        }
+                    });
+                }
+
+                @Override
                 public String getName() {
                     return "CustomTypeWorkflow";
+                }
+
+                @Override
+                public Map<String, Object> getConfiguration() {
+                    Map<String, Object> config = new HashMap<>();
+                    config.put("workflowType", "custom");
+                    return config;
+                }
+
+                @Override
+                public <T> T getConfigurationProperty(String key, T defaultValue) {
+                    return (T) getConfiguration().getOrDefault(key, defaultValue);
                 }
             };
 

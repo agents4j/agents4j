@@ -2,6 +2,7 @@ package dev.agents4j.workflow;
 
 import dev.agents4j.api.AgentNode;
 import dev.agents4j.api.AgentWorkflow;
+import dev.agents4j.api.exception.WorkflowExecutionException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -53,7 +54,7 @@ public class ChainWorkflow<I, O> implements AgentWorkflow<I, O> {
      * {@inheritDoc}
      */
     @Override
-    public O execute(I input) {
+    public O execute(I input) throws WorkflowExecutionException {
         return execute(input, new HashMap<>());
     }
 
@@ -62,26 +63,33 @@ public class ChainWorkflow<I, O> implements AgentWorkflow<I, O> {
      */
     @SuppressWarnings("unchecked")
     @Override
-    public O execute(I input, Map<String, Object> context) {
+    public O execute(I input, Map<String, Object> context) throws WorkflowExecutionException {
         Objects.requireNonNull(input, "Input cannot be null");
 
-        // Start with the input to the first node
-        Object currentInput = input;
+        try {
+            // Start with the input to the first node
+            Object currentInput = input;
 
-        // Process each node in the chain sequentially
-        for (int i = 0; i < nodes.size(); i++) {
-            AgentNode<Object, Object> node = (AgentNode<
-                    Object,
-                    Object
-                >) nodes.get(i);
-            currentInput = node.process(currentInput, context);
+            // Process each node in the chain sequentially
+            for (int i = 0; i < nodes.size(); i++) {
+                AgentNode<Object, Object> node = (AgentNode<
+                        Object,
+                        Object
+                    >) nodes.get(i);
+                currentInput = node.process(currentInput, context);
 
-            // Store the intermediate result in the context for debugging/tracking
-            context.put("result_" + node.getName(), currentInput);
+                // Store the intermediate result in the context for debugging/tracking
+                context.put("result_" + node.getName(), currentInput);
+            }
+
+            // The output of the last node is the output of the workflow
+            return (O) currentInput;
+        } catch (Exception e) {
+            Map<String, Object> errorContext = new HashMap<>();
+            errorContext.put("inputType", input.getClass().getSimpleName());
+            errorContext.put("nodeCount", nodes.size());
+            throw new WorkflowExecutionException(name, "Chain workflow execution failed", e);
         }
-
-        // The output of the last node is the output of the workflow
-        return (O) currentInput;
     }
 
     /**
@@ -89,45 +97,30 @@ public class ChainWorkflow<I, O> implements AgentWorkflow<I, O> {
      */
     @Override
     public CompletableFuture<O> executeAsync(I input) {
-        return executeAsync(input, new HashMap<>());
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                return execute(input);
+            } catch (WorkflowExecutionException e) {
+                throw new RuntimeException(e);
+            }
+        });
     }
 
     /**
      * {@inheritDoc}
      */
-    @SuppressWarnings("unchecked")
     @Override
     public CompletableFuture<O> executeAsync(
         I input,
         Map<String, Object> context
     ) {
-        Objects.requireNonNull(input, "Input cannot be null");
-
-        // Create a completable future for the result of the chain
-        CompletableFuture<Object> future = CompletableFuture.completedFuture(
-            input
-        );
-
-        // Chain each node asynchronously
-        for (int i = 0; i < nodes.size(); i++) {
-            final int nodeIndex = i;
-            future = future.thenCompose(result -> {
-                AgentNode<Object, Object> node = (AgentNode<
-                        Object,
-                        Object
-                    >) nodes.get(nodeIndex);
-                return node
-                    .processAsync(result, context)
-                    .thenApply(nodeOutput -> {
-                        // Store intermediate result in context
-                        context.put("result_" + node.getName(), nodeOutput);
-                        return nodeOutput;
-                    });
-            });
-        }
-
-        // Convert the final result to the expected output type
-        return future.thenApply(result -> (O) result);
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                return execute(input, context);
+            } catch (WorkflowExecutionException e) {
+                throw new RuntimeException(e);
+            }
+        });
     }
 
     /**
@@ -198,6 +191,27 @@ public class ChainWorkflow<I, O> implements AgentWorkflow<I, O> {
      */
     public static <I, O> Builder<I, O> builder() {
         return new Builder<I, O>();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Map<String, Object> getConfiguration() {
+        Map<String, Object> config = new HashMap<>();
+        config.put("nodeCount", nodes.size());
+        config.put("workflowType", "chain");
+        config.put("nodes", nodes.stream().map(AgentNode::getName).toArray(String[]::new));
+        return config;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    @SuppressWarnings("unchecked")
+    public <T> T getConfigurationProperty(String key, T defaultValue) {
+        return (T) getConfiguration().getOrDefault(key, defaultValue);
     }
 
     /**

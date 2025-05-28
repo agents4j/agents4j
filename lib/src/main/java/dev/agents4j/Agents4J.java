@@ -3,6 +3,7 @@
  */
 package dev.agents4j;
 
+import dev.agents4j.api.exception.WorkflowExecutionException;
 import dev.agents4j.workflow.AgentWorkflowFactory;
 import dev.agents4j.workflow.ChainWorkflow;
 import dev.agents4j.workflow.ParallelizationWorkflow;
@@ -70,6 +71,7 @@ public class Agents4J {
      * @param systemPrompt The system prompt for the agent
      * @param query The query to process
      * @return The response from the agent
+     * @throws RuntimeException if workflow execution fails
      */
     public static String query(
         ChatModel model,
@@ -82,7 +84,11 @@ public class Agents4J {
             systemPrompt
         );
 
-        return workflow.execute(query);
+        try {
+            return workflow.execute(query);
+        } catch (WorkflowExecutionException e) {
+            throw new RuntimeException("Failed to execute query", e);
+        }
     }
 
     /**
@@ -92,6 +98,7 @@ public class Agents4J {
      * @param query The query to process
      * @param systemPrompts The system prompts for each agent in the chain
      * @return The final response from the chain
+     * @throws RuntimeException if workflow execution fails
      */
     public static String complexQuery(
         ChatModel model,
@@ -104,7 +111,11 @@ public class Agents4J {
             systemPrompts
         );
 
-        return workflow.execute(query);
+        try {
+            return workflow.execute(query);
+        } catch (WorkflowExecutionException e) {
+            throw new RuntimeException("Failed to execute complex query", e);
+        }
     }
 
     /**
@@ -132,6 +143,7 @@ public class Agents4J {
      * @param inputs The list of inputs to process in parallel
      * @param numWorkers The number of worker threads to use
      * @return List of responses in the same order as inputs
+     * @throws RuntimeException if workflow execution fails
      */
     public static List<String> parallelQuery(
         ChatModel model,
@@ -147,7 +159,11 @@ public class Agents4J {
         ParallelizationWorkflow.ParallelInput parallelInput = 
             new ParallelizationWorkflow.ParallelInput(prompt, inputs, numWorkers);
 
-        return workflow.execute(parallelInput);
+        try {
+            return workflow.execute(parallelInput);
+        } catch (WorkflowExecutionException e) {
+            throw new RuntimeException("Failed to execute parallel query", e);
+        }
     }
 
     /**

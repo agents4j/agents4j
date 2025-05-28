@@ -2,6 +2,7 @@ package agents4j.integration;
 
 import agents4j.integration.examples.ExampleRunner;
 import agents4j.integration.examples.ParallelizationWorkflowExample;
+import dev.agents4j.api.exception.WorkflowExecutionException;
 import dev.agents4j.impl.StringLangChain4JAgentNode;
 import dev.agents4j.workflow.ChainWorkflow;
 import dev.langchain4j.model.chat.ChatModel;
@@ -108,14 +109,20 @@ public class Application implements QuarkusApplication {
             "\nProcessing your question through 3 levels of 'why'...\n"
         );
 
-        // Execute the workflow
-        String result = workflow.execute(initialQuestion);
+        try {
+            // Execute the workflow
+            String result = workflow.execute(initialQuestion);
 
-        // Print the result
-        System.out.println("\n--- Final Result ---");
-        System.out.println(result);
+            // Print the result
+            System.out.println("\n--- Final Result ---");
+            System.out.println(result);
 
-        return 0;
+            return 0;
+        } catch (WorkflowExecutionException e) {
+            LOG.error("Workflow execution failed", e);
+            System.err.println("Error processing your question: " + e.getMessage());
+            return 1;
+        }
     }
 
 

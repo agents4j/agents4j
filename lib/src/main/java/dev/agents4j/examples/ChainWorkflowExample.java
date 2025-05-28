@@ -1,6 +1,7 @@
 package dev.agents4j.examples;
 
 import dev.agents4j.api.AgentNode;
+import dev.agents4j.api.exception.WorkflowExecutionException;
 import dev.agents4j.impl.ComplexLangChain4JAgentNode;
 import dev.agents4j.impl.StringLangChain4JAgentNode;
 import dev.agents4j.model.AgentInput;
@@ -12,7 +13,6 @@ import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.function.Consumer;
 
 /**
  * Example usage of the Chain Workflow.
@@ -26,7 +26,7 @@ public class ChainWorkflowExample {
      * @param model The ChatModel to use
      * @return The result of executing the workflow
      */
-    public static String simpleStringWorkflowExample(ChatModel model) {
+    public static String simpleStringWorkflowExample(ChatModel model) throws WorkflowExecutionException {
         // Create a simple chain workflow with two agent nodes
         ChainWorkflow<String, String> workflow =
             AgentWorkflowFactory.createStringChainWorkflow(
@@ -46,7 +46,7 @@ public class ChainWorkflowExample {
      * @param model The ChatModel to use
      * @return The result of executing the workflow twice
      */
-    public static String memoryWorkflowExample(ChatModel model) {
+    public static String memoryWorkflowExample(ChatModel model) throws WorkflowExecutionException {
         // Create a memory for conversation history
         MessageWindowChatMemory memory = MessageWindowChatMemory.builder()
             .maxMessages(10)
@@ -72,7 +72,7 @@ public class ChainWorkflowExample {
      * @param model The ChatModel to use
      * @return The result of executing the workflow
      */
-    public static String manualChainWorkflowExample(ChatModel model) {
+    public static String manualChainWorkflowExample(ChatModel model) throws WorkflowExecutionException {
         // Create the first agent node
         StringLangChain4JAgentNode firstNode =
             StringLangChain4JAgentNode.builder()
@@ -111,7 +111,7 @@ public class ChainWorkflowExample {
      * @param model The ChatModel to use
      * @return The result of executing the workflow
      */
-    public static AgentOutput advancedChainWorkflowExample(ChatModel model) {
+    public static AgentOutput advancedChainWorkflowExample(ChatModel model) throws WorkflowExecutionException {
         // Create a complex agent node for research
         ComplexLangChain4JAgentNode researchNode =
             ComplexLangChain4JAgentNode.builder()
@@ -195,37 +195,21 @@ public class ChainWorkflowExample {
      * @param model The ChatModel to use
      * @return The result of executing the workflow
      */
-    public static String configuredWorkflowExample(ChatModel model) {
-        // Create a workflow configuration
-        WorkflowConfiguration config = WorkflowConfiguration.builder()
-            .defaultModel(model)
-            .property("max_tokens", 500)
-            .property("temperature", 0.7)
-            .build();
+    public static String configuredWorkflowExample(ChatModel model) throws WorkflowExecutionException {
+        // Create a simple chain workflow
+        ChainWorkflow<String, String> workflow =
+            AgentWorkflowFactory.createStringChainWorkflow(
+                "ConfiguredWorkflow",
+                model,
+                "You are a helpful assistant.",
+                "Please elaborate on the response."
+            );
 
-        // Create a chain workflow using the configuration
-        @SuppressWarnings({ "unchecked", "rawtypes" })
-        ChainWorkflow<String, String> workflow = (ChainWorkflow<
-                String,
-                String
-            >) config.createWorkflow(
-            (Consumer) (Consumer<
-                    ChainWorkflow.Builder<String, String>
-                >) builder -> {
-                builder
-                    .name("ConfiguredWorkflow")
-                    .firstNode(
-                        StringLangChain4JAgentNode.builder()
-                            .name("Node1")
-                            .model(model)
-                            .systemPrompt("You are a helpful assistant.")
-                            .build()
-                    );
-            }
-        );
-
-        // Create an execution context from the configuration
-        Map<String, Object> context = config.createExecutionContext();
+        // Create an execution context with additional metadata
+        Map<String, Object> context = new HashMap<>();
+        context.put("max_tokens", 500);
+        context.put("temperature", 0.7);
+        context.put("execution_id", System.currentTimeMillis());
 
         // Execute the workflow with the context
         return workflow.execute("Tell me a short story", context);
