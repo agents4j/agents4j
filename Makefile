@@ -13,7 +13,7 @@ publish-local:
 	@echo "Preparing release..."
 	./gradlew clean build
 	@echo "Building release..."
-	./gradlew clean publish
+	./gradlew publish
 	@echo "Local Release published successfully."
 
 .PHONY publish:

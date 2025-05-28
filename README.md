@@ -49,6 +49,52 @@ To run all tests:
 ./gradlew test
 ```
 
+### Quick Start - CLI Examples
+
+The project includes a Quarkus-based CLI application that demonstrates all the Agents4J features:
+
+1. **Set up your environment:**
+   ```bash
+   export OPENAI_API_KEY=your-api-key-here
+   ```
+
+2. **Run examples using the convenient CLI script:**
+   ```bash
+   # Show available commands
+   ./quarkus-integration/agents4j-cli.sh help
+   
+   # Interactive three why questions example
+   ./quarkus-integration/agents4j-cli.sh interactive-why
+   
+   # Chain workflow examples
+   ./quarkus-integration/agents4j-cli.sh chain-workflow
+   
+   # Parallelization examples
+   ./quarkus-integration/agents4j-cli.sh parallelization
+   
+   # Strategy pattern examples
+   ./quarkus-integration/agents4j-cli.sh strategy-pattern
+   
+   # Routing pattern examples
+   ./quarkus-integration/agents4j-cli.sh routing-pattern
+   ```
+
+3. **Or run directly with Java:**
+   ```bash
+   # Build first
+   ./gradlew :quarkus-integration:build
+   
+   # Run examples
+   java -jar quarkus-integration/build/quarkus-app/quarkus-run.jar --help
+   java -jar quarkus-integration/build/quarkus-app/quarkus-run.jar interactive-why -q "Why is the sky blue?"
+   ```
+
+The CLI provides comprehensive examples of:
+- **Chain Workflow**: Sequential agent processing
+- **Parallelization Workflow**: Concurrent processing for performance
+- **Strategy Pattern**: Pluggable execution strategies
+- **Routing Pattern**: Intelligent content classification and routing
+
 ### Running the Integration Application
 
 To run the Quarkus integration application in dev mode:

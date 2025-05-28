@@ -1,32 +1,30 @@
 package agents4j.integration;
 
 import agents4j.integration.examples.ExampleRunner;
-import agents4j.integration.examples.ParallelizationWorkflowExample;
-import dev.agents4j.api.exception.WorkflowExecutionException;
-import dev.agents4j.impl.StringLangChain4JAgentNode;
-import dev.agents4j.workflow.ChainWorkflow;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
+import io.quarkus.picocli.runtime.annotations.TopCommand;
 import io.quarkus.runtime.Quarkus;
 import io.quarkus.runtime.QuarkusApplication;
 import io.quarkus.runtime.annotations.QuarkusMain;
-import java.util.Scanner;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
+import picocli.CommandLine;
+
+import jakarta.inject.Inject;
+import java.util.Scanner;
 
 /**
  * Main application class for the Agents4J Quarkus integration.
- * This application demonstrates CLI examples that use the Agents4J library including:
- * - ChainWorkflow for asking 3 consecutive "why" questions
- * - ParallelizationWorkflow for concurrent LLM processing
+ * This application demonstrates CLI examples that use the Agents4J library using Picocli.
  */
 @QuarkusMain
 public class Application implements QuarkusApplication {
 
     private static final Logger LOG = Logger.getLogger(Application.class);
 
-    @ConfigProperty(name = "OPENAI_API_KEY")
-    String apiKey;
+    @Inject
+    CommandLine.IFactory factory;
 
     public static void main(String... args) {
         Quarkus.run(Application.class, args);
@@ -34,120 +32,286 @@ public class Application implements QuarkusApplication {
 
     @Override
     public int run(String... args) throws Exception {
-        LOG.info("Agents4J Quarkus Integration Application started");
+        return new CommandLine(new MainCommand(), factory).execute(args);
+    }
 
-        if (apiKey == null || apiKey.isEmpty()) {
-            LOG.error("API key not found in configuration");
-            return 1;
+    @TopCommand
+    @CommandLine.Command(
+        name = "agents4j",
+        description = "Agents4J CLI - Demonstrations of agent workflows",
+        subcommands = {
+            InteractiveWhyCommand.class,
+            ChainWorkflowCommand.class,
+            ParallelizationCommand.class,
+            StrategyPatternCommand.class,
+            RoutingPatternCommand.class
+        },
+        mixinStandardHelpOptions = true
+    )
+    public static class MainCommand implements Runnable {
+
+        @Override
+        public void run() {
+            System.out.println("Agents4J CLI - Use --help to see available commands");
+            System.out.println();
+            System.out.println("Available commands:");
+            System.out.println("  interactive-why    - Interactive three why questions example");
+            System.out.println("  chain-workflow     - Chain workflow examples");
+            System.out.println("  parallelization    - Parallelization workflow examples");
+            System.out.println("  strategy-pattern   - Strategy pattern examples");
+            System.out.println("  routing-pattern    - Routing pattern examples");
+            System.out.println();
+            System.out.println("Use 'agents4j <command> --help' for more information on a command.");
         }
+    }
 
-        // Initialize OpenAI chat model
-        ChatModel chatModel = OpenAiChatModel.builder()
-            .apiKey(apiKey)
-            .modelName("gpt-3.5-turbo")
-            .temperature(0.7)
-            .build();
+    @CommandLine.Command(
+        name = "interactive-why",
+        description = "Interactive example that asks 3 consecutive 'why' questions",
+        mixinStandardHelpOptions = true
+    )
+    public static class InteractiveWhyCommand implements Runnable {
 
-        LOG.info("OpenAI chat model initialized");
+        @ConfigProperty(name = "OPENAI_API_KEY")
+        String apiKey;
 
-        // Validate the chat model
-        ExampleRunner exampleRunner = new ExampleRunner(chatModel);
-        if (!exampleRunner.validateChatModel()) {
-            LOG.error("ChatModel validation failed");
-            return 1;
-        }
+        @CommandLine.Option(
+            names = {"-q", "--question"},
+            description = "Initial question to analyze (if not provided, will prompt for input)"
+        )
+        String initialQuestion;
 
-        // Get user choice for which example to run
-        Scanner scanner = new Scanner(System.in);
-        ExampleRunner.displayExampleOptions();
-        System.out.print("Enter your choice (1, 2, 3, 4, or 5): ");
-        
-        String choice = scanner.nextLine().trim();
-        
-        try {
-            switch (choice) {
-                case "1":
-                    return runChainWorkflowExample(chatModel, scanner);
-                case "2":
-                    exampleRunner.runChainWorkflowExamples();
-                    return 0;
-                case "3":
-                    exampleRunner.runParallelizationExamples();
-                    return 0;
-                case "4":
-                    exampleRunner.runStrategyPatternExamples();
-                    return 0;
-                case "5":
-                    exampleRunner.runRoutingPatternExamples();
-                    return 0;
-                default:
-                    System.out.println("Invalid choice. Please enter 1, 2, 3, 4, or 5.");
-                    return 1;
+        @Override
+        public void run() {
+            LOG.info("Running interactive why example");
+
+            if (apiKey == null || apiKey.isEmpty()) {
+                System.err.println("Error: OPENAI_API_KEY not found in configuration");
+                System.exit(1);
             }
-        } catch (Exception e) {
-            LOG.error("Error running example", e);
-            System.err.println("Example execution failed: " + e.getMessage());
-            return 1;
+
+            ChatModel chatModel = OpenAiChatModel.builder()
+                .apiKey(apiKey)
+                .modelName("gpt-3.5-turbo")
+                .temperature(0.7)
+                .build();
+
+            ExampleRunner exampleRunner = new ExampleRunner(chatModel);
+            if (!exampleRunner.validateChatModel()) {
+                System.err.println("Error: ChatModel validation failed");
+                System.exit(1);
+            }
+
+            String question = initialQuestion;
+            if (question == null || question.trim().isEmpty()) {
+                Scanner scanner = new Scanner(System.in);
+                System.out.println("Enter your initial question:");
+                question = scanner.nextLine();
+                scanner.close();
+            }
+
+            if (question.trim().isEmpty()) {
+                System.err.println("Error: No question provided");
+                System.exit(1);
+            }
+
+            try {
+                MainApplication mainApp = new MainApplication();
+                mainApp.runChainWorkflowExample(chatModel, question);
+            } catch (Exception e) {
+                LOG.error("Error running interactive why example", e);
+                System.err.println("Error: " + e.getMessage());
+                System.exit(1);
+            }
+        }
+    }
+
+    @CommandLine.Command(
+        name = "chain-workflow",
+        description = "Comprehensive chain workflow examples",
+        mixinStandardHelpOptions = true
+    )
+    public static class ChainWorkflowCommand implements Runnable {
+
+        @ConfigProperty(name = "OPENAI_API_KEY")
+        String apiKey;
+
+        @Override
+        public void run() {
+            LOG.info("Running chain workflow examples");
+
+            if (apiKey == null || apiKey.isEmpty()) {
+                System.err.println("Error: OPENAI_API_KEY not found in configuration");
+                System.exit(1);
+            }
+
+            ChatModel chatModel = OpenAiChatModel.builder()
+                .apiKey(apiKey)
+                .modelName("gpt-3.5-turbo")
+                .temperature(0.7)
+                .build();
+
+            try {
+                ExampleRunner exampleRunner = new ExampleRunner(chatModel);
+                if (!exampleRunner.validateChatModel()) {
+                    System.err.println("Error: ChatModel validation failed");
+                    System.exit(1);
+                }
+                exampleRunner.runChainWorkflowExamples();
+            } catch (Exception e) {
+                LOG.error("Error running chain workflow examples", e);
+                System.err.println("Error: " + e.getMessage());
+                System.exit(1);
+            }
+        }
+    }
+
+    @CommandLine.Command(
+        name = "parallelization",
+        description = "Parallelization workflow examples",
+        mixinStandardHelpOptions = true
+    )
+    public static class ParallelizationCommand implements Runnable {
+
+        @ConfigProperty(name = "OPENAI_API_KEY")
+        String apiKey;
+
+        @Override
+        public void run() {
+            LOG.info("Running parallelization examples");
+
+            if (apiKey == null || apiKey.isEmpty()) {
+                System.err.println("Error: OPENAI_API_KEY not found in configuration");
+                System.exit(1);
+            }
+
+            ChatModel chatModel = OpenAiChatModel.builder()
+                .apiKey(apiKey)
+                .modelName("gpt-3.5-turbo")
+                .temperature(0.7)
+                .build();
+
+            try {
+                ExampleRunner exampleRunner = new ExampleRunner(chatModel);
+                if (!exampleRunner.validateChatModel()) {
+                    System.err.println("Error: ChatModel validation failed");
+                    System.exit(1);
+                }
+                exampleRunner.runParallelizationExamples();
+            } catch (Exception e) {
+                LOG.error("Error running parallelization examples", e);
+                System.err.println("Error: " + e.getMessage());
+                System.exit(1);
+            }
+        }
+    }
+
+    @CommandLine.Command(
+        name = "strategy-pattern",
+        description = "Strategy pattern examples",
+        mixinStandardHelpOptions = true
+    )
+    public static class StrategyPatternCommand implements Runnable {
+
+        @ConfigProperty(name = "OPENAI_API_KEY")
+        String apiKey;
+
+        @Override
+        public void run() {
+            LOG.info("Running strategy pattern examples");
+
+            if (apiKey == null || apiKey.isEmpty()) {
+                System.err.println("Error: OPENAI_API_KEY not found in configuration");
+                System.exit(1);
+            }
+
+            ChatModel chatModel = OpenAiChatModel.builder()
+                .apiKey(apiKey)
+                .modelName("gpt-3.5-turbo")
+                .temperature(0.7)
+                .build();
+
+            try {
+                ExampleRunner exampleRunner = new ExampleRunner(chatModel);
+                if (!exampleRunner.validateChatModel()) {
+                    System.err.println("Error: ChatModel validation failed");
+                    System.exit(1);
+                }
+                exampleRunner.runStrategyPatternExamples();
+            } catch (Exception e) {
+                LOG.error("Error running strategy pattern examples", e);
+                System.err.println("Error: " + e.getMessage());
+                System.exit(1);
+            }
+        }
+    }
+
+    @CommandLine.Command(
+        name = "routing-pattern",
+        description = "Routing pattern examples",
+        mixinStandardHelpOptions = true
+    )
+    public static class RoutingPatternCommand implements Runnable {
+
+        @ConfigProperty(name = "OPENAI_API_KEY")
+        String apiKey;
+
+        @Override
+        public void run() {
+            LOG.info("Running routing pattern examples");
+
+            if (apiKey == null || apiKey.isEmpty()) {
+                System.err.println("Error: OPENAI_API_KEY not found in configuration");
+                System.exit(1);
+            }
+
+            ChatModel chatModel = OpenAiChatModel.builder()
+                .apiKey(apiKey)
+                .modelName("gpt-3.5-turbo")
+                .temperature(0.7)
+                .build();
+
+            try {
+                ExampleRunner exampleRunner = new ExampleRunner(chatModel);
+                if (!exampleRunner.validateChatModel()) {
+                    System.err.println("Error: ChatModel validation failed");
+                    System.exit(1);
+                }
+                exampleRunner.runRoutingPatternExamples();
+            } catch (Exception e) {
+                LOG.error("Error running routing pattern examples", e);
+                System.err.println("Error: " + e.getMessage());
+                System.exit(1);
+            }
         }
     }
 
     /**
-     * Run the ChainWorkflow example for three why questions.
-     *
-     * @param chatModel The ChatModel to use
-     * @param scanner Scanner for user input
-     * @return Exit code
+     * Helper class containing the original application logic for the interactive why example
      */
-    private int runChainWorkflowExample(ChatModel chatModel, Scanner scanner) {
-        LOG.info("Running ChainWorkflow example");
-        
-        // Create the workflow for 3 consecutive why questions
-        ChainWorkflow<String, String> workflow = createWhyWorkflow(chatModel);
+    public static class MainApplication {
 
-        // Get input from user
-        System.out.println("\nEnter your initial question:");
-        String initialQuestion = scanner.nextLine();
+        private static final Logger LOG = Logger.getLogger(MainApplication.class);
 
-        if (initialQuestion.isEmpty()) {
-            LOG.error("No question provided");
-            return 1;
+        public void runChainWorkflowExample(ChatModel chatModel, String initialQuestion) {
+            LOG.info("Processing initial question: " + initialQuestion);
+            System.out.println("\nProcessing your question through 3 levels of 'why'...\n");
+
+            try {
+                var workflow = createWhyWorkflow(chatModel);
+                String result = workflow.execute(initialQuestion);
+
+                System.out.println("\n--- Final Result ---");
+                System.out.println(result);
+
+            } catch (Exception e) {
+                LOG.error("Workflow execution failed", e);
+                throw new RuntimeException("Error processing your question: " + e.getMessage(), e);
+            }
         }
 
-        LOG.info("Processing initial question: " + initialQuestion);
-        System.out.println(
-            "\nProcessing your question through 3 levels of 'why'...\n"
-        );
-
-        try {
-            // Execute the workflow
-            String result = workflow.execute(initialQuestion);
-
-            // Print the result
-            System.out.println("\n--- Final Result ---");
-            System.out.println(result);
-
-            return 0;
-        } catch (WorkflowExecutionException e) {
-            LOG.error("Workflow execution failed", e);
-            System.err.println("Error processing your question: " + e.getMessage());
-            return 1;
-        }
-    }
-
-
-
-    /**
-     * Creates a ChainWorkflow that asks 3 consecutive "why" questions.
-     *
-     * @param chatModel The ChatModel to use
-     * @return A ChainWorkflow that processes the input through three consecutive "why" questions
-     */
-    private ChainWorkflow<String, String> createWhyWorkflow(
-        ChatModel chatModel
-    ) {
-        // First node: Initial analysis and first "why" question
-        StringLangChain4JAgentNode firstWhyNode =
-            StringLangChain4JAgentNode.builder()
+        private dev.agents4j.workflow.ChainWorkflow<String, String> createWhyWorkflow(ChatModel chatModel) {
+            var firstWhyNode = dev.agents4j.impl.StringLangChain4JAgentNode.builder()
                 .name("FirstWhyNode")
                 .model(chatModel)
                 .systemPrompt(
@@ -157,9 +321,7 @@ public class Application implements QuarkusApplication {
                 )
                 .build();
 
-        // Second node: Process the first why and ask second why
-        StringLangChain4JAgentNode secondWhyNode =
-            StringLangChain4JAgentNode.builder()
+            var secondWhyNode = dev.agents4j.impl.StringLangChain4JAgentNode.builder()
                 .name("SecondWhyNode")
                 .model(chatModel)
                 .systemPrompt(
@@ -170,9 +332,7 @@ public class Application implements QuarkusApplication {
                 )
                 .build();
 
-        // Third node: Process the second why and ask final why
-        StringLangChain4JAgentNode thirdWhyNode =
-            StringLangChain4JAgentNode.builder()
+            var thirdWhyNode = dev.agents4j.impl.StringLangChain4JAgentNode.builder()
                 .name("ThirdWhyNode")
                 .model(chatModel)
                 .systemPrompt(
@@ -183,9 +343,7 @@ public class Application implements QuarkusApplication {
                 )
                 .build();
 
-        // Final node: Process the third why and provide a comprehensive answer
-        StringLangChain4JAgentNode finalNode =
-            StringLangChain4JAgentNode.builder()
+            var finalNode = dev.agents4j.impl.StringLangChain4JAgentNode.builder()
                 .name("FinalNode")
                 .model(chatModel)
                 .systemPrompt(
@@ -197,13 +355,13 @@ public class Application implements QuarkusApplication {
                 )
                 .build();
 
-        // Build the workflow
-        return ChainWorkflow.<String, String>builder()
-            .name("ThreeWhysWorkflow")
-            .firstNode(firstWhyNode)
-            .node(secondWhyNode)
-            .node(thirdWhyNode)
-            .node(finalNode)
-            .build();
+            return dev.agents4j.workflow.ChainWorkflow.<String, String>builder()
+                .name("ThreeWhysWorkflow")
+                .firstNode(firstWhyNode)
+                .node(secondWhyNode)
+                .node(thirdWhyNode)
+                .node(finalNode)
+                .build();
+        }
     }
 }
