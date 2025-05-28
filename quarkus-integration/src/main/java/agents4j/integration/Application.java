@@ -1,5 +1,7 @@
 package agents4j.integration;
 
+import agents4j.integration.examples.ExampleRunner;
+import agents4j.integration.examples.ParallelizationWorkflowExample;
 import dev.agents4j.impl.StringLangChain4JAgentNode;
 import dev.agents4j.workflow.ChainWorkflow;
 import dev.langchain4j.model.chat.ChatModel;
@@ -13,8 +15,9 @@ import org.jboss.logging.Logger;
 
 /**
  * Main application class for the Agents4J Quarkus integration.
- * This application demonstrates a CLI app that uses the Agents4J library to run
- * a ChainWorkflow for asking 3 consecutive "why" questions given an initial question.
+ * This application demonstrates CLI examples that use the Agents4J library including:
+ * - ChainWorkflow for asking 3 consecutive "why" questions
+ * - ParallelizationWorkflow for concurrent LLM processing
  */
 @QuarkusMain
 public class Application implements QuarkusApplication {
@@ -46,12 +49,53 @@ public class Application implements QuarkusApplication {
 
         LOG.info("OpenAI chat model initialized");
 
+        // Validate the chat model
+        ExampleRunner exampleRunner = new ExampleRunner(chatModel);
+        if (!exampleRunner.validateChatModel()) {
+            LOG.error("ChatModel validation failed");
+            return 1;
+        }
+
+        // Get user choice for which example to run
+        Scanner scanner = new Scanner(System.in);
+        ExampleRunner.displayExampleOptions();
+        System.out.print("Enter your choice (1 or 2): ");
+        
+        String choice = scanner.nextLine().trim();
+        
+        try {
+            switch (choice) {
+                case "1":
+                    return runChainWorkflowExample(chatModel, scanner);
+                case "2":
+                    exampleRunner.runParallelizationExamples();
+                    return 0;
+                default:
+                    System.out.println("Invalid choice. Please enter 1 or 2.");
+                    return 1;
+            }
+        } catch (Exception e) {
+            LOG.error("Error running example", e);
+            System.err.println("Example execution failed: " + e.getMessage());
+            return 1;
+        }
+    }
+
+    /**
+     * Run the ChainWorkflow example for three why questions.
+     *
+     * @param chatModel The ChatModel to use
+     * @param scanner Scanner for user input
+     * @return Exit code
+     */
+    private int runChainWorkflowExample(ChatModel chatModel, Scanner scanner) {
+        LOG.info("Running ChainWorkflow example");
+        
         // Create the workflow for 3 consecutive why questions
         ChainWorkflow<String, String> workflow = createWhyWorkflow(chatModel);
 
         // Get input from user
-        Scanner scanner = new Scanner(System.in);
-        System.out.println("Enter your initial question:");
+        System.out.println("\nEnter your initial question:");
         String initialQuestion = scanner.nextLine();
 
         if (initialQuestion.isEmpty()) {
@@ -73,6 +117,8 @@ public class Application implements QuarkusApplication {
 
         return 0;
     }
+
+
 
     /**
      * Creates a ChainWorkflow that asks 3 consecutive "why" questions.

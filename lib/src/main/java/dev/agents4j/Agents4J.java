@@ -5,8 +5,10 @@ package dev.agents4j;
 
 import dev.agents4j.workflow.AgentWorkflowFactory;
 import dev.agents4j.workflow.ChainWorkflow;
+import dev.agents4j.workflow.ParallelizationWorkflow;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
+import java.util.List;
 
 /**
  * Main library class for Agents4J that provides convenience methods
@@ -103,6 +105,66 @@ public class Agents4J {
         );
 
         return workflow.execute(query);
+    }
+
+    /**
+     * Creates a parallelization workflow for concurrent processing of multiple inputs.
+     *
+     * @param name The name of the workflow
+     * @param model The ChatModel to use
+     * @return A new ParallelizationWorkflow instance
+     */
+    public static ParallelizationWorkflow createParallelizationWorkflow(
+        String name,
+        ChatModel model
+    ) {
+        return ParallelizationWorkflow.builder()
+            .name(name)
+            .chatModel(model)
+            .build();
+    }
+
+    /**
+     * Execute multiple inputs in parallel using the same prompt.
+     *
+     * @param model The ChatModel to use
+     * @param prompt The prompt template to apply to each input
+     * @param inputs The list of inputs to process in parallel
+     * @param numWorkers The number of worker threads to use
+     * @return List of responses in the same order as inputs
+     */
+    public static List<String> parallelQuery(
+        ChatModel model,
+        String prompt,
+        List<String> inputs,
+        int numWorkers
+    ) {
+        ParallelizationWorkflow workflow = createParallelizationWorkflow(
+            "ParallelQueryWorkflow",
+            model
+        );
+
+        ParallelizationWorkflow.ParallelInput parallelInput = 
+            new ParallelizationWorkflow.ParallelInput(prompt, inputs, numWorkers);
+
+        return workflow.execute(parallelInput);
+    }
+
+    /**
+     * Execute multiple inputs in parallel using the same prompt with default worker count.
+     * Uses a default of 4 worker threads.
+     *
+     * @param model The ChatModel to use
+     * @param prompt The prompt template to apply to each input
+     * @param inputs The list of inputs to process in parallel
+     * @return List of responses in the same order as inputs
+     */
+    public static List<String> parallelQuery(
+        ChatModel model,
+        String prompt,
+        List<String> inputs
+    ) {
+        return parallelQuery(model, prompt, inputs, 4);
     }
 
     /**

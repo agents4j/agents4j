@@ -132,4 +132,36 @@ public class AgentWorkflowFactory {
             nodes.subList(1, nodes.size()).toArray(new AgentNode[0])
         );
     }
+
+    /**
+     * Creates a parallelization workflow for concurrent processing of multiple inputs.
+     *
+     * @param name The name of the workflow
+     * @param model The ChatModel to use for all parallel operations
+     * @return A new ParallelizationWorkflow instance
+     */
+    public static ParallelizationWorkflow createParallelizationWorkflow(
+        String name,
+        ChatModel model
+    ) {
+        return ParallelizationWorkflow.builder()
+            .name(name)
+            .chatModel(model)
+            .build();
+    }
+
+    /**
+     * Creates a parallelization workflow with a default name.
+     *
+     * @param model The ChatModel to use for all parallel operations
+     * @return A new ParallelizationWorkflow instance
+     */
+    public static ParallelizationWorkflow createParallelizationWorkflow(
+        ChatModel model
+    ) {
+        return createParallelizationWorkflow(
+            "ParallelizationWorkflow-" + System.currentTimeMillis(),
+            model
+        );
+    }
 }
