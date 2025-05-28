@@ -1,4 +1,4 @@
-package dev.agents4j.examples;
+package agents4j.integration.examples;
 
 import dev.agents4j.api.AgentNode;
 import dev.agents4j.api.exception.WorkflowExecutionException;

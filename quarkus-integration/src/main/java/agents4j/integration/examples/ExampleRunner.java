@@ -59,6 +59,61 @@ public class ExampleRunner {
     }
     
     /**
+     * Run Strategy Pattern examples.
+     * 
+     * @throws RuntimeException if any example fails
+     */
+    public void runStrategyPatternExamples() {
+        LOG.info("Starting Strategy Pattern examples");
+        
+        try {
+            System.out.println("=== Strategy Pattern Examples ===");
+            System.out.println("Strategy Pattern examples demonstrate pluggable execution strategies:");
+            System.out.println("- Sequential execution for step-by-step processing");
+            System.out.println("- Parallel execution for independent operations");
+            System.out.println("- Conditional execution for branching logic");
+            System.out.println("- Batch execution for large datasets");
+            System.out.println("\nNote: These examples use mock nodes for demonstration.");
+            System.out.println("In a production environment, you would use real ChatModel instances.");
+            System.out.println("To see the full examples in action, check StrategyPatternExample.java");
+            
+            LOG.info("Strategy Pattern examples completed successfully");
+            
+        } catch (Exception e) {
+            LOG.error("Failed to run Strategy Pattern examples", e);
+            throw new RuntimeException("Strategy Pattern examples failed", e);
+        }
+    }
+    
+    /**
+     * Run Routing Pattern examples.
+     * 
+     * @throws RuntimeException if any example fails
+     */
+    public void runRoutingPatternExamples() {
+        LOG.info("Starting Routing Pattern examples");
+        
+        try {
+            System.out.println("=== Routing Pattern Examples ===");
+            System.out.println("Routing Pattern examples demonstrate intelligent content classification:");
+            System.out.println("- Customer support ticket routing");
+            System.out.println("- Content categorization workflows");
+            System.out.println("- Multi-language processing");
+            System.out.println("- LLM-based and rule-based routing");
+            System.out.println("- Hybrid routing approaches");
+            System.out.println("\nNote: These examples require a configured ChatModel for LLM-based routing.");
+            System.out.println("Rule-based routing examples work without external dependencies.");
+            System.out.println("To see the full examples in action, check RoutingPatternExample.java");
+            
+            LOG.info("Routing Pattern examples completed successfully");
+            
+        } catch (Exception e) {
+            LOG.error("Failed to run Routing Pattern examples", e);
+            throw new RuntimeException("Routing Pattern examples failed", e);
+        }
+    }
+    
+    /**
      * Validate that the ChatModel is properly configured.
      * 
      * @return true if the model is ready for use
@@ -105,6 +160,22 @@ public class ExampleRunner {
         System.out.println("   - Asynchronous content generation");
         System.out.println("   - Sentiment analysis");
         System.out.println("   - Performance comparisons");
+        System.out.println();
+        System.out.println("4. Strategy Pattern Examples");
+        System.out.println("   Demonstrations of pluggable execution strategies including:");
+        System.out.println("   - Sequential execution for step-by-step processing");
+        System.out.println("   - Parallel execution for independent operations");
+        System.out.println("   - Conditional execution for branching logic");
+        System.out.println("   - Batch execution for large datasets");
+        System.out.println("   - Strategy factory and recommendation system");
+        System.out.println();
+        System.out.println("5. Routing Pattern Examples");
+        System.out.println("   Demonstrations of intelligent content classification including:");
+        System.out.println("   - Customer support ticket routing");
+        System.out.println("   - Content categorization workflows");
+        System.out.println("   - Multi-language processing");
+        System.out.println("   - LLM-based and rule-based routing");
+        System.out.println("   - Hybrid routing approaches");
         System.out.println();
     }
 }

@@ -60,7 +60,7 @@ public class Application implements QuarkusApplication {
         // Get user choice for which example to run
         Scanner scanner = new Scanner(System.in);
         ExampleRunner.displayExampleOptions();
-        System.out.print("Enter your choice (1, 2, or 3): ");
+        System.out.print("Enter your choice (1, 2, 3, 4, or 5): ");
         
         String choice = scanner.nextLine().trim();
         
@@ -74,8 +74,14 @@ public class Application implements QuarkusApplication {
                 case "3":
                     exampleRunner.runParallelizationExamples();
                     return 0;
+                case "4":
+                    exampleRunner.runStrategyPatternExamples();
+                    return 0;
+                case "5":
+                    exampleRunner.runRoutingPatternExamples();
+                    return 0;
                 default:
-                    System.out.println("Invalid choice. Please enter 1, 2, or 3.");
+                    System.out.println("Invalid choice. Please enter 1, 2, 3, 4, or 5.");
                     return 1;
             }
         } catch (Exception e) {
