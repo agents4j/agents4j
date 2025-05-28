@@ -19,6 +19,26 @@ public class ExampleRunner {
     }
     
     /**
+     * Run ChainWorkflow examples.
+     * 
+     * @throws RuntimeException if any example fails
+     */
+    public void runChainWorkflowExamples() {
+        LOG.info("Starting ChainWorkflow examples");
+        
+        try {
+            ChainWorkflowExample example = new ChainWorkflowExample(chatModel);
+            example.runAllExamples();
+            
+            LOG.info("ChainWorkflow examples completed successfully");
+            
+        } catch (Exception e) {
+            LOG.error("Failed to run ChainWorkflow examples", e);
+            throw new RuntimeException("ChainWorkflow examples failed", e);
+        }
+    }
+    
+    /**
      * Run ParallelizationWorkflow examples.
      * 
      * @throws RuntimeException if any example fails
@@ -70,7 +90,15 @@ public class ExampleRunner {
         System.out.println("   Interactive example that asks 3 consecutive 'why' questions");
         System.out.println("   to explore topics in depth using sequential agent processing.");
         System.out.println();
-        System.out.println("2. ParallelizationWorkflow - Concurrent Processing Examples");
+        System.out.println("2. ChainWorkflow - Comprehensive Examples");
+        System.out.println("   Automated demonstrations of sequential LLM processing including:");
+        System.out.println("   - Simple string workflows");
+        System.out.println("   - Memory-enabled conversations");
+        System.out.println("   - Manual workflow construction");
+        System.out.println("   - Advanced complex node workflows");
+        System.out.println("   - Configuration and context usage");
+        System.out.println();
+        System.out.println("3. ParallelizationWorkflow - Concurrent Processing Examples");
         System.out.println("   Automated demonstrations of parallel LLM processing including:");
         System.out.println("   - Batch translation");
         System.out.println("   - Document analysis sectioning");

@@ -2,15 +2,24 @@
 
 This module demonstrates how to use the Agents4J library within a Quarkus application. It includes interactive CLI examples showcasing different workflow types:
 
-1. **ChainWorkflow** - Sequential processing with 3 consecutive "why" questions
-2. **ParallelizationWorkflow** - Concurrent processing for batch operations
+1. **ChainWorkflow** - Interactive "Why" questions example
+2. **ChainWorkflow** - Comprehensive sequential processing examples
+3. **ParallelizationWorkflow** - Concurrent processing for batch operations
 
 ## Overview
 
-This integration provides two main examples:
+This integration provides three main examples:
 
 ### ChainWorkflow Example - "Why Chain CLI"
 The "Why Chain CLI" is designed to help users explore topics more deeply by automatically generating and answering a series of progressively deeper "why" questions. This approach, inspired by the "5 Whys" technique often used in root cause analysis, can help uncover fundamental insights about any topic.
+
+### ChainWorkflow Examples - Comprehensive Demonstrations
+The comprehensive ChainWorkflow examples demonstrate sequential processing capabilities including:
+- Simple string-based workflows using factory methods
+- Memory-enabled conversational workflows
+- Manual workflow construction with builder pattern
+- Advanced workflows with complex agent nodes
+- Configuration and context usage patterns
 
 ### ParallelizationWorkflow Examples
 The ParallelizationWorkflow examples demonstrate concurrent processing capabilities including:
@@ -30,7 +39,16 @@ The ParallelizationWorkflow examples demonstrate concurrent processing capabilit
    - Third node: Answers the second "why" and asks a third, even deeper "why"
    - Final node: Answers the third "why" and provides a comprehensive summary
 
-### ParallelizationWorkflow Examples
+### ChainWorkflow Examples (Option 2)
+1. The application runs a series of demonstrations automatically
+2. Each example shows different aspects of sequential processing:
+   - **Simple String Workflow**: Basic factory method usage
+   - **Memory Workflow**: Conversation history and context
+   - **Manual Construction**: Builder pattern and custom nodes
+   - **Advanced Workflow**: Complex nodes with structured output
+   - **Configured Workflow**: Context and metadata usage
+
+### ParallelizationWorkflow Examples (Option 3)
 1. The application runs a series of demonstrations automatically
 2. Each example shows different aspects of parallel processing:
    - **Simple Parallel Query**: Sentiment analysis of multiple texts
@@ -64,14 +82,20 @@ cd agents4j
 
 1. When the application starts, choose which example to run:
    - Option 1: ChainWorkflow - Three Why Questions
-   - Option 2: ParallelizationWorkflow - Concurrent Processing Examples
+   - Option 2: ChainWorkflow - Comprehensive Examples
+   - Option 3: ParallelizationWorkflow - Concurrent Processing Examples
 
 #### For ChainWorkflow (Option 1):
 1. Enter your initial question when prompted
 2. The application will process your question through the chain of "why" questions
 3. The final result will include answers to all three "why" questions and a comprehensive summary
 
-#### For ParallelizationWorkflow (Option 2):
+#### For ChainWorkflow Examples (Option 2):
+1. The application will automatically run through 5 different examples
+2. Each example demonstrates different sequential processing patterns
+3. You'll see various workflow construction and configuration techniques
+
+#### For ParallelizationWorkflow (Option 3):
 1. The application will automatically run through 5 different examples
 2. Each example demonstrates different parallel processing patterns
 3. You'll see real-time output showing concurrent operations in action
@@ -92,8 +116,9 @@ This properties file is automatically loaded by Quarkus when running in developm
 ```
 Choose an example to run:
 1. ChainWorkflow - Three Why Questions
-2. ParallelizationWorkflow - Concurrent Processing Examples
-Enter your choice (1 or 2): 1
+2. ChainWorkflow - Comprehensive Examples
+3. ParallelizationWorkflow - Concurrent Processing Examples
+Enter your choice (1, 2, or 3): 1
 
 Enter your initial question:
 Why do leaves change color in the fall?
@@ -109,8 +134,39 @@ and ecological significance of leaf color changes in autumn]
 ```
 Choose an example to run:
 1. ChainWorkflow - Three Why Questions
-2. ParallelizationWorkflow - Concurrent Processing Examples
-Enter your choice (1 or 2): 2
+2. ChainWorkflow - Comprehensive Examples
+3. ParallelizationWorkflow - Concurrent Processing Examples
+Enter your choice (1, 2, or 3): 2
+
+=== ChainWorkflow Examples ===
+
+1. Simple String Workflow
+-------------------------
+Input: Tell me about artificial intelligence
+Result: [AI explanation and summary]
+...
+
+2. Workflow with Memory
+-----------------------
+First interaction:
+Input: My name is John Doe
+Response: [Greeting response]
+
+Second interaction (testing memory):
+Input: What's my name?
+Response: [Response showing memory of previous interaction]
+...
+
+[Additional examples continue...]
+```
+
+### ParallelizationWorkflow Example
+```
+Choose an example to run:
+1. ChainWorkflow - Three Why Questions
+2. ChainWorkflow - Comprehensive Examples  
+3. ParallelizationWorkflow - Concurrent Processing Examples
+Enter your choice (1, 2, or 3): 3
 
 === ParallelizationWorkflow Examples ===
 
