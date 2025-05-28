@@ -1,8 +1,14 @@
 package dev.agents4j.workflow;
 
 import dev.agents4j.api.AgentNode;
+import dev.agents4j.api.routing.ContentRouter;
+import dev.agents4j.api.routing.Route;
 import dev.agents4j.api.strategy.WorkflowExecutionStrategy;
 import dev.agents4j.impl.StringLangChain4JAgentNode;
+import dev.agents4j.workflow.routing.LLMContentRouter;
+import dev.agents4j.workflow.routing.RuleBasedContentRouter;
+import dev.agents4j.workflow.routing.RoutingWorkflow;
+import dev.agents4j.workflow.routing.RoutingWorkflowFactory;
 import dev.agents4j.workflow.strategy.StrategyFactory;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
@@ -334,5 +340,198 @@ public class AgentWorkflowFactory {
             .defaultContext(conditionalConfig)
             .addNodes(List.of(nodes))
             .build();
+    }
+
+    // =================== ROUTING WORKFLOW METHODS ===================
+
+    /**
+     * Creates a customer support routing workflow using LLM-based classification.
+     *
+     * @param name The workflow name
+     * @param model The ChatModel to use for routing and processing
+     * @param classificationPrompt The prompt for ticket classification
+     * @return A new RoutingWorkflow for customer support
+     */
+    public static RoutingWorkflow<String, String> createCustomerSupportRoutingWorkflow(
+        String name,
+        ChatModel model,
+        String classificationPrompt
+    ) {
+        return RoutingWorkflowFactory.createCustomerSupportWorkflow(name, model, classificationPrompt);
+    }
+
+    /**
+     * Creates a content categorization routing workflow using rule-based routing.
+     *
+     * @param name The workflow name
+     * @param model The ChatModel to use for processing
+     * @param categoryRules Map of category names to their keyword patterns
+     * @return A new RoutingWorkflow for content categorization
+     */
+    public static RoutingWorkflow<String, String> createContentCategorizationWorkflow(
+        String name,
+        ChatModel model,
+        Map<String, List<String>> categoryRules
+    ) {
+        return RoutingWorkflowFactory.createContentCategorizationWorkflow(name, model, categoryRules);
+    }
+
+    /**
+     * Creates a multi-language routing workflow.
+     *
+     * @param name The workflow name
+     * @param model The ChatModel to use for processing
+     * @param supportedLanguages List of supported language codes
+     * @return A new RoutingWorkflow for multi-language processing
+     */
+    public static RoutingWorkflow<String, String> createMultiLanguageRoutingWorkflow(
+        String name,
+        ChatModel model,
+        List<String> supportedLanguages
+    ) {
+        return RoutingWorkflowFactory.createMultiLanguageWorkflow(name, model, supportedLanguages);
+    }
+
+    /**
+     * Creates a routing workflow with LLM-based content router.
+     *
+     * @param <I> The input type for the workflow
+     * @param <O> The output type for the workflow
+     * @param name The workflow name
+     * @param model The ChatModel for routing
+     * @param classificationPrompt The classification prompt
+     * @param routes The routes to add to the workflow
+     * @return A new RoutingWorkflow instance
+     */
+    @SafeVarargs
+    public static <I, O> RoutingWorkflow<I, O> createLLMRoutingWorkflow(
+        String name,
+        ChatModel model,
+        String classificationPrompt,
+        Route<I, O>... routes
+    ) {
+        ContentRouter<I> router = LLMContentRouter.<I>builder()
+            .model(model)
+            .classificationPrompt(classificationPrompt)
+            .includeConfidenceScoring(true)
+            .includeReasoning(true)
+            .build();
+
+        return RoutingWorkflowFactory.createSimpleRoutingWorkflow(name, router, routes);
+    }
+
+    /**
+     * Creates a routing workflow with rule-based content router.
+     *
+     * @param <I> The input type for the workflow
+     * @param <O> The output type for the workflow
+     * @param name The workflow name
+     * @param keywordRules Map of route IDs to their keyword lists
+     * @param routes The routes to add to the workflow
+     * @return A new RoutingWorkflow instance
+     */
+    @SafeVarargs
+    public static <I, O> RoutingWorkflow<I, O> createRuleBasedRoutingWorkflow(
+        String name,
+        Map<String, List<String>> keywordRules,
+        Route<I, O>... routes
+    ) {
+        ContentRouter<I> router = RuleBasedContentRouter.createWithKeywords(keywordRules);
+        return RoutingWorkflowFactory.createSimpleRoutingWorkflow(name, router, routes);
+    }
+
+    /**
+     * Creates a simple routing workflow with custom router.
+     *
+     * @param <I> The input type for the workflow
+     * @param <O> The output type for the workflow
+     * @param name The workflow name
+     * @param router The content router to use
+     * @param routes The routes to add to the workflow
+     * @return A new RoutingWorkflow instance
+     */
+    @SafeVarargs
+    public static <I, O> RoutingWorkflow<I, O> createRoutingWorkflow(
+        String name,
+        ContentRouter<I> router,
+        Route<I, O>... routes
+    ) {
+        return RoutingWorkflowFactory.createSimpleRoutingWorkflow(name, router, routes);
+    }
+
+    /**
+     * Creates a string processing route with sequential strategy.
+     *
+     * @param routeId The route identifier
+     * @param description The route description
+     * @param model The ChatModel to use
+     * @param systemPrompts The system prompts for the route nodes
+     * @return A new Route instance
+     */
+    public static Route<String, String> createStringRoute(
+        String routeId,
+        String description,
+        ChatModel model,
+        String... systemPrompts
+    ) {
+        if (systemPrompts.length == 0) {
+            throw new IllegalArgumentException("At least one system prompt is required");
+        }
+
+        Route.Builder<String, String> builder = Route.<String, String>builder()
+            .id(routeId)
+            .description(description)
+            .strategy(StrategyFactory.sequential());
+
+        for (int i = 0; i < systemPrompts.length; i++) {
+            String nodeName = routeId + "-Node" + (i + 1);
+            StringLangChain4JAgentNode node = StringLangChain4JAgentNode.builder()
+                .name(nodeName)
+                .model(model)
+                .systemPrompt(systemPrompts[i])
+                .build();
+            builder.addNode(node);
+        }
+
+        return builder.build();
+    }
+
+    /**
+     * Creates a string processing route with custom strategy.
+     *
+     * @param routeId The route identifier
+     * @param description The route description
+     * @param model The ChatModel to use
+     * @param strategy The execution strategy to use
+     * @param systemPrompts The system prompts for the route nodes
+     * @return A new Route instance
+     */
+    public static Route<String, String> createStringRouteWithStrategy(
+        String routeId,
+        String description,
+        ChatModel model,
+        WorkflowExecutionStrategy<String, String> strategy,
+        String... systemPrompts
+    ) {
+        if (systemPrompts.length == 0) {
+            throw new IllegalArgumentException("At least one system prompt is required");
+        }
+
+        Route.Builder<String, String> builder = Route.<String, String>builder()
+            .id(routeId)
+            .description(description)
+            .strategy(strategy);
+
+        for (int i = 0; i < systemPrompts.length; i++) {
+            String nodeName = routeId + "-Node" + (i + 1);
+            StringLangChain4JAgentNode node = StringLangChain4JAgentNode.builder()
+                .name(nodeName)
+                .model(model)
+                .systemPrompt(systemPrompts[i])
+                .build();
+            builder.addNode(node);
+        }
+
+        return builder.build();
     }
 }
