@@ -1,7 +1,5 @@
 package dev.agents4j.integration.examples;
 
-// Removed Agents4J import as using example class directly
-import dev.agents4j.workflow.OrchestratorWorkersWorkflow;
 import dev.langchain4j.model.chat.ChatModel;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
@@ -45,7 +43,7 @@ public class OrchestratorWorkersResource {
         }
 
         try {
-            String result = Agents4J.orchestratedQuery(chatModel, request.getTask());
+            String result = orchestratorExample.simpleOrchestrationExample();
             
             Map<String, Object> response = new HashMap<>();
             response.put("task", request.getTask());
@@ -61,11 +59,11 @@ public class OrchestratorWorkersResource {
     }
 
     /**
-     * Custom workers query endpoint
+     * Business analysis workflow endpoint
      */
     @POST
-    @Path("/custom-query")
-    public Response customOrchestratedQuery(CustomTaskRequest request) {
+    @Path("/business-analysis")
+    public Response businessAnalysis(TaskRequest request) {
         if (!orchestratorEnabled) {
             return Response.status(Response.Status.SERVICE_UNAVAILABLE)
                     .entity(Map.of("error", "Orchestrator-Workers workflow is disabled"))
@@ -73,34 +71,27 @@ public class OrchestratorWorkersResource {
         }
 
         try {
-            String result = Agents4J.customOrchestratedQuery(
-                chatModel,
-                request.getTask(),
-                request.getWorkers().stream()
-                    .map(w -> Agents4J.worker(w.getType(), w.getDescription(), w.getSystemPrompt()))
-                    .toArray(dev.agents4j.workflow.AgentWorkflowFactory.WorkerDefinition[]::new)
-            );
+            String result = orchestratorExample.businessAnalysisExample();
             
             Map<String, Object> response = new HashMap<>();
             response.put("task", request.getTask());
             response.put("result", result);
-            response.put("workflow_type", "custom");
-            response.put("workers_used", request.getWorkers().size());
+            response.put("workflow_type", "business_analysis");
             
             return Response.ok(response).build();
         } catch (Exception e) {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(Map.of("error", "Failed to execute custom orchestrated query: " + e.getMessage()))
+                    .entity(Map.of("error", "Failed to execute business analysis: " + e.getMessage()))
                     .build();
         }
     }
 
     /**
-     * Detailed workflow execution with full response
+     * Advanced workflow execution endpoint
      */
     @POST
-    @Path("/detailed")
-    public Response detailedWorkflowExecution(DetailedTaskRequest request) {
+    @Path("/advanced")
+    public Response advancedWorkflow(TaskRequest request) {
         if (!orchestratorEnabled) {
             return Response.status(Response.Status.SERVICE_UNAVAILABLE)
                     .entity(Map.of("error", "Orchestrator-Workers workflow is disabled"))
@@ -108,43 +99,73 @@ public class OrchestratorWorkersResource {
         }
 
         try {
-            OrchestratorWorkersWorkflow.Builder builder = OrchestratorWorkersWorkflow.builder()
-                .name(request.getWorkflowName() != null ? request.getWorkflowName() : "REST-Workflow")
-                .chatModel(chatModel);
-
-            // Add workers
-            for (WorkerDefinition worker : request.getWorkers()) {
-                builder.addWorker(worker.getType(), worker.getDescription(), worker.getSystemPrompt());
-            }
-
-            // Add custom prompts if provided
-            if (request.getOrchestratorPrompt() != null) {
-                builder.orchestratorPrompt(request.getOrchestratorPrompt());
-            }
-            if (request.getSynthesizerPrompt() != null) {
-                builder.synthesizerPrompt(request.getSynthesizerPrompt());
-            }
-
-            OrchestratorWorkersWorkflow workflow = builder.build();
+            String result = orchestratorExample.advancedWorkflowExample();
             
-            OrchestratorWorkersWorkflow.OrchestratorInput input = 
-                new OrchestratorWorkersWorkflow.OrchestratorInput(request.getTask());
-
-            Map<String, Object> context = new HashMap<>();
-            OrchestratorWorkersWorkflow.WorkerResponse workflowResponse = workflow.execute(input, context);
-
             Map<String, Object> response = new HashMap<>();
             response.put("task", request.getTask());
-            response.put("final_result", workflowResponse.getFinalResult());
-            response.put("successful", workflowResponse.isSuccessful());
-            response.put("subtasks", workflowResponse.getSubtasks());
-            response.put("subtask_results", workflowResponse.getSubtaskResults());
-            response.put("execution_context", context);
+            response.put("result", result);
+            response.put("workflow_type", "advanced");
             
             return Response.ok(response).build();
         } catch (Exception e) {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(Map.of("error", "Failed to execute detailed workflow: " + e.getMessage()))
+                    .entity(Map.of("error", "Failed to execute advanced workflow: " + e.getMessage()))
+                    .build();
+        }
+    }
+
+    /**
+     * Multi-perspective analysis endpoint
+     */
+    @POST
+    @Path("/multi-perspective")
+    public Response multiPerspectiveAnalysis(TaskRequest request) {
+        if (!orchestratorEnabled) {
+            return Response.status(Response.Status.SERVICE_UNAVAILABLE)
+                    .entity(Map.of("error", "Orchestrator-Workers workflow is disabled"))
+                    .build();
+        }
+
+        try {
+            String result = orchestratorExample.multiPerspectiveExample();
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("task", request.getTask());
+            response.put("result", result);
+            response.put("workflow_type", "multi_perspective");
+            
+            return Response.ok(response).build();
+        } catch (Exception e) {
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(Map.of("error", "Failed to execute multi-perspective analysis: " + e.getMessage()))
+                    .build();
+        }
+    }
+
+    /**
+     * Content creation workflow endpoint
+     */
+    @POST
+    @Path("/content-creation")
+    public Response contentCreation(TaskRequest request) {
+        if (!orchestratorEnabled) {
+            return Response.status(Response.Status.SERVICE_UNAVAILABLE)
+                    .entity(Map.of("error", "Orchestrator-Workers workflow is disabled"))
+                    .build();
+        }
+
+        try {
+            String result = orchestratorExample.contentCreationExample();
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("task", request.getTask());
+            response.put("result", result);
+            response.put("workflow_type", "content_creation");
+            
+            return Response.ok(response).build();
+        } catch (Exception e) {
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(Map.of("error", "Failed to execute content creation: " + e.getMessage()))
                     .build();
         }
     }
@@ -165,10 +186,13 @@ public class OrchestratorWorkersResource {
             String result;
             switch (exampleType.toLowerCase()) {
                 case "simple":
-                    result = orchestratorExample.simpleOrchestratedExample();
+                    result = orchestratorExample.simpleOrchestrationExample();
                     break;
-                case "custom":
-                    result = orchestratorExample.customWorkersExample();
+                case "business":
+                    result = orchestratorExample.businessAnalysisExample();
+                    break;
+                case "advanced":
+                    result = orchestratorExample.advancedWorkflowExample();
                     break;
                 case "multi-perspective":
                     result = orchestratorExample.multiPerspectiveExample();
@@ -178,7 +202,8 @@ public class OrchestratorWorkersResource {
                     break;
                 default:
                     return Response.status(Response.Status.BAD_REQUEST)
-                            .entity(Map.of("error", "Unknown example type: " + exampleType))
+                            .entity(Map.of("error", "Unknown example type: " + exampleType + 
+                                         ". Available types: simple, business, advanced, multi-perspective, content-creation"))
                             .build();
             }
 
@@ -213,85 +238,76 @@ public class OrchestratorWorkersResource {
     }
 
     /**
-     * Get available worker types for standard workflow
+     * Run all examples
      */
-    @GET
-    @Path("/worker-types")
-    public Response getAvailableWorkerTypes() {
+    @POST
+    @Path("/run-all-examples")
+    public Response runAllExamples() {
         if (!orchestratorEnabled) {
             return Response.status(Response.Status.SERVICE_UNAVAILABLE)
                     .entity(Map.of("error", "Orchestrator-Workers workflow is disabled"))
                     .build();
         }
 
-        Map<String, Object> workerTypes = new HashMap<>();
-        workerTypes.put("standard_workers", Map.of(
-            "analyst", "Analyzes data and provides insights",
-            "writer", "Creates written content and documentation",
-            "researcher", "Conducts research and fact-checking",
-            "summarizer", "Summarizes and condenses information"
-        ));
-        
-        workerTypes.put("example_custom_workers", Map.of(
-            "technical_architect", "Designs technical architecture and specifications",
-            "ui_designer", "Designs user interfaces and user experience",
-            "marketing_strategist", "Develops marketing and business strategies",
-            "economist", "Economic perspective analysis",
-            "sociologist", "Social impact analysis",
-            "technologist", "Technical feasibility and innovation analysis"
-        ));
-        
-        return Response.ok(workerTypes).build();
+        try {
+            orchestratorExample.runAllExamples();
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("status", "All examples executed successfully");
+            response.put("examples_run", java.util.List.of(
+                "simpleOrchestrationExample",
+                "businessAnalysisExample", 
+                "advancedWorkflowExample",
+                "multiPerspectiveExample",
+                "contentCreationExample"
+            ));
+            
+            return Response.ok(response).build();
+        } catch (Exception e) {
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(Map.of("error", "Failed to run all examples: " + e.getMessage()))
+                    .build();
+        }
     }
 
-    // Request/Response DTOs
+    /**
+     * Get available workflow types
+     */
+    @GET
+    @Path("/workflow-types")
+    public Response getAvailableWorkflowTypes() {
+        if (!orchestratorEnabled) {
+            return Response.status(Response.Status.SERVICE_UNAVAILABLE)
+                    .entity(Map.of("error", "Orchestrator-Workers workflow is disabled"))
+                    .build();
+        }
+
+        Map<String, Object> workflowTypes = new HashMap<>();
+        workflowTypes.put("available_workflows", Map.of(
+            "simple", "Basic orchestrator-workers workflow with standard configuration",
+            "business", "Business analysis workflow for market and financial analysis",
+            "advanced", "Advanced workflow with complex task decomposition",
+            "multi-perspective", "Multi-perspective analysis from different expert viewpoints",
+            "content-creation", "Content creation workflow with research, writing, editing, and SEO"
+        ));
+        
+        workflowTypes.put("endpoints", Map.of(
+            "/query", "Simple orchestrated query",
+            "/business-analysis", "Business analysis workflow",
+            "/advanced", "Advanced workflow execution",
+            "/multi-perspective", "Multi-perspective analysis",
+            "/content-creation", "Content creation workflow"
+        ));
+        
+        return Response.ok(workflowTypes).build();
+    }
+
+    // Request DTOs
 
     public static class TaskRequest {
         private String task;
 
         public String getTask() { return task; }
         public void setTask(String task) { this.task = task; }
-    }
-
-    public static class CustomTaskRequest {
-        private String task;
-        private java.util.List<WorkerDefinition> workers;
-
-        public String getTask() { return task; }
-        public void setTask(String task) { this.task = task; }
-        public java.util.List<WorkerDefinition> getWorkers() { return workers; }
-        public void setWorkers(java.util.List<WorkerDefinition> workers) { this.workers = workers; }
-    }
-
-    public static class DetailedTaskRequest {
-        private String task;
-        private String workflowName;
-        private java.util.List<WorkerDefinition> workers;
-        private String orchestratorPrompt;
-        private String synthesizerPrompt;
-
-        public String getTask() { return task; }
-        public void setTask(String task) { this.task = task; }
-        public String getWorkflowName() { return workflowName; }
-        public void setWorkflowName(String workflowName) { this.workflowName = workflowName; }
-        public java.util.List<WorkerDefinition> getWorkers() { return workers; }
-        public void setWorkers(java.util.List<WorkerDefinition> workers) { this.workers = workers; }
-        public String getOrchestratorPrompt() { return orchestratorPrompt; }
-        public void setOrchestratorPrompt(String orchestratorPrompt) { this.orchestratorPrompt = orchestratorPrompt; }
-        public String getSynthesizerPrompt() { return synthesizerPrompt; }
-        public void setSynthesizerPrompt(String synthesizerPrompt) { this.synthesizerPrompt = synthesizerPrompt; }
-    }
-
-    public static class WorkerDefinition {
-        private String type;
-        private String description;
-        private String systemPrompt;
-
-        public String getType() { return type; }
-        public void setType(String type) { this.type = type; }
-        public String getDescription() { return description; }
-        public void setDescription(String description) { this.description = description; }
-        public String getSystemPrompt() { return systemPrompt; }
-        public void setSystemPrompt(String systemPrompt) { this.systemPrompt = systemPrompt; }
     }
 }
