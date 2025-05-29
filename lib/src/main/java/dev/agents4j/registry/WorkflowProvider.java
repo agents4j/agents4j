@@ -4,7 +4,6 @@
 package dev.agents4j.registry;
 
 import dev.agents4j.api.AgentWorkflow;
-
 import java.util.Map;
 
 /**
@@ -16,7 +15,6 @@ import java.util.Map;
  * @param <O> The output type for workflows created by this provider
  */
 public interface WorkflowProvider<I, O> {
-
     /**
      * Creates a new workflow instance based on the provided configuration.
      *
@@ -24,7 +22,8 @@ public interface WorkflowProvider<I, O> {
      * @return A new workflow instance
      * @throws WorkflowCreationException if workflow creation fails
      */
-    AgentWorkflow<I, O> create(WorkflowConfig config) throws WorkflowCreationException;
+    AgentWorkflow<I, O> create(WorkflowConfig config)
+        throws WorkflowCreationException;
 
     /**
      * Gets the workflow type that this provider creates.

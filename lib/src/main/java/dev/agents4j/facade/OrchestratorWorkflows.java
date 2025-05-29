@@ -9,7 +9,9 @@ import dev.agents4j.workflow.AgentWorkflowFactory;
 import dev.agents4j.workflow.OrchestratorWorkersWorkflow;
 import dev.langchain4j.model.chat.ChatModel;
 
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Focused facade for orchestrator-workers workflow operations.
@@ -29,10 +31,16 @@ public final class OrchestratorWorkflows {
      * @return A new OrchestratorWorkersWorkflow instance
      * @throws IllegalArgumentException if parameters are invalid
      */
-    public static OrchestratorWorkersWorkflow create(String name, ChatModel model) {
+    public static OrchestratorWorkersWorkflow create(
+        String name,
+        ChatModel model
+    ) {
         validateCreateParameters(name, model);
-        
-        return AgentWorkflowFactory.createStandardOrchestratorWorkersWorkflow(name, model);
+
+        return AgentWorkflowFactory.createStandardOrchestratorWorkersWorkflow(
+            name,
+            model
+        );
     }
 
     /**
@@ -51,16 +59,24 @@ public final class OrchestratorWorkflows {
     ) {
         validateCreateParameters(name, model);
         if (workers == null || workers.length == 0) {
-            throw new IllegalArgumentException("At least one worker definition is required");
+            throw new IllegalArgumentException(
+                "At least one worker definition is required"
+            );
         }
-        
+
         for (int i = 0; i < workers.length; i++) {
             if (workers[i] == null) {
-                throw new IllegalArgumentException("Worker definition at index " + i + " cannot be null");
+                throw new IllegalArgumentException(
+                    "Worker definition at index " + i + " cannot be null"
+                );
             }
         }
-        
-        return AgentWorkflowFactory.createCustomOrchestratorWorkersWorkflow(name, model, workers);
+
+        return AgentWorkflowFactory.createCustomOrchestratorWorkersWorkflow(
+            name,
+            model,
+            workers
+        );
     }
 
     /**
@@ -74,13 +90,19 @@ public final class OrchestratorWorkflows {
      */
     public static String execute(ChatModel model, String taskDescription) {
         validateExecuteParameters(model, taskDescription);
-        
-        OrchestratorWorkersWorkflow workflow = create("OrchestratedQuery", model);
+
+        OrchestratorWorkersWorkflow workflow = create(
+            "OrchestratedQuery",
+            model
+        );
 
         try {
-            OrchestratorWorkersWorkflow.OrchestratorInput input = 
-                new OrchestratorWorkersWorkflow.OrchestratorInput(taskDescription);
-            OrchestratorWorkersWorkflow.WorkerResponse response = workflow.execute(input);
+            OrchestratorWorkersWorkflow.OrchestratorInput input =
+                new OrchestratorWorkersWorkflow.OrchestratorInput(
+                    taskDescription
+                );
+            OrchestratorWorkersWorkflow.WorkerResponse response =
+                workflow.execute(input);
             return response.getFinalResult();
         } catch (WorkflowExecutionException e) {
             throw new AgentExecutionException(
@@ -108,7 +130,9 @@ public final class OrchestratorWorkflows {
     ) {
         validateExecuteParameters(model, taskDescription);
         if (workers == null || workers.length == 0) {
-            throw new IllegalArgumentException("At least one worker definition is required");
+            throw new IllegalArgumentException(
+                "At least one worker definition is required"
+            );
         }
 
         OrchestratorWorkersWorkflow workflow = createCustom(
@@ -118,9 +142,12 @@ public final class OrchestratorWorkflows {
         );
 
         try {
-            OrchestratorWorkersWorkflow.OrchestratorInput input = 
-                new OrchestratorWorkersWorkflow.OrchestratorInput(taskDescription);
-            OrchestratorWorkersWorkflow.WorkerResponse response = workflow.execute(input);
+            OrchestratorWorkersWorkflow.OrchestratorInput input =
+                new OrchestratorWorkersWorkflow.OrchestratorInput(
+                    taskDescription
+                );
+            OrchestratorWorkersWorkflow.WorkerResponse response =
+                workflow.execute(input);
             return response.getFinalResult();
         } catch (WorkflowExecutionException e) {
             throw new AgentExecutionException(
@@ -128,8 +155,10 @@ public final class OrchestratorWorkflows {
                 "Failed to execute custom orchestrated query",
                 e,
                 Map.of(
-                    "taskDescription", taskDescription,
-                    "workerCount", workers.length
+                    "taskDescription",
+                    taskDescription,
+                    "workerCount",
+                    workers.length
                 )
             );
         }
@@ -143,21 +172,30 @@ public final class OrchestratorWorkflows {
      * @return Detailed response including individual worker outputs
      * @throws AgentExecutionException if workflow execution fails
      */
-    public static OrchestratorResult executeDetailed(ChatModel model, String taskDescription) {
+    public static OrchestratorResult executeDetailed(
+        ChatModel model,
+        String taskDescription
+    ) {
         validateExecuteParameters(model, taskDescription);
-        
-        OrchestratorWorkersWorkflow workflow = create("DetailedOrchestratedQuery", model);
+
+        OrchestratorWorkersWorkflow workflow = create(
+            "DetailedOrchestratedQuery",
+            model
+        );
 
         try {
-            OrchestratorWorkersWorkflow.OrchestratorInput input = 
-                new OrchestratorWorkersWorkflow.OrchestratorInput(taskDescription);
-            OrchestratorWorkersWorkflow.WorkerResponse response = workflow.execute(input);
-            
+            OrchestratorWorkersWorkflow.OrchestratorInput input =
+                new OrchestratorWorkersWorkflow.OrchestratorInput(
+                    taskDescription
+                );
+            OrchestratorWorkersWorkflow.WorkerResponse response =
+                workflow.execute(input);
+
             return new OrchestratorResult(
                 taskDescription,
                 response.getFinalResult(),
-                response.getWorkerResults(),
-                response.getExecutionMetadata()
+                response.getSubtaskResults(),
+                response.isSuccessful()
             );
         } catch (WorkflowExecutionException e) {
             throw new AgentExecutionException(
@@ -185,7 +223,9 @@ public final class OrchestratorWorkflows {
     ) {
         validateExecuteParameters(model, taskDescription);
         if (workers == null || workers.length == 0) {
-            throw new IllegalArgumentException("At least one worker definition is required");
+            throw new IllegalArgumentException(
+                "At least one worker definition is required"
+            );
         }
 
         OrchestratorWorkersWorkflow workflow = createCustom(
@@ -195,15 +235,18 @@ public final class OrchestratorWorkflows {
         );
 
         try {
-            OrchestratorWorkersWorkflow.OrchestratorInput input = 
-                new OrchestratorWorkersWorkflow.OrchestratorInput(taskDescription);
-            OrchestratorWorkersWorkflow.WorkerResponse response = workflow.execute(input);
-            
+            OrchestratorWorkersWorkflow.OrchestratorInput input =
+                new OrchestratorWorkersWorkflow.OrchestratorInput(
+                    taskDescription
+                );
+            OrchestratorWorkersWorkflow.WorkerResponse response =
+                workflow.execute(input);
+
             return new OrchestratorResult(
                 taskDescription,
                 response.getFinalResult(),
-                response.getWorkerResults(),
-                response.getExecutionMetadata()
+                response.getSubtaskResults(),
+                response.isSuccessful()
             );
         } catch (WorkflowExecutionException e) {
             throw new AgentExecutionException(
@@ -211,8 +254,10 @@ public final class OrchestratorWorkflows {
                 "Failed to execute custom detailed orchestrated query",
                 e,
                 Map.of(
-                    "taskDescription", taskDescription,
-                    "workerCount", workers.length
+                    "taskDescription",
+                    taskDescription,
+                    "workerCount",
+                    workers.length
                 )
             );
         }
@@ -226,35 +271,52 @@ public final class OrchestratorWorkflows {
      * @param systemPrompt The system prompt for this worker
      * @return A new WorkerDefinition instance
      */
-    public static AgentWorkflowFactory.WorkerDefinition worker(String type, String description, String systemPrompt) {
+    public static AgentWorkflowFactory.WorkerDefinition worker(
+        String type,
+        String description,
+        String systemPrompt
+    ) {
         if (type == null || type.trim().isEmpty()) {
-            throw new IllegalArgumentException("Worker type cannot be null or empty");
+            throw new IllegalArgumentException(
+                "Worker type cannot be null or empty"
+            );
         }
         if (description == null || description.trim().isEmpty()) {
-            throw new IllegalArgumentException("Worker description cannot be null or empty");
+            throw new IllegalArgumentException(
+                "Worker description cannot be null or empty"
+            );
         }
         if (systemPrompt == null || systemPrompt.trim().isEmpty()) {
-            throw new IllegalArgumentException("Worker system prompt cannot be null or empty");
+            throw new IllegalArgumentException(
+                "Worker system prompt cannot be null or empty"
+            );
         }
-        
+
         return AgentWorkflowFactory.worker(type, description, systemPrompt);
     }
 
     private static void validateCreateParameters(String name, ChatModel model) {
         if (name == null || name.trim().isEmpty()) {
-            throw new IllegalArgumentException("Workflow name cannot be null or empty");
+            throw new IllegalArgumentException(
+                "Workflow name cannot be null or empty"
+            );
         }
         if (model == null) {
             throw new IllegalArgumentException("ChatModel cannot be null");
         }
     }
 
-    private static void validateExecuteParameters(ChatModel model, String taskDescription) {
+    private static void validateExecuteParameters(
+        ChatModel model,
+        String taskDescription
+    ) {
         if (model == null) {
             throw new IllegalArgumentException("ChatModel cannot be null");
         }
         if (taskDescription == null || taskDescription.trim().isEmpty()) {
-            throw new IllegalArgumentException("Task description cannot be null or empty");
+            throw new IllegalArgumentException(
+                "Task description cannot be null or empty"
+            );
         }
     }
 
@@ -264,19 +326,19 @@ public final class OrchestratorWorkflows {
     public static class OrchestratorResult {
         private final String originalTask;
         private final String finalResult;
-        private final Map<String, String> workerResults;
-        private final Map<String, Object> executionMetadata;
+        private final List<OrchestratorWorkersWorkflow.SubtaskResult> subtaskResults;
+        private final boolean successful;
 
         public OrchestratorResult(
             String originalTask,
             String finalResult,
-            Map<String, String> workerResults,
-            Map<String, Object> executionMetadata
+            List<OrchestratorWorkersWorkflow.SubtaskResult> subtaskResults,
+            boolean successful
         ) {
             this.originalTask = originalTask;
             this.finalResult = finalResult;
-            this.workerResults = workerResults != null ? Map.copyOf(workerResults) : Map.of();
-            this.executionMetadata = executionMetadata != null ? Map.copyOf(executionMetadata) : Map.of();
+            this.subtaskResults = subtaskResults != null ? List.copyOf(subtaskResults) : List.of();
+            this.successful = successful;
         }
 
         public String getOriginalTask() {
@@ -287,24 +349,28 @@ public final class OrchestratorWorkflows {
             return finalResult;
         }
 
-        public Map<String, String> getWorkerResults() {
-            return workerResults;
+        public List<OrchestratorWorkersWorkflow.SubtaskResult> getSubtaskResults() {
+            return subtaskResults;
         }
 
-        public Map<String, Object> getExecutionMetadata() {
-            return executionMetadata;
+        public boolean isSuccessful() {
+            return successful;
         }
 
-        public int getWorkerCount() {
-            return workerResults.size();
+        public int getSubtaskCount() {
+            return subtaskResults.size();
         }
 
-        public boolean hasWorkerResult(String workerType) {
-            return workerResults.containsKey(workerType);
+        public boolean hasSubtaskForWorker(String workerType) {
+            return subtaskResults.stream()
+                .anyMatch(result -> workerType.equals(result.getWorkerType()));
         }
 
-        public String getWorkerResult(String workerType) {
-            return workerResults.get(workerType);
+        public Optional<String> getResultForWorker(String workerType) {
+            return subtaskResults.stream()
+                .filter(result -> workerType.equals(result.getWorkerType()))
+                .findFirst()
+                .map(OrchestratorWorkersWorkflow.SubtaskResult::getResult);
         }
     }
 }

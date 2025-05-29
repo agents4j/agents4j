@@ -3,10 +3,10 @@
  */
 package dev.agents4j.adapter;
 
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.response.ChatResponse;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -88,9 +88,9 @@ public class LangChain4JChatModelAdapter implements ChatModelAdapter {
 
         try {
             UserMessage userMessage = UserMessage.from(prompt);
-            ChatResponse response = chatModel.chat(userMessage);
+            AiMessage response = chatModel.chat(userMessage).aiMessage();
 
-            if (response == null || response.aiMessage() == null) {
+            if (response == null) {
                 throw new ChatModelException(
                     providerName,
                     modelName,
@@ -100,7 +100,7 @@ public class LangChain4JChatModelAdapter implements ChatModelAdapter {
                 );
             }
 
-            return response.aiMessage().text();
+            return response.text();
         } catch (Exception e) {
             if (e instanceof ChatModelException) {
                 throw e;
@@ -154,11 +154,11 @@ public class LangChain4JChatModelAdapter implements ChatModelAdapter {
             SystemMessage systemMessage = SystemMessage.from(systemPrompt);
             UserMessage userMessage = UserMessage.from(userPrompt);
 
-            ChatResponse response = chatModel.chat(
+            AiMessage response = chatModel.chat(
                 List.of(systemMessage, userMessage)
-            );
+            ).aiMessage();
 
-            if (response == null || response.aiMessage() == null) {
+            if (response == null) {
                 throw new ChatModelException(
                     providerName,
                     modelName,
@@ -173,7 +173,7 @@ public class LangChain4JChatModelAdapter implements ChatModelAdapter {
                 );
             }
 
-            return response.aiMessage().text();
+            return response.text();
         } catch (Exception e) {
             if (e instanceof ChatModelException) {
                 throw e;
@@ -240,7 +240,7 @@ public class LangChain4JChatModelAdapter implements ChatModelAdapter {
         try {
             // Test with a minimal prompt to validate the model is working
             UserMessage testMessage = UserMessage.from("test");
-            ChatResponse response = chatModel.chat(testMessage);
+            AiMessage response = chatModel.chat(testMessage).aiMessage();
 
             if (response == null) {
                 throw new ChatModelException(

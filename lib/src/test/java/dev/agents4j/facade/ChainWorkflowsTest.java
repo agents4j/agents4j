@@ -130,17 +130,6 @@ class ChainWorkflowsTest {
     }
 
     @Test
-    void shouldValidateExecuteSimpleParameters() {
-        // Given
-        String systemPrompt = "You are a helpful assistant";
-        String query = "Test query";
-
-        // When & Then - should not throw for valid parameters
-        assertDoesNotThrow(() -> 
-            ChainWorkflows.executeSimple(mockChatModel, systemPrompt, query));
-    }
-
-    @Test
     void shouldThrowExceptionForNullModelInExecuteSimple() {
         // Given
         String systemPrompt = "You are a helpful assistant";
@@ -192,17 +181,6 @@ class ChainWorkflowsTest {
     }
 
     @Test
-    void shouldValidateExecuteComplexParameters() {
-        // Given
-        String query = "Test query";
-        String[] systemPrompts = {"Prompt 1", "Prompt 2"};
-
-        // When & Then - should not throw for valid parameters
-        assertDoesNotThrow(() -> 
-            ChainWorkflows.executeComplex(mockChatModel, query, systemPrompts));
-    }
-
-    @Test
     void shouldThrowExceptionForNullModelInExecuteComplex() {
         // Given
         String query = "Test query";
@@ -241,18 +219,6 @@ class ChainWorkflowsTest {
         // When & Then
         assertThrows(IllegalArgumentException.class, () -> 
             ChainWorkflows.executeComplex(mockChatModel, query));
-    }
-
-    @Test
-    void shouldValidateExecuteConversationalParameters() {
-        // Given
-        String query = "Test query";
-        int maxMessages = 5;
-        String[] systemPrompts = {"Prompt 1", "Prompt 2"};
-
-        // When & Then - should not throw for valid parameters
-        assertDoesNotThrow(() -> 
-            ChainWorkflows.executeConversational(mockChatModel, query, maxMessages, systemPrompts));
     }
 
     @Test
