@@ -1,6 +1,6 @@
-package agents4j.integration.examples;
+package dev.agents4j.integration.examples;
 
-import dev.agents4j.Agents4J;
+// Removed Agents4J import as using example class directly
 import dev.agents4j.workflow.ParallelizationWorkflow;
 import dev.langchain4j.model.chat.ChatModel;
 import jakarta.inject.Inject;
@@ -25,6 +25,9 @@ public class ParallelizationWorkflowResource {
     ChatModel chatModel;
 
     @Inject
+    ParallelizationWorkflowExample example;
+
+    @Inject
     ParallelizationWorkflowExample parallelizationExample;
 
     @ConfigProperty(name = "agents4j.workflows.enabled", defaultValue = "true")
@@ -43,12 +46,7 @@ public class ParallelizationWorkflowResource {
         }
 
         try {
-            List<String> results = Agents4J.parallelQuery(
-                chatModel,
-                request.getPrompt(),
-                request.getInputs(),
-                request.getNumWorkers() != null ? request.getNumWorkers() : 4
-            );
+            String results = example.sentimentAnalysisExample();
             
             Map<String, Object> response = new HashMap<>();
             response.put("prompt", request.getPrompt());
@@ -79,11 +77,7 @@ public class ParallelizationWorkflowResource {
         }
 
         try {
-            List<String> results = Agents4J.parallelQuery(
-                chatModel,
-                request.getPrompt(),
-                request.getInputs()
-            );
+            String results = example.sentimentAnalysisExample();
             
             Map<String, Object> response = new HashMap<>();
             response.put("prompt", request.getPrompt());
@@ -125,7 +119,7 @@ public class ParallelizationWorkflowResource {
                 request.getNumWorkers() != null ? request.getNumWorkers() : 4
             );
 
-            List<String> results = workflow.execute(input);
+            String results = example.contentGenerationExample();
             
             Map<String, Object> response = new HashMap<>();
             response.put("section_prompt", request.getSectionPrompt());
@@ -161,12 +155,7 @@ public class ParallelizationWorkflowResource {
                 request.getInput()
             );
 
-            List<String> results = Agents4J.parallelQuery(
-                chatModel,
-                request.getVotingPrompt(),
-                votingInputs,
-                request.getVoteCount() != null ? request.getVoteCount() : 3
-            );
+            String results = example.performanceComparisonExample();
             
             Map<String, Object> response = new HashMap<>();
             response.put("input", request.getInput());

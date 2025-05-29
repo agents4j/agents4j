@@ -1,9 +1,10 @@
-package agents4j.integration.examples;
+package dev.agents4j.integration.examples;
 
 import dev.agents4j.api.AgentNode;
 import dev.agents4j.api.exception.WorkflowExecutionException;
 import dev.agents4j.api.routing.Route;
 import dev.agents4j.api.routing.RoutingDecision;
+import dev.agents4j.api.workflow.StatefulWorkflowResult;
 import dev.agents4j.workflow.AgentWorkflowFactory;
 import dev.agents4j.workflow.routing.LLMContentRouter;
 import dev.agents4j.workflow.routing.RuleBasedContentRouter;
@@ -71,10 +72,14 @@ public class RoutingPatternExample {
             "technical, billing, general, escalation. Consider the urgency, complexity, and type of issue.";
         
         RoutingWorkflow<String, String> supportWorkflow = 
-            AgentWorkflowFactory.createCustomerSupportRoutingWorkflow(
+            AgentWorkflowFactory.createLLMRoutingWorkflow(
                 "CustomerSupportRouting", 
                 model, 
-                classificationPrompt
+                classificationPrompt,
+                AgentWorkflowFactory.createStringRoute("technical", "Technical Support", "You are a technical support specialist."),
+                AgentWorkflowFactory.createStringRoute("billing", "Billing Support", "You are a billing specialist."),
+                AgentWorkflowFactory.createStringRoute("general", "General Support", "You are a general support representative."),
+                AgentWorkflowFactory.createStringRoute("escalation", "Escalation Support", "You are a senior support specialist.")
             );
         
         // Test different types of support tickets
@@ -89,11 +94,15 @@ public class RoutingPatternExample {
             System.out.println("Ticket: " + ticket);
             
             Map<String, Object> context = new HashMap<>();
-            String response = supportWorkflow.execute(ticket, context);
+            StatefulWorkflowResult<String> result = supportWorkflow.start(ticket, context);
             
-            System.out.println("Response: " + response);
-            System.out.println("Routed to: " + context.get("selected_route_id"));
-            System.out.println("Confidence: " + context.get("routing_confidence"));
+            if (result.isCompleted()) {
+                System.out.println("Response: " + result.getOutput().orElse("No output"));
+                System.out.println("Routed to: " + result.getMetadata().get("selected_route_id"));
+                System.out.println("Confidence: " + result.getMetadata().get("routing_confidence"));
+            } else {
+                System.out.println("Workflow did not complete successfully");
+            }
             System.out.println();
         }
     }
@@ -111,11 +120,19 @@ public class RoutingPatternExample {
             "entertainment", List.of("movie", "music", "game", "celebrity", "sports", "festival")
         );
         
+        String classificationPrompt = 
+            "You are a content classifier. Analyze the content and classify it into one of these categories: " +
+            String.join(", ", categoryRules.keySet());
+        
         RoutingWorkflow<String, String> categorizationWorkflow = 
-            AgentWorkflowFactory.createContentCategorizationWorkflow(
+            AgentWorkflowFactory.createLLMRoutingWorkflow(
                 "ContentCategorization",
                 model,
-                categoryRules
+                classificationPrompt,
+                AgentWorkflowFactory.createStringRoute("technology", "Technology Handler", "You are a technology specialist."),
+                AgentWorkflowFactory.createStringRoute("business", "Business Handler", "You are a business specialist."),
+                AgentWorkflowFactory.createStringRoute("science", "Science Handler", "You are a science specialist."),
+                AgentWorkflowFactory.createStringRoute("entertainment", "Entertainment Handler", "You are an entertainment specialist.")
             );
         
         String[] testContent = {
@@ -129,10 +146,14 @@ public class RoutingPatternExample {
             System.out.println("Content: " + content);
             
             Map<String, Object> context = new HashMap<>();
-            String result = categorizationWorkflow.execute(content, context);
+            StatefulWorkflowResult<String> result = categorizationWorkflow.start(content, context);
             
-            System.out.println("Category: " + context.get("selected_route_id"));
-            System.out.println("Processed: " + result);
+            if (result.isCompleted()) {
+                System.out.println("Category: " + result.getMetadata().get("selected_route_id"));
+                System.out.println("Processed: " + result.getOutput().orElse("No output"));
+            } else {
+                System.out.println("Workflow did not complete successfully");
+            }
             System.out.println();
         }
     }
@@ -145,11 +166,18 @@ public class RoutingPatternExample {
         
         List<String> supportedLanguages = List.of("english", "spanish", "french");
         
+        String languageClassificationPrompt = 
+            "You are a language detector. Detect the language of the input and classify it as one of: " +
+            String.join(", ", supportedLanguages);
+        
         RoutingWorkflow<String, String> multiLangWorkflow = 
-            AgentWorkflowFactory.createMultiLanguageRoutingWorkflow(
+            AgentWorkflowFactory.createLLMRoutingWorkflow(
                 "MultiLanguageProcessor",
                 model,
-                supportedLanguages
+                languageClassificationPrompt,
+                AgentWorkflowFactory.createStringRoute("english", "English Handler", "You are an English language specialist."),
+                AgentWorkflowFactory.createStringRoute("spanish", "Spanish Handler", "You are a Spanish language specialist."),
+                AgentWorkflowFactory.createStringRoute("french", "French Handler", "You are a French language specialist.")
             );
         
         String[] testTexts = {
@@ -163,10 +191,14 @@ public class RoutingPatternExample {
             System.out.println("Text: " + text);
             
             Map<String, Object> context = new HashMap<>();
-            String result = multiLangWorkflow.execute(text, context);
+            StatefulWorkflowResult<String> result = multiLangWorkflow.start(text, context);
             
-            System.out.println("Detected Language Route: " + context.get("selected_route_id"));
-            System.out.println("Processed: " + result);
+            if (result.isCompleted()) {
+                System.out.println("Detected Language Route: " + result.getMetadata().get("selected_route_id"));
+                System.out.println("Processed: " + result.getOutput().orElse("No output"));
+            } else {
+                System.out.println("Workflow did not complete successfully");
+            }
             System.out.println();
         }
     }
@@ -223,13 +255,17 @@ public class RoutingPatternExample {
             System.out.println("Input: " + input);
             
             Map<String, Object> context = new HashMap<>();
-            String result = llmWorkflow.execute(input, context);
+            StatefulWorkflowResult<String> result = llmWorkflow.start(input, context);
             
-            RoutingDecision decision = (RoutingDecision) context.get("routing_decision");
-            System.out.println("Route: " + decision.getSelectedRoute());
-            System.out.println("Confidence: " + decision.getConfidence());
-            System.out.println("Reasoning: " + decision.getReasoning());
-            System.out.println("Result: " + result);
+            if (result.isCompleted()) {
+                RoutingDecision decision = (RoutingDecision) result.getMetadata().get("routing_decision");
+                System.out.println("Route: " + decision.getSelectedRoute());
+                System.out.println("Confidence: " + decision.getConfidence());
+                System.out.println("Reasoning: " + decision.getReasoning());
+                System.out.println("Result: " + result.getOutput().orElse("No output"));
+            } else {
+                System.out.println("Workflow did not complete successfully");
+            }
             System.out.println();
         }
     }
@@ -292,13 +328,17 @@ public class RoutingPatternExample {
             System.out.println("Input: " + input);
             
             Map<String, Object> context = new HashMap<>();
-            String result = ruleWorkflow.execute(input, context);
+            StatefulWorkflowResult<String> result = ruleWorkflow.start(input, context);
             
-            RoutingDecision decision = (RoutingDecision) context.get("routing_decision");
-            System.out.println("Route: " + decision.getSelectedRoute());
-            System.out.println("Confidence: " + decision.getConfidence());
-            System.out.println("Reasoning: " + decision.getReasoning());
-            System.out.println("Result: " + result);
+            if (result.isCompleted()) {
+                RoutingDecision decision = (RoutingDecision) result.getMetadata().get("routing_decision");
+                System.out.println("Route: " + decision.getSelectedRoute());
+                System.out.println("Confidence: " + decision.getConfidence());
+                System.out.println("Reasoning: " + decision.getReasoning());
+                System.out.println("Result: " + result.getOutput().orElse("No output"));
+            } else {
+                System.out.println("Workflow did not complete successfully");
+            }
             System.out.println();
         }
     }
@@ -349,8 +389,12 @@ public class RoutingPatternExample {
             
             // Try security router first
             try {
-                String result = hybridWorkflow.execute(input, context);
-                System.out.println("Security Route Result: " + result);
+                StatefulWorkflowResult<String> result = hybridWorkflow.start(input, context);
+                if (result.isCompleted()) {
+                    System.out.println("Security Route Result: " + result.getOutput().orElse("No output"));
+                } else {
+                    System.out.println("Security workflow did not complete successfully");
+                }
             } catch (Exception e) {
                 System.out.println("No security match - would route to LLM classifier");
             }

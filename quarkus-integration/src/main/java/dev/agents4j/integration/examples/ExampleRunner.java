@@ -1,4 +1,4 @@
-package agents4j.integration.examples;
+package dev.agents4j.integration.examples;
 
 import dev.langchain4j.model.chat.ChatModel;
 import org.jboss.logging.Logger;
@@ -47,8 +47,8 @@ public class ExampleRunner {
         LOG.info("Starting ParallelizationWorkflow examples");
         
         try {
-            ParallelizationWorkflowExample example = new ParallelizationWorkflowExample(chatModel);
-            example.runAllExamples();
+            ParallelizationWorkflowExample parallelExample = new ParallelizationWorkflowExample();
+            parallelExample.runAllExamples();
             
             LOG.info("ParallelizationWorkflow examples completed successfully");
             

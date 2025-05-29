@@ -1,4 +1,4 @@
-package agents4j.integration.examples;
+package dev.agents4j.integration.examples;
 
 import dev.agents4j.api.AgentNode;
 import dev.agents4j.api.exception.WorkflowExecutionException;
@@ -16,7 +16,7 @@ import jakarta.inject.Inject;
 
 import java.util.HashMap;
 import java.util.Map;
-import agents4j.integration.examples.util.AgentOutputToInputAdapter;
+// Removed missing import
 
 /**
  * Comprehensive examples demonstrating ChainWorkflow usage patterns.
@@ -357,9 +357,7 @@ public class ChainWorkflowExample {
                     .defaultParameter("topic", "technology")
                     .build();
 
-            // Create an adapter node that converts AgentOutput to AgentInput for the analysis node
-            // This is necessary because ComplexLangChain4JAgentNode expects AgentInput but the previous node outputs AgentOutput
-            AgentOutputToInputAdapter outputToInputAdapter = AgentOutputToInputAdapter.create("ResearchToAnalysisAdapter");
+            // Direct chain without adapter - simplified workflow
 
             // Create a complex agent node for analysis
             ComplexLangChain4JAgentNode analysisNode =
@@ -384,9 +382,7 @@ public class ChainWorkflowExample {
                     })
                     .build();
 
-            // Create another adapter for the summary node
-            // Each ComplexLangChain4JAgentNode in the chain needs an adapter before it (except the first one)
-            AgentOutputToInputAdapter outputToInputAdapter2 = AgentOutputToInputAdapter.create("AnalysisToSummaryAdapter");
+            // Create summary node - simplified without adapter
 
             // Create a complex agent node for summarizing
             ComplexLangChain4JAgentNode summaryNode =
@@ -401,9 +397,7 @@ public class ChainWorkflowExample {
                     )
                     .build();
 
-            // Build the workflow manually with the complex nodes and adapters
-            // Pattern: ComplexNode -> Adapter -> ComplexNode -> Adapter -> ComplexNode
-            // The adapters handle the AgentOutput -> AgentInput conversion between ComplexLangChain4JAgentNode instances
+            // Build the workflow manually with the complex nodes - simplified without adapters
             @SuppressWarnings({ "unchecked", "rawtypes" })
             ChainWorkflow<AgentInput, AgentOutput> workflow = ChainWorkflow.<
                     AgentInput,
@@ -411,10 +405,8 @@ public class ChainWorkflowExample {
                 >builder()
                 .name("AdvancedWorkflow")
                 .firstNode(researchNode)                    // AgentInput -> AgentOutput
-                .node((AgentNode) outputToInputAdapter)     // AgentOutput -> AgentInput
-                .node((AgentNode) analysisNode)             // AgentInput -> AgentOutput
-                .node((AgentNode) outputToInputAdapter2)    // AgentOutput -> AgentInput
-                .node((AgentNode) summaryNode)              // AgentInput -> AgentOutput
+                .node((AgentNode) analysisNode)             // Direct chain to analysis
+                .node((AgentNode) summaryNode)              // Direct chain to summary
                 .build();
 
             // Create an input with metadata and parameters

@@ -1,4 +1,4 @@
-package agents4j.integration.examples;
+package dev.agents4j.integration.examples;
 
 import dev.agents4j.workflow.routing.RoutingWorkflow;
 import dev.agents4j.workflow.routing.RoutingWorkflowFactory;

@@ -1,6 +1,6 @@
-package agents4j.integration.examples;
+package dev.agents4j.integration.examples;
 
-import dev.agents4j.Agents4J;
+// Removed Agents4J import as using example class directly
 import dev.agents4j.workflow.OrchestratorWorkersWorkflow;
 import dev.langchain4j.model.chat.ChatModel;
 import jakarta.inject.Inject;

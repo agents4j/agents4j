@@ -1,4 +1,4 @@
-package agents4j.integration;
+package dev.agents4j.integration;
 
 import io.quarkus.runtime.Quarkus;
 import io.quarkus.runtime.QuarkusApplication;

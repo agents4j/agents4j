@@ -1,4 +1,4 @@
-package agents4j.integration.config;
+package dev.agents4j.integration.config;
 
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;

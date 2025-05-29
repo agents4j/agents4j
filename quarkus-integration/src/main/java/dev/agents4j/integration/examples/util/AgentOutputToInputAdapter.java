@@ -1,4 +1,4 @@
-package agents4j.integration.examples.util;
+package dev.agents4j.integration.examples.util;
 
 import dev.agents4j.api.AgentNode;
 import dev.agents4j.model.AgentInput;

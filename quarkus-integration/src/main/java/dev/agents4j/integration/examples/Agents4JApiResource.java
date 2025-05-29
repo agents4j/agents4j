@@ -1,4 +1,4 @@
-package agents4j.integration.examples;
+package dev.agents4j.integration.examples;
 
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;

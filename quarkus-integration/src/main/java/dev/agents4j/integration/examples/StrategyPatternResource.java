@@ -1,4 +1,4 @@
-package agents4j.integration.examples;
+package dev.agents4j.integration.examples;
 
 import dev.agents4j.workflow.StrategyWorkflow;
 import dev.agents4j.workflow.AgentWorkflowFactory;
