@@ -2,22 +2,26 @@ package agents4j;
 
 import dev.agents4j.Agents4J;
 import dev.agents4j.api.exception.WorkflowExecutionException;
+import dev.agents4j.api.workflow.StatefulWorkflowResult;
 import dev.agents4j.workflow.ParallelizationWorkflow;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 /**
  * Example tests demonstrating real-world usage patterns for ParallelizationWorkflow.
@@ -156,8 +160,10 @@ class ParallelizationWorkflowExampleTest {
         );
 
         Map<String, Object> context = new HashMap<>();
-        List<String> analyses = workflow.execute(input, context);
+        StatefulWorkflowResult<List<String>> result = workflow.start(input, context);
 
+        assertTrue(result.isCompleted());
+        List<String> analyses = result.getOutput().orElse(null);
         assertNotNull(analyses);
         assertEquals(3, analyses.size());
         
@@ -244,8 +250,10 @@ class ParallelizationWorkflowExampleTest {
             3 // Moderate parallelism to respect API limits
         );
 
-        List<String> generatedContent = workflow.execute(input);
+        StatefulWorkflowResult<List<String>> result = workflow.start(input);
 
+        assertTrue(result.isCompleted());
+        List<String> generatedContent = result.getOutput().orElse(null);
         assertNotNull(generatedContent);
         assertEquals(5, generatedContent.size());
         
@@ -285,23 +293,24 @@ class ParallelizationWorkflowExampleTest {
         );
 
         // Execute asynchronously
-        var future = workflow.executeAsync(input);
+        var future = workflow.startAsync(input);
         
         // Do other work while processing...
         System.out.println("Processing started, doing other work...");
         Thread.sleep(100); // Simulate other work
         
-        // Get results when ready
-        List<String> results = future.get();
+        // Get results
+        StatefulWorkflowResult<List<String>> result = future.get();
         
+        assertTrue(result.isCompleted());
+        List<String> results = result.getOutput().orElse(null);
         assertNotNull(results);
         assertEquals(3, results.size());
         
         System.out.println("=== Async Processing Results ===");
         for (int i = 0; i < tasks.size(); i++) {
-            System.out.println("Task: " + tasks.get(i));
-            System.out.println("Result: " + results.get(i));
-            System.out.println("---");
+            System.out.printf("Task: %s%n", tasks.get(i));
+            System.out.printf("Result: %s%n%n", results.get(i));
         }
     }
 

@@ -63,7 +63,17 @@ public final class ParallelWorkflows {
             new ParallelizationWorkflow.ParallelInput(prompt, inputs, numWorkers);
 
         try {
-            return workflow.execute(parallelInput);
+            return workflow.start(parallelInput).getOutput().orElseThrow(() -> 
+                new AgentExecutionException(
+                    "ParallelQueryWorkflow",
+                    "Workflow completed but produced no output",
+                    null,
+                    Map.of(
+                        "prompt", prompt,
+                        "inputCount", inputs.size(),
+                        "numWorkers", numWorkers
+                    )
+                ));
         } catch (WorkflowExecutionException e) {
             throw new AgentExecutionException(
                 "ParallelQueryWorkflow",
