@@ -11,7 +11,11 @@ Agents4J provides a framework for executing AI Agent Workflows with LangChain4J 
 ### Key Features
 
 - **Chain Workflow** - Create workflows where multiple agents pass information sequentially
-- **Flexible Architecture** - Easily create custom agent implementations for specific use cases
+- **Parallelization Workflow** - Execute multiple operations concurrently for improved throughput
+- **Strategy Pattern** - Pluggable execution strategies (sequential, parallel, conditional, batch)
+- **Routing Pattern** - Intelligent content classification and routing
+- **Orchestrator-Workers Pattern** - Complex task decomposition with specialized workers
+- **REST API** - Complete HTTP API for all workflow patterns
 - **LangChain4J Integration** - Seamlessly works with LangChain4J's chat models and memory systems
 - **Typed Input/Output** - Support for both simple string-based and complex structured data
 - **Context Sharing** - Agents can share context and state throughout the workflow
@@ -23,7 +27,7 @@ Agents4J provides a framework for executing AI Agent Workflows with LangChain4J 
 The project is organized into the following modules:
 
 - **lib** - The core library providing the agent workflow functionality
-- **quarkus-integration** - A sample Quarkus application that demonstrates how to use the library and serves as an integration test harness
+- **quarkus-integration** - A Quarkus REST API service that provides HTTP endpoints for all workflow patterns
 
 ## Getting Started
 
@@ -49,55 +53,141 @@ To run all tests:
 ./gradlew test
 ```
 
-### Quick Start - CLI Examples
+### Quick Start - REST API
 
-The project includes a Quarkus-based CLI application that demonstrates all the Agents4J features:
+The project includes a comprehensive REST API service that provides HTTP endpoints for all Agents4J workflow patterns:
 
 1. **Set up your environment:**
    ```bash
    export OPENAI_API_KEY=your-api-key-here
    ```
 
-2. **Run examples using the convenient CLI script:**
+2. **Start the REST API service:**
    ```bash
-   # Show available commands
-   ./quarkus-integration/agents4j-cli.sh help
-   
-   # Interactive three why questions example
-   ./quarkus-integration/agents4j-cli.sh interactive-why
-   
-   # Chain workflow examples
-   ./quarkus-integration/agents4j-cli.sh chain-workflow
-   
-   # Parallelization examples
-   ./quarkus-integration/agents4j-cli.sh parallelization
-   
-   # Strategy pattern examples
-   ./quarkus-integration/agents4j-cli.sh strategy-pattern
-   
-   # Routing pattern examples
-   ./quarkus-integration/agents4j-cli.sh routing-pattern
+   cd quarkus-integration
+   ./gradlew quarkusDev
    ```
 
-3. **Or run directly with Java:**
+   This will start the API service with live reload enabled. Access the interactive Swagger UI at http://localhost:8080/q/swagger-ui/ to explore and test all available endpoints.
+
+   ## Workflow Patterns
+
+   ### 1. Chain Workflow
+   Sequential processing through multiple agents where each agent's output feeds into the next:
+
    ```bash
-   # Build first
-   ./gradlew :quarkus-integration:build
-   
-   # Run examples
-   java -jar quarkus-integration/build/quarkus-app/quarkus-run.jar --help
-   java -jar quarkus-integration/build/quarkus-app/quarkus-run.jar interactive-why -q "Why is the sky blue?"
+   # Simple chain
+   curl -X POST http://localhost:8080/chain-workflow/simple \
+     -H "Content-Type: application/json" \
+     -d '{"query": "Explain quantum computing", "systemPrompt": "You are a physics professor."}'
+
+   # Three whys analysis
+   curl -X POST http://localhost:8080/chain-workflow/three-whys \
+     -H "Content-Type: application/json" \
+     -d '{"question": "Why do companies invest in AI?"}'
    ```
 
-The CLI provides comprehensive examples of:
-- **Chain Workflow**: Sequential agent processing
-- **Parallelization Workflow**: Concurrent processing for performance
-- **Strategy Pattern**: Pluggable execution strategies
-- **Routing Pattern**: Intelligent content classification and routing
+   ### 2. Parallelization Workflow
+   Concurrent processing for improved throughput:
 
-### Running the Integration Application
+   ```bash
+   # Parallel processing
+   curl -X POST http://localhost:8080/parallelization/parallel-simple \
+     -H "Content-Type: application/json" \
+     -d '{"prompt": "Translate to Spanish:", "inputs": ["Hello", "Good morning", "Thank you"]}'
 
-To run the Quarkus integration application in dev mode:
+   # Voting mechanism
+   curl -X POST http://localhost:8080/parallelization/voting \
+     -H "Content-Type: application/json" \
+     -d '{"input": "Should we prioritize speed or quality?", "votingPrompt": "Give your perspective:", "voteCount": 3}'
+   ```
+
+   ### 3. Strategy Pattern
+   Flexible execution strategies:
+
+   ```bash
+   # Sequential vs parallel comparison
+   curl -X POST http://localhost:8080/strategy-pattern/compare \
+     -H "Content-Type: application/json" \
+     -d '{"input": "Analyze market trends", "systemPrompts": ["You are a market analyst", "You are a financial expert"]}'
+
+   # Conditional execution
+   curl -X POST http://localhost:8080/strategy-pattern/conditional \
+     -H "Content-Type: application/json" \
+     -d '{"input": "Create marketing strategy", "systemPrompts": ["Marketing expert", "Social media expert"]}'
+   ```
+
+   ### 4. Routing Pattern
+   Intelligent content classification and routing:
+
+   ```bash
+   # Customer support routing
+   curl -X POST http://localhost:8080/routing-pattern/customer-support \
+     -H "Content-Type: application/json" \
+     -d '{"query": "I need help with my billing"}'
+
+   # LLM-based routing
+   curl -X POST http://localhost:8080/routing-pattern/llm-routing \
+     -H "Content-Type: application/json" \
+     -d '{"input": "Technical API question", "classificationPrompt": "Classify as technical, billing, or general"}'
+   ```
+
+   ### 5. Orchestrator-Workers Pattern
+   Complex task decomposition with specialized workers:
+
+   ```bash
+   # Simple orchestrated query
+   curl -X POST http://localhost:8080/orchestrator-workers/query \
+     -H "Content-Type: application/json" \
+     -d '{"task": "Create a business analysis for entering the EV market"}'
+
+   # Custom workers
+   curl -X POST http://localhost:8080/orchestrator-workers/custom-query \
+     -H "Content-Type: application/json" \
+     -d '{
+       "task": "Develop a mobile app",
+       "workers": [
+         {"type": "architect", "description": "Technical design", "systemPrompt": "You are a technical architect"},
+         {"type": "designer", "description": "UI/UX design", "systemPrompt": "You are a UI/UX designer"}
+       ]
+     }'
+   ```
+   </edits>
+
+   </edits>
+
+   <edits>
+
+   <old_text>
+   ## Library Usage
+
+   Here's how to use Agents4J in your Java application:
+3. **Access the API:**
+   - **API Base URL**: http://localhost:8080
+   - **Swagger UI**: http://localhost:8080/q/swagger-ui/
+   - **API Overview**: http://localhost:8080/api/overview
+   - **Health Check**: http://localhost:8080/q/health
+
+4. **Try your first API call:**
+   ```bash
+   curl -X POST http://localhost:8080/chain-workflow/simple \
+     -H "Content-Type: application/json" \
+     -d '{
+       "query": "What is artificial intelligence?",
+       "systemPrompt": "You are a helpful AI assistant."
+     }'
+   ```
+
+The REST API provides comprehensive endpoints for:
+- **Chain Workflow** (`/chain-workflow`) - Sequential agent processing
+- **Parallelization** (`/parallelization`) - Concurrent processing for performance  
+- **Strategy Pattern** (`/strategy-pattern`) - Pluggable execution strategies
+- **Routing Pattern** (`/routing-pattern`) - Intelligent content classification and routing
+- **Orchestrator-Workers** (`/orchestrator-workers`) - Complex task decomposition
+
+### Running the REST API Service
+
+To run the Quarkus REST API service in development mode:
 
 ```bash
 ./gradlew quarkus-integration:quarkusDev

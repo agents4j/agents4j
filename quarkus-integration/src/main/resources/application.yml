@@ -1,0 +1,135 @@
+# Agents4J Quarkus Integration Configuration
+
+# Application Configuration
+quarkus:
+  application:
+    name: agents4j-rest-api
+    version: 1.0.0
+  
+  # HTTP Configuration
+  http:
+    port: 8080
+    host: 0.0.0.0
+    cors:
+      ~: true
+      origins: "*"
+      methods: "GET,POST,PUT,DELETE,OPTIONS"
+      headers: "Content-Type,Authorization"
+  
+  # Logging Configuration
+  log:
+    level: INFO
+    category:
+      "agents4j":
+        level: DEBUG
+      "dev.agents4j":
+        level: DEBUG
+    console:
+      enable: true
+      format: "%d{HH:mm:ss} %-5p [%c{2.}] (%t) %s%e%n"
+  
+  # OpenAPI/Swagger Configuration
+  swagger-ui:
+    always-include: true
+    path: /swagger-ui
+  
+  smallrye-openapi:
+    info-title: "Agents4J REST API"
+    info-description: "Comprehensive REST API for AI agent workflows and patterns"
+    info-version: "1.0.0"
+    info-contact-name: "Agents4J Team"
+    servers:
+      - url: http://localhost:8080
+        description: Development server
+  
+  # Health Check Configuration
+  smallrye-health:
+    root-path: /q/health
+    ui:
+      enable: true
+  
+  # Metrics Configuration
+  smallrye-metrics:
+    path: /q/metrics
+    extensions:
+      enabled: true
+
+# Agents4J Configuration
+agents4j:
+  # Enable/disable workflows
+  workflows:
+    enabled: true
+  
+  # Enable/disable orchestrator pattern
+  orchestrator:
+    enabled: true
+  
+  # Default execution parameters
+  execution:
+    default-timeout: 300s
+    max-parallel-workers: 8
+    default-batch-size: 10
+  
+  # LLM Configuration
+  llm:
+    # Default model settings
+    default-model: gpt-3.5-turbo
+    temperature: 0.7
+    max-tokens: 2048
+    
+    # Rate limiting
+    rate-limit:
+      requests-per-minute: 60
+      requests-per-hour: 1000
+
+# OpenAI Configuration (example - replace with your provider)
+openai:
+  api-key: ${OPENAI_API_KEY:your-api-key-here}
+  model-name: gpt-3.5-turbo
+  temperature: 0.7
+  max-tokens: 2048
+  timeout: 60s
+
+# Development Profile
+"%dev":
+  quarkus:
+    log:
+      level: DEBUG
+    http:
+      port: 8080
+  agents4j:
+    workflows:
+      enabled: true
+    orchestrator:
+      enabled: true
+
+# Test Profile
+"%test":
+  quarkus:
+    log:
+      level: WARN
+  agents4j:
+    workflows:
+      enabled: true
+    orchestrator:
+      enabled: true
+
+# Production Profile
+"%prod":
+  quarkus:
+    log:
+      level: INFO
+      console:
+        enable: false
+      file:
+        enable: true
+        path: /var/log/agents4j-api.log
+    http:
+      port: ${PORT:8080}
+  agents4j:
+    workflows:
+      enabled: ${AGENTS4J_WORKFLOWS_ENABLED:true}
+    orchestrator:
+      enabled: ${AGENTS4J_ORCHESTRATOR_ENABLED:true}
+    execution:
+      max-parallel-workers: ${AGENTS4J_MAX_WORKERS:16}

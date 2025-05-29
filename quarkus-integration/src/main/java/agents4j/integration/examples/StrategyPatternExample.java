@@ -7,7 +7,8 @@ import dev.agents4j.workflow.StrategyWorkflow;
 import dev.agents4j.workflow.strategy.ConditionalExecutionStrategy;
 import dev.agents4j.workflow.strategy.StrategyFactory;
 import dev.langchain4j.model.chat.ChatModel;
-
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 
 import java.util.HashMap;
 import java.util.List;
@@ -24,7 +25,15 @@ import java.util.function.BiPredicate;
  * - Conditional execution for branching logic
  * - Batch execution for large datasets
  */
+@ApplicationScoped
 public class StrategyPatternExample {
+
+    @Inject
+    ChatModel chatModel;
+
+    public StrategyPatternExample() {
+        // Default constructor for CDI
+    }
 
 
     

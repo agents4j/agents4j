@@ -534,4 +534,103 @@ public class AgentWorkflowFactory {
 
         return builder.build();
     }
+
+    /**
+     * Creates an orchestrator-workers workflow with the specified workers.
+     *
+     * @param name The name of the workflow
+     * @param model The ChatModel to use
+     * @param workerConfigs Map of worker configurations
+     * @return A new OrchestratorWorkersWorkflow instance
+     */
+    public static OrchestratorWorkersWorkflow createOrchestratorWorkersWorkflow(
+        String name,
+        ChatModel model,
+        Map<String, OrchestratorWorkersWorkflow.WorkerConfig> workerConfigs
+    ) {
+        OrchestratorWorkersWorkflow.Builder builder = OrchestratorWorkersWorkflow.builder()
+            .name(name)
+            .chatModel(model);
+        
+        for (OrchestratorWorkersWorkflow.WorkerConfig config : workerConfigs.values()) {
+            builder.addWorker(config);
+        }
+        
+        return builder.build();
+    }
+
+    /**
+     * Creates an orchestrator-workers workflow with predefined worker types.
+     *
+     * @param name The name of the workflow
+     * @param model The ChatModel to use
+     * @return A new OrchestratorWorkersWorkflow instance with common worker types
+     */
+    public static OrchestratorWorkersWorkflow createStandardOrchestratorWorkersWorkflow(
+        String name,
+        ChatModel model
+    ) {
+        return OrchestratorWorkersWorkflow.builder()
+            .name(name)
+            .chatModel(model)
+            .addWorker("analyst", "Analyzes data and provides insights", 
+                "You are a data analyst. Analyze the given information and provide detailed insights, patterns, and conclusions.")
+            .addWorker("writer", "Creates written content and documentation", 
+                "You are a professional writer. Create clear, engaging, and well-structured written content based on the given requirements.")
+            .addWorker("researcher", "Conducts research and fact-checking", 
+                "You are a researcher. Investigate the given topic thoroughly and provide accurate, well-sourced information.")
+            .addWorker("summarizer", "Summarizes and condenses information", 
+                "You are a content summarizer. Create concise, accurate summaries that capture the key points and essential information.")
+            .build();
+    }
+
+    /**
+     * Creates a simple orchestrator-workers workflow with custom workers.
+     *
+     * @param name The name of the workflow
+     * @param model The ChatModel to use
+     * @param workers Variable arguments of worker configurations (type, description, prompt)
+     * @return A new OrchestratorWorkersWorkflow instance
+     */
+    public static OrchestratorWorkersWorkflow createCustomOrchestratorWorkersWorkflow(
+        String name,
+        ChatModel model,
+        WorkerDefinition... workers
+    ) {
+        if (workers.length == 0) {
+            throw new IllegalArgumentException("At least one worker must be provided");
+        }
+
+        OrchestratorWorkersWorkflow.Builder builder = OrchestratorWorkersWorkflow.builder()
+            .name(name)
+            .chatModel(model);
+
+        for (WorkerDefinition worker : workers) {
+            builder.addWorker(worker.type, worker.description, worker.systemPrompt);
+        }
+
+        return builder.build();
+    }
+
+    /**
+     * Helper class for defining workers in a compact way.
+     */
+    public static class WorkerDefinition {
+        public final String type;
+        public final String description;
+        public final String systemPrompt;
+
+        public WorkerDefinition(String type, String description, String systemPrompt) {
+            this.type = type;
+            this.description = description;
+            this.systemPrompt = systemPrompt;
+        }
+    }
+
+    /**
+     * Creates a worker definition.
+     */
+    public static WorkerDefinition worker(String type, String description, String systemPrompt) {
+        return new WorkerDefinition(type, description, systemPrompt);
+    }
 }

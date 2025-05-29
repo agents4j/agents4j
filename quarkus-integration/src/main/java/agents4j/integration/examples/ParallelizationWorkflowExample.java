@@ -5,6 +5,8 @@ import dev.agents4j.api.exception.WorkflowExecutionException;
 import dev.agents4j.workflow.ParallelizationWorkflow;
 import dev.langchain4j.model.chat.ChatModel;
 import org.jboss.logging.Logger;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 
 import java.util.Arrays;
 import java.util.List;
@@ -19,11 +21,17 @@ import java.util.concurrent.CompletableFuture;
  * - Content generation
  * - Asynchronous processing
  */
+@ApplicationScoped
 public class ParallelizationWorkflowExample {
 
     private static final Logger LOG = Logger.getLogger(ParallelizationWorkflowExample.class);
 
-    private final ChatModel chatModel;
+    @Inject
+    ChatModel chatModel;
+
+    public ParallelizationWorkflowExample() {
+        // Default constructor for CDI
+    }
 
     public ParallelizationWorkflowExample(ChatModel chatModel) {
         this.chatModel = chatModel;

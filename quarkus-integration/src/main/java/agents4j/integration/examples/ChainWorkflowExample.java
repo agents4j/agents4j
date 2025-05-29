@@ -11,6 +11,8 @@ import dev.agents4j.workflow.ChainWorkflow;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import org.jboss.logging.Logger;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -20,14 +22,148 @@ import agents4j.integration.examples.util.AgentOutputToInputAdapter;
  * Comprehensive examples demonstrating ChainWorkflow usage patterns.
  * Shows various ways to create and configure sequential agent processing workflows.
  */
+@ApplicationScoped
 public class ChainWorkflowExample {
 
     private static final Logger LOG = Logger.getLogger(ChainWorkflowExample.class);
 
-    private final ChatModel chatModel;
+    @Inject
+    ChatModel chatModel;
+
+    public ChainWorkflowExample() {
+        // Default constructor for CDI
+    }
 
     public ChainWorkflowExample(ChatModel chatModel) {
         this.chatModel = chatModel;
+    }
+
+    /**
+     * Run simple chain workflow example and return result.
+     */
+    public String runSimpleChainExample() {
+        LOG.info("Running simple chain workflow example");
+        try {
+            ChainWorkflow<String, String> workflow = AgentWorkflowFactory.createStringChainWorkflow(
+                "SimpleExample",
+                chatModel,
+                "You are a helpful assistant. Provide a clear and concise answer."
+            );
+            
+            String result = workflow.execute("What are the benefits of renewable energy?");
+            LOG.info("Simple chain example completed successfully");
+            return result;
+        } catch (Exception e) {
+            LOG.error("Simple chain example failed", e);
+            return "Error: " + e.getMessage();
+        }
+    }
+
+    /**
+     * Run complex chain workflow example and return result.
+     */
+    public String runComplexChainExample() {
+        LOG.info("Running complex chain workflow example");
+        try {
+            ChainWorkflow<String, String> workflow = AgentWorkflowFactory.createStringChainWorkflow(
+                "ComplexExample",
+                chatModel,
+                "You are a research analyst. Analyze the given topic thoroughly.",
+                "You are a writer. Create a well-structured summary based on the analysis.",
+                "You are an editor. Polish and improve the content for clarity and readability."
+            );
+            
+            String result = workflow.execute("The impact of artificial intelligence on modern healthcare");
+            LOG.info("Complex chain example completed successfully");
+            return result;
+        } catch (Exception e) {
+            LOG.error("Complex chain example failed", e);
+            return "Error: " + e.getMessage();
+        }
+    }
+
+    /**
+     * Run three whys analysis example and return result.
+     */
+    public String runThreeWhysExample() {
+        LOG.info("Running three whys analysis example");
+        try {
+            var firstWhyNode = StringLangChain4JAgentNode.builder()
+                .name("FirstWhyNode")
+                .model(chatModel)
+                .systemPrompt(
+                    "You are a thoughtful assistant that helps people understand topics more deeply. " +
+                    "Your task is to analyze the user's question and ask a fundamental 'why' question about it. " +
+                    "Provide a brief response to the original question first, and then ask your 'why' question."
+                )
+                .build();
+
+            var secondWhyNode = StringLangChain4JAgentNode.builder()
+                .name("SecondWhyNode")
+                .model(chatModel)
+                .systemPrompt(
+                    "You are a thoughtful assistant continuing a chain of inquiry. " +
+                    "The input will contain an initial question, an analysis, and a first 'why' question. " +
+                    "Your task is to answer the first 'why' question thoroughly and then ask a deeper, second 'why' question " +
+                    "that explores the underlying principles or causes."
+                )
+                .build();
+
+            var finalNode = StringLangChain4JAgentNode.builder()
+                .name("FinalNode")
+                .model(chatModel)
+                .systemPrompt(
+                    "You are a thoughtful assistant finalizing a chain of inquiry. " +
+                    "The input will contain an initial question and a series of 'why' questions and answers. " +
+                    "Your task is to answer the final 'why' question thoroughly and then provide a comprehensive summary " +
+                    "that ties together all the insights from this chain of inquiry."
+                )
+                .build();
+
+            ChainWorkflow<String, String> workflow = ChainWorkflow.<String, String>builder()
+                .name("ThreeWhysExample")
+                .firstNode(firstWhyNode)
+                .node(secondWhyNode)
+                .node(finalNode)
+                .build();
+
+            String result = workflow.execute("Why do companies invest in artificial intelligence?");
+            LOG.info("Three whys example completed successfully");
+            return result;
+        } catch (Exception e) {
+            LOG.error("Three whys example failed", e);
+            return "Error: " + e.getMessage();
+        }
+    }
+
+    /**
+     * Run conversational workflow example and return result.
+     */
+    public String runConversationalExample() {
+        LOG.info("Running conversational workflow example");
+        try {
+            MessageWindowChatMemory memory = MessageWindowChatMemory.builder()
+                .maxMessages(10)
+                .build();
+
+            ChainWorkflow<String, String> workflow = AgentWorkflowFactory.createStringChainWorkflowWithMemory(
+                "ConversationalExample",
+                chatModel,
+                memory,
+                "You are a knowledgeable assistant with memory of our conversation. " +
+                "Build upon previous interactions to provide more personalized responses."
+            );
+
+            // Simulate a conversation
+            workflow.execute("Hello, I'm interested in learning about machine learning.");
+            String result = workflow.execute("Can you explain the difference between supervised and unsupervised learning?");
+            
+            LOG.info("Conversational example completed successfully");
+            return result;
+        } catch (Exception e) {
+            LOG.error("Conversational example failed", e);
+            return "Error: " + e.getMessage();
+        }
     }
 
     /**

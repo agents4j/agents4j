@@ -11,6 +11,8 @@ import dev.agents4j.workflow.routing.RoutingWorkflow;
 import dev.agents4j.workflow.routing.RoutingWorkflowFactory;
 import dev.agents4j.workflow.strategy.StrategyFactory;
 import dev.langchain4j.model.chat.ChatModel;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 
 import java.util.HashMap;
 import java.util.List;
@@ -27,7 +29,15 @@ import java.util.regex.Pattern;
  * - Scalable architecture for diverse content types
  * - Resource optimization through appropriate routing
  */
+@ApplicationScoped
 public class RoutingPatternExample {
+
+    @Inject
+    ChatModel chatModel;
+
+    public RoutingPatternExample() {
+        // Default constructor for CDI
+    }
 
     public static void main(String[] args) {
         try {

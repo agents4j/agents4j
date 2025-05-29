@@ -6,6 +6,7 @@ package dev.agents4j;
 import dev.agents4j.api.exception.WorkflowExecutionException;
 import dev.agents4j.workflow.AgentWorkflowFactory;
 import dev.agents4j.workflow.ChainWorkflow;
+import dev.agents4j.workflow.OrchestratorWorkersWorkflow;
 import dev.agents4j.workflow.ParallelizationWorkflow;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
@@ -181,6 +182,106 @@ public class Agents4J {
         List<String> inputs
     ) {
         return parallelQuery(model, prompt, inputs, 4);
+    }
+
+    /**
+     * Creates an orchestrator-workers workflow with standard worker types.
+     *
+     * @param name The name of the workflow
+     * @param model The ChatModel to use
+     * @return A new OrchestratorWorkersWorkflow instance
+     */
+    public static OrchestratorWorkersWorkflow createOrchestratorWorkersWorkflow(
+        String name,
+        ChatModel model
+    ) {
+        return AgentWorkflowFactory.createStandardOrchestratorWorkersWorkflow(name, model);
+    }
+
+    /**
+     * Creates an orchestrator-workers workflow with custom workers.
+     *
+     * @param name The name of the workflow
+     * @param model The ChatModel to use
+     * @param workers Worker definitions
+     * @return A new OrchestratorWorkersWorkflow instance
+     */
+    public static OrchestratorWorkersWorkflow createCustomOrchestratorWorkersWorkflow(
+        String name,
+        ChatModel model,
+        AgentWorkflowFactory.WorkerDefinition... workers
+    ) {
+        return AgentWorkflowFactory.createCustomOrchestratorWorkersWorkflow(name, model, workers);
+    }
+
+    /**
+     * Execute a complex task using orchestrator-workers pattern.
+     * The orchestrator will analyze the task and delegate to appropriate workers.
+     *
+     * @param model The ChatModel to use
+     * @param taskDescription The complex task to process
+     * @return The synthesized response from all workers
+     * @throws RuntimeException if workflow execution fails
+     */
+    public static String orchestratedQuery(
+        ChatModel model,
+        String taskDescription
+    ) {
+        OrchestratorWorkersWorkflow workflow = createOrchestratorWorkersWorkflow(
+            "OrchestratedQuery",
+            model
+        );
+
+        try {
+            OrchestratorWorkersWorkflow.OrchestratorInput input = 
+                new OrchestratorWorkersWorkflow.OrchestratorInput(taskDescription);
+            OrchestratorWorkersWorkflow.WorkerResponse response = workflow.execute(input);
+            return response.getFinalResult();
+        } catch (WorkflowExecutionException e) {
+            throw new RuntimeException("Failed to execute orchestrated query", e);
+        }
+    }
+
+    /**
+     * Execute a complex task using orchestrator-workers pattern with custom workers.
+     *
+     * @param model The ChatModel to use
+     * @param taskDescription The complex task to process
+     * @param workers Custom worker definitions
+     * @return The synthesized response from all workers
+     * @throws RuntimeException if workflow execution fails
+     */
+    public static String customOrchestratedQuery(
+        ChatModel model,
+        String taskDescription,
+        AgentWorkflowFactory.WorkerDefinition... workers
+    ) {
+        OrchestratorWorkersWorkflow workflow = createCustomOrchestratorWorkersWorkflow(
+            "CustomOrchestratedQuery",
+            model,
+            workers
+        );
+
+        try {
+            OrchestratorWorkersWorkflow.OrchestratorInput input = 
+                new OrchestratorWorkersWorkflow.OrchestratorInput(taskDescription);
+            OrchestratorWorkersWorkflow.WorkerResponse response = workflow.execute(input);
+            return response.getFinalResult();
+        } catch (WorkflowExecutionException e) {
+            throw new RuntimeException("Failed to execute custom orchestrated query", e);
+        }
+    }
+
+    /**
+     * Helper method to create a worker definition.
+     *
+     * @param type The worker type identifier
+     * @param description A description of what this worker does
+     * @param systemPrompt The system prompt for this worker
+     * @return A new WorkerDefinition instance
+     */
+    public static AgentWorkflowFactory.WorkerDefinition worker(String type, String description, String systemPrompt) {
+        return AgentWorkflowFactory.worker(type, description, systemPrompt);
     }
 
     /**

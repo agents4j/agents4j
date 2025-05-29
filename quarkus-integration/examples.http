@@ -1,0 +1,401 @@
+### Agents4J REST API Examples
+### Base URL: http://localhost:8080
+
+### 1. API Overview
+GET http://localhost:8080/api/overview
+Content-Type: application/json
+
+###
+
+### 2. Quick Start Guide
+GET http://localhost:8080/api/quickstart
+Content-Type: application/json
+
+###
+
+### 3. System Health Check
+GET http://localhost:8080/api/health
+Content-Type: application/json
+
+###
+
+### 4. Chain Workflow - Simple Query
+POST http://localhost:8080/chain-workflow/simple
+Content-Type: application/json
+
+{
+  "query": "What is artificial intelligence?",
+  "systemPrompt": "You are a helpful AI assistant. Provide clear and informative answers."
+}
+
+###
+
+### 5. Chain Workflow - Complex Multi-Agent
+POST http://localhost:8080/chain-workflow/complex
+Content-Type: application/json
+
+{
+  "query": "Analyze the future of renewable energy",
+  "systemPrompts": [
+    "You are a research analyst. Analyze the given topic thoroughly.",
+    "You are a writer. Create a well-structured summary based on the analysis.",
+    "You are an editor. Polish and improve the content for clarity and readability."
+  ]
+}
+
+###
+
+### 6. Chain Workflow - Three Whys Analysis
+POST http://localhost:8080/chain-workflow/three-whys
+Content-Type: application/json
+
+{
+  "question": "Why do companies invest in artificial intelligence?"
+}
+
+###
+
+### 7. Chain Workflow - Conversational with Memory
+POST http://localhost:8080/chain-workflow/conversational
+Content-Type: application/json
+
+{
+  "query": "Can you explain machine learning in simple terms?",
+  "systemPrompts": [
+    "You are a knowledgeable teacher. Explain complex topics in simple terms.",
+    "You are an editor. Make the explanation even clearer and more engaging."
+  ],
+  "maxMessages": 10
+}
+
+###
+
+### 8. Parallelization - Simple Parallel Processing
+POST http://localhost:8080/parallelization/parallel-simple
+Content-Type: application/json
+
+{
+  "prompt": "Translate the following text to Spanish:",
+  "inputs": ["Hello", "Good morning", "Thank you", "How are you?"]
+}
+
+###
+
+### 9. Parallelization - Custom Worker Count
+POST http://localhost:8080/parallelization/parallel
+Content-Type: application/json
+
+{
+  "prompt": "Summarize the following text in one sentence:",
+  "inputs": [
+    "Artificial intelligence is transforming industries worldwide.",
+    "Machine learning algorithms can process vast amounts of data.",
+    "Natural language processing enables computers to understand human language.",
+    "Computer vision allows machines to interpret visual information."
+  ],
+  "numWorkers": 2
+}
+
+###
+
+### 10. Parallelization - Sectioning Example
+POST http://localhost:8080/parallelization/sectioning
+Content-Type: application/json
+
+{
+  "sectionPrompt": "Analyze the following section and provide key insights:",
+  "sections": [
+    "Introduction: AI is revolutionizing healthcare through diagnostic tools and treatment optimization.",
+    "Technology: Machine learning algorithms analyze medical images with unprecedented accuracy.",
+    "Benefits: Faster diagnosis, personalized treatment plans, and improved patient outcomes.",
+    "Challenges: Data privacy concerns, regulatory approval, and integration with existing systems."
+  ],
+  "numWorkers": 4
+}
+
+###
+
+### 11. Parallelization - Voting Mechanism
+POST http://localhost:8080/parallelization/voting
+Content-Type: application/json
+
+{
+  "input": "Should companies prioritize short-term profits or long-term sustainability?",
+  "votingPrompt": "Provide your perspective on this business question with reasoning:",
+  "voteCount": 3
+}
+
+###
+
+### 12. Strategy Pattern - Sequential Execution
+POST http://localhost:8080/strategy-pattern/sequential
+Content-Type: application/json
+
+{
+  "input": "Analyze the impact of remote work on productivity",
+  "systemPrompts": [
+    "You are a productivity expert. Analyze productivity factors.",
+    "You are a management consultant. Provide strategic insights.",
+    "You are a researcher. Present evidence-based conclusions."
+  ]
+}
+
+###
+
+### 13. Strategy Pattern - Parallel Execution
+POST http://localhost:8080/strategy-pattern/parallel
+Content-Type: application/json
+
+{
+  "input": "Evaluate the potential of electric vehicles",
+  "systemPrompts": [
+    "You are an automotive engineer. Assess technical aspects.",
+    "You are an environmental scientist. Evaluate environmental impact.",
+    "You are a market analyst. Analyze market trends and adoption."
+  ]
+}
+
+###
+
+### 14. Strategy Pattern - Conditional Execution
+POST http://localhost:8080/strategy-pattern/conditional
+Content-Type: application/json
+
+{
+  "input": "Create a marketing strategy for a new mobile app",
+  "systemPrompts": [
+    "You are a marketing strategist. Create comprehensive marketing plans.",
+    "You are a social media expert. Focus on digital marketing channels.",
+    "You are a brand consultant. Develop brand positioning strategies."
+  ],
+  "shortCircuit": false,
+  "requireAtLeastOne": true
+}
+
+###
+
+### 15. Strategy Pattern - Batch Processing
+POST http://localhost:8080/strategy-pattern/batch
+Content-Type: application/json
+
+{
+  "input": "Process customer feedback data for insights",
+  "systemPrompts": [
+    "You are a data analyst. Extract patterns and trends from data.",
+    "You are a customer experience specialist. Identify improvement opportunities.",
+    "You are a product manager. Translate insights into actionable recommendations."
+  ],
+  "batchSize": 3,
+  "parallelBatches": true,
+  "continueOnError": true
+}
+
+###
+
+### 16. Strategy Pattern - Compare Approaches
+POST http://localhost:8080/strategy-pattern/compare
+Content-Type: application/json
+
+{
+  "input": "Develop a cybersecurity strategy for a small business",
+  "systemPrompts": [
+    "You are a cybersecurity expert. Identify threats and countermeasures.",
+    "You are an IT consultant. Recommend practical security solutions.",
+    "You are a compliance specialist. Ensure regulatory requirements are met."
+  ]
+}
+
+###
+
+### 17. Routing Pattern - Customer Support
+POST http://localhost:8080/routing-pattern/customer-support
+Content-Type: application/json
+
+{
+  "query": "I'm having trouble with my order and need help with the billing"
+}
+
+###
+
+### 18. Routing Pattern - Content Categorization
+POST http://localhost:8080/routing-pattern/content-categorization
+Content-Type: application/json
+
+{
+  "content": "This article discusses the latest developments in quantum computing and their potential applications in cryptography and optimization problems."
+}
+
+###
+
+### 19. Routing Pattern - Multi-Language
+POST http://localhost:8080/routing-pattern/multi-language
+Content-Type: application/json
+
+{
+  "text": "Bonjour, je voudrais des informations sur vos produits."
+}
+
+###
+
+### 20. Routing Pattern - LLM-Based Routing
+POST http://localhost:8080/routing-pattern/llm-routing
+Content-Type: application/json
+
+{
+  "input": "I need technical support for integrating your API",
+  "classificationPrompt": "Classify this request as: technical_support, sales_inquiry, billing_issue, or general_question",
+  "includeConfidence": true,
+  "includeReasoning": true
+}
+
+###
+
+### 21. Routing Pattern - Rule-Based Routing
+POST http://localhost:8080/routing-pattern/rule-based
+Content-Type: application/json
+
+{
+  "input": "Error 404: Page not found when accessing user dashboard",
+  "rules": [
+    {
+      "pattern": ".*error.*404.*",
+      "routeId": "technical_support"
+    },
+    {
+      "pattern": ".*billing.*payment.*",
+      "routeId": "billing_support"
+    },
+    {
+      "pattern": ".*help.*support.*",
+      "routeId": "general_support"
+    }
+  ],
+  "defaultRouteId": "general_inquiry"
+}
+
+###
+
+### 22. Routing Pattern - Analysis
+POST http://localhost:8080/routing-pattern/analyze
+Content-Type: application/json
+
+{
+  "input": "I'm experiencing slow performance with your software and need immediate assistance"
+}
+
+###
+
+### 23. Orchestrator-Workers - Simple Query
+POST http://localhost:8080/orchestrator-workers/query
+Content-Type: application/json
+
+{
+  "task": "Create a comprehensive business analysis for entering the electric vehicle market"
+}
+
+###
+
+### 24. Orchestrator-Workers - Custom Workers
+POST http://localhost:8080/orchestrator-workers/custom-query
+Content-Type: application/json
+
+{
+  "task": "Develop a new mobile app for fitness tracking with complete go-to-market strategy",
+  "workers": [
+    {
+      "type": "technical_architect",
+      "description": "Designs technical architecture and specifications",
+      "systemPrompt": "You are a senior technical architect. Create detailed technical specifications, architecture designs, and technology stack recommendations."
+    },
+    {
+      "type": "ui_designer",
+      "description": "Designs user interfaces and user experience",
+      "systemPrompt": "You are a UI/UX designer. Create intuitive user interface designs, user flows, and interaction patterns."
+    },
+    {
+      "type": "marketing_strategist",
+      "description": "Develops marketing and business strategies",
+      "systemPrompt": "You are a marketing strategist. Develop comprehensive marketing strategies, target audience analysis, and go-to-market plans."
+    }
+  ]
+}
+
+###
+
+### 25. Orchestrator-Workers - Detailed Workflow
+POST http://localhost:8080/orchestrator-workers/detailed
+Content-Type: application/json
+
+{
+  "task": "Create a comprehensive content strategy for a B2B SaaS company",
+  "workflowName": "ContentStrategyWorkflow",
+  "workers": [
+    {
+      "type": "content_strategist",
+      "description": "Develops content strategies and plans",
+      "systemPrompt": "You are a content strategist. Create comprehensive content strategies, editorial calendars, and content frameworks."
+    },
+    {
+      "type": "seo_specialist",
+      "description": "Optimizes content for search engines",
+      "systemPrompt": "You are an SEO specialist. Optimize content strategies for search visibility, keyword targeting, and organic growth."
+    },
+    {
+      "type": "social_media_expert",
+      "description": "Plans social media content and distribution",
+      "systemPrompt": "You are a social media expert. Design social media content strategies, platform-specific approaches, and engagement tactics."
+    }
+  ],
+  "orchestratorPrompt": "You are a senior marketing director. Analyze the content strategy task and decompose it into specialized areas that different experts should handle.",
+  "synthesizerPrompt": "You are a marketing executive. Synthesize the expert recommendations into a cohesive, actionable content strategy."
+}
+
+###
+
+### 26. Get Chain Workflow Examples
+GET http://localhost:8080/chain-workflow/examples/simple
+
+###
+
+### 27. Get Parallelization Examples
+GET http://localhost:8080/parallelization/examples/sectioning
+
+###
+
+### 28. Get Strategy Pattern Examples
+GET http://localhost:8080/strategy-pattern/examples/sequential
+
+###
+
+### 29. Get Routing Pattern Examples
+GET http://localhost:8080/routing-pattern/examples/customer-support
+
+###
+
+### 30. Get Orchestrator-Workers Examples
+GET http://localhost:8080/orchestrator-workers/examples/simple
+
+###
+
+### 31. Get Available Worker Types
+GET http://localhost:8080/orchestrator-workers/worker-types
+
+###
+
+### 32. Get Workflow Types
+GET http://localhost:8080/chain-workflow/types
+
+###
+
+### 33. Get Performance Info
+GET http://localhost:8080/parallelization/performance
+
+###
+
+### 34. Search API Endpoints
+GET http://localhost:8080/api/search?q=parallel
+
+###
+
+### 35. API Statistics
+GET http://localhost:8080/api/stats
