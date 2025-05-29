@@ -1,7 +1,5 @@
 package dev.agents4j.integration.examples;
 
-// Removed Agents4J import as using example class directly
-import dev.agents4j.workflow.ParallelizationWorkflow;
 import dev.langchain4j.model.chat.ChatModel;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
@@ -25,20 +23,17 @@ public class ParallelizationWorkflowResource {
     ChatModel chatModel;
 
     @Inject
-    ParallelizationWorkflowExample example;
-
-    @Inject
     ParallelizationWorkflowExample parallelizationExample;
 
     @ConfigProperty(name = "agents4j.workflows.enabled", defaultValue = "true")
     boolean workflowsEnabled;
 
     /**
-     * Execute parallel processing with multiple inputs
+     * Execute sentiment analysis example
      */
     @POST
-    @Path("/parallel")
-    public Response parallelQuery(ParallelRequest request) {
+    @Path("/sentiment-analysis")
+    public Response sentimentAnalysis(ParallelRequest request) {
         if (!workflowsEnabled) {
             return Response.status(Response.Status.SERVICE_UNAVAILABLE)
                     .entity(Map.of("error", "Workflows are disabled"))
@@ -46,30 +41,30 @@ public class ParallelizationWorkflowResource {
         }
 
         try {
-            String results = example.sentimentAnalysisExample();
+            String result = parallelizationExample.sentimentAnalysisExample();
             
             Map<String, Object> response = new HashMap<>();
             response.put("prompt", request.getPrompt());
             response.put("inputs", request.getInputs());
-            response.put("results", results);
-            response.put("workflow_type", "parallelization");
+            response.put("result", result);
+            response.put("workflow_type", "sentiment_analysis");
             response.put("num_workers", request.getNumWorkers() != null ? request.getNumWorkers() : 4);
-            response.put("inputs_count", request.getInputs().size());
+            response.put("inputs_count", request.getInputs() != null ? request.getInputs().size() : 0);
             
             return Response.ok(response).build();
         } catch (Exception e) {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(Map.of("error", "Failed to execute parallel query: " + e.getMessage()))
+                    .entity(Map.of("error", "Failed to execute sentiment analysis: " + e.getMessage()))
                     .build();
         }
     }
 
     /**
-     * Execute parallel processing with default worker count
+     * Execute document translation example
      */
     @POST
-    @Path("/parallel-simple")
-    public Response simpleParallelQuery(SimpleParallelRequest request) {
+    @Path("/translation")
+    public Response documentTranslation(SimpleParallelRequest request) {
         if (!workflowsEnabled) {
             return Response.status(Response.Status.SERVICE_UNAVAILABLE)
                     .entity(Map.of("error", "Workflows are disabled"))
@@ -77,30 +72,30 @@ public class ParallelizationWorkflowResource {
         }
 
         try {
-            String results = example.sentimentAnalysisExample();
+            String result = parallelizationExample.documentTranslationExample();
             
             Map<String, Object> response = new HashMap<>();
             response.put("prompt", request.getPrompt());
             response.put("inputs", request.getInputs());
-            response.put("results", results);
-            response.put("workflow_type", "simple_parallelization");
+            response.put("result", result);
+            response.put("workflow_type", "document_translation");
             response.put("num_workers", 4);
-            response.put("inputs_count", request.getInputs().size());
+            response.put("inputs_count", request.getInputs() != null ? request.getInputs().size() : 0);
             
             return Response.ok(response).build();
         } catch (Exception e) {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(Map.of("error", "Failed to execute simple parallel query: " + e.getMessage()))
+                    .entity(Map.of("error", "Failed to execute document translation: " + e.getMessage()))
                     .build();
         }
     }
 
     /**
-     * Sectioning example - process different sections of content
+     * Execute content generation example
      */
     @POST
-    @Path("/sectioning")
-    public Response sectioningExample(SectioningRequest request) {
+    @Path("/content-generation")
+    public Response contentGeneration(SectioningRequest request) {
         if (!workflowsEnabled) {
             return Response.status(Response.Status.SERVICE_UNAVAILABLE)
                     .entity(Map.of("error", "Workflows are disabled"))
@@ -108,40 +103,29 @@ public class ParallelizationWorkflowResource {
         }
 
         try {
-            ParallelizationWorkflow workflow = Agents4J.createParallelizationWorkflow(
-                "SectioningWorkflow",
-                chatModel
-            );
-
-            ParallelizationWorkflow.ParallelInput input = new ParallelizationWorkflow.ParallelInput(
-                request.getSectionPrompt(),
-                request.getSections(),
-                request.getNumWorkers() != null ? request.getNumWorkers() : 4
-            );
-
-            String results = example.contentGenerationExample();
+            String result = parallelizationExample.contentGenerationExample();
             
             Map<String, Object> response = new HashMap<>();
             response.put("section_prompt", request.getSectionPrompt());
             response.put("sections", request.getSections());
-            response.put("results", results);
-            response.put("workflow_type", "sectioning");
+            response.put("result", result);
+            response.put("workflow_type", "content_generation");
             response.put("num_workers", request.getNumWorkers() != null ? request.getNumWorkers() : 4);
             
             return Response.ok(response).build();
         } catch (Exception e) {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(Map.of("error", "Failed to execute sectioning example: " + e.getMessage()))
+                    .entity(Map.of("error", "Failed to execute content generation: " + e.getMessage()))
                     .build();
         }
     }
 
     /**
-     * Voting example - get multiple perspectives on the same input
+     * Execute performance comparison example
      */
     @POST
-    @Path("/voting")
-    public Response votingExample(VotingRequest request) {
+    @Path("/performance-comparison")
+    public Response performanceComparison(VotingRequest request) {
         if (!workflowsEnabled) {
             return Response.status(Response.Status.SERVICE_UNAVAILABLE)
                     .entity(Map.of("error", "Workflows are disabled"))
@@ -149,25 +133,52 @@ public class ParallelizationWorkflowResource {
         }
 
         try {
-            // Create multiple identical inputs for voting
-            List<String> votingInputs = java.util.Collections.nCopies(
-                request.getVoteCount() != null ? request.getVoteCount() : 3,
-                request.getInput()
-            );
-
-            String results = example.performanceComparisonExample();
+            String result = parallelizationExample.performanceComparisonExample();
             
             Map<String, Object> response = new HashMap<>();
             response.put("input", request.getInput());
             response.put("voting_prompt", request.getVotingPrompt());
             response.put("vote_count", request.getVoteCount() != null ? request.getVoteCount() : 3);
-            response.put("votes", results);
-            response.put("workflow_type", "voting");
+            response.put("result", result);
+            response.put("workflow_type", "performance_comparison");
             
             return Response.ok(response).build();
         } catch (Exception e) {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(Map.of("error", "Failed to execute voting example: " + e.getMessage()))
+                    .entity(Map.of("error", "Failed to execute performance comparison: " + e.getMessage()))
+                    .build();
+        }
+    }
+
+    /**
+     * Execute async processing example
+     */
+    @POST
+    @Path("/async")
+    public Response asyncProcessing(ParallelRequest request) {
+        if (!workflowsEnabled) {
+            return Response.status(Response.Status.SERVICE_UNAVAILABLE)
+                    .entity(Map.of("error", "Workflows are disabled"))
+                    .build();
+        }
+
+        try {
+            parallelizationExample.asyncProcessingExample().thenAccept(result -> {
+                // Async processing completed
+                System.out.println("Async processing completed: " + result);
+            });
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("prompt", request.getPrompt());
+            response.put("inputs", request.getInputs());
+            response.put("message", "Async processing started");
+            response.put("workflow_type", "async_processing");
+            response.put("status", "started");
+            
+            return Response.accepted(response).build();
+        } catch (Exception e) {
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(Map.of("error", "Failed to start async processing: " + e.getMessage()))
                     .build();
         }
     }
@@ -187,21 +198,22 @@ public class ParallelizationWorkflowResource {
         try {
             String result;
             switch (exampleType.toLowerCase()) {
-                case "sectioning":
-                    result = "Sectioning example: Document sections processed concurrently for faster analysis";
+                case "sentiment-analysis":
+                    result = parallelizationExample.sentimentAnalysisExample();
                     break;
-                case "voting":
-                    result = "Voting example: Multiple perspectives gathered simultaneously for consensus building";
+                case "translation":
+                    result = parallelizationExample.documentTranslationExample();
                     break;
-                case "batch-processing":
-                    result = "Batch processing example: Large volumes of data processed efficiently in parallel";
+                case "content-generation":
+                    result = parallelizationExample.contentGenerationExample();
                     break;
-                case "multilingual":
-                    result = "Multilingual example: Content processed in multiple languages simultaneously";
+                case "performance-comparison":
+                    result = parallelizationExample.performanceComparisonExample();
                     break;
                 default:
                     return Response.status(Response.Status.BAD_REQUEST)
-                            .entity(Map.of("error", "Unknown example type: " + exampleType))
+                            .entity(Map.of("error", "Unknown example type: " + exampleType + 
+                                         ". Available types: sentiment-analysis, translation, content-generation, performance-comparison"))
                             .build();
             }
 
@@ -224,18 +236,21 @@ public class ParallelizationWorkflowResource {
     @Path("/types")
     public Response getParallelizationTypes() {
         Map<String, Object> types = new HashMap<>();
-        types.put("sectioning", "Process different sections of content in parallel");
-        types.put("voting", "Get multiple perspectives on the same input");
-        types.put("batch_processing", "Process large volumes of similar items");
-        types.put("parallel_analysis", "Analyze multiple aspects simultaneously");
+        types.put("sentiment_analysis", "Analyze sentiment of multiple texts in parallel");
+        types.put("translation", "Translate documents to multiple languages simultaneously");
+        types.put("content_generation", "Generate content for multiple topics in parallel");
+        types.put("performance_comparison", "Compare sequential vs parallel processing performance");
+        types.put("async_processing", "Demonstrate asynchronous parallel processing");
         
         Map<String, Object> examples = new HashMap<>();
-        examples.put("available_examples", List.of("sectioning", "voting", "batch-processing", "multilingual"));
+        examples.put("available_examples", List.of("sentiment-analysis", "translation", "content-generation", "performance-comparison"));
         examples.put("workflow_types", types);
-        examples.put("recommended_workers", Map.of(
-            "small_batch", "2-4 workers",
-            "medium_batch", "4-8 workers", 
-            "large_batch", "8-16 workers"
+        examples.put("endpoints", Map.of(
+            "/sentiment-analysis", "Execute sentiment analysis in parallel",
+            "/translation", "Execute document translation in parallel",
+            "/content-generation", "Execute content generation in parallel",
+            "/performance-comparison", "Compare performance metrics",
+            "/async", "Execute async parallel processing"
         ));
         
         return Response.ok(examples).build();
@@ -257,10 +272,43 @@ public class ParallelizationWorkflowResource {
         performance.put("considerations", List.of(
             "Consider API rate limits when setting worker count",
             "Monitor memory usage with large batches",
-            "Optimal worker count depends on item complexity"
+            "Optimal worker count depends on item complexity",
+            "Use async processing for long-running tasks"
         ));
         
         return Response.ok(performance).build();
+    }
+
+    /**
+     * Run all parallelization examples
+     */
+    @POST
+    @Path("/run-all-examples")
+    public Response runAllExamples() {
+        if (!workflowsEnabled) {
+            return Response.status(Response.Status.SERVICE_UNAVAILABLE)
+                    .entity(Map.of("error", "Workflows are disabled"))
+                    .build();
+        }
+
+        try {
+            parallelizationExample.runAllExamples();
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("status", "All examples executed successfully");
+            response.put("examples_run", List.of(
+                "sentimentAnalysisExample",
+                "documentTranslationExample",
+                "contentGenerationExample",
+                "performanceComparisonExample"
+            ));
+            
+            return Response.ok(response).build();
+        } catch (Exception e) {
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(Map.of("error", "Failed to run all examples: " + e.getMessage()))
+                    .build();
+        }
     }
 
     /**
@@ -271,10 +319,11 @@ public class ParallelizationWorkflowResource {
     public Response getHealthInfo() {
         Map<String, Object> health = new HashMap<>();
         health.put("enabled", workflowsEnabled);
+        health.put("healthy", parallelizationExample.isWorkflowHealthy());
         health.put("chat_model_available", chatModel != null);
         health.put("max_parallel_workers", Runtime.getRuntime().availableProcessors());
         
-        if (workflowsEnabled && chatModel != null) {
+        if (workflowsEnabled && parallelizationExample.isWorkflowHealthy()) {
             health.put("status", "healthy");
         } else {
             health.put("status", "unhealthy");
