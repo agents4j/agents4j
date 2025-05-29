@@ -344,53 +344,11 @@ public class AgentWorkflowFactory {
 
     // =================== ROUTING WORKFLOW METHODS ===================
 
-    /**
-     * Creates a customer support routing workflow using LLM-based classification.
-     *
-     * @param name The workflow name
-     * @param model The ChatModel to use for routing and processing
-     * @param classificationPrompt The prompt for ticket classification
-     * @return A new RoutingWorkflow for customer support
-     */
-    public static RoutingWorkflow<String, String> createCustomerSupportRoutingWorkflow(
-        String name,
-        ChatModel model,
-        String classificationPrompt
-    ) {
-        return RoutingWorkflowFactory.createCustomerSupportWorkflow(name, model, classificationPrompt);
-    }
 
-    /**
-     * Creates a content categorization routing workflow using rule-based routing.
-     *
-     * @param name The workflow name
-     * @param model The ChatModel to use for processing
-     * @param categoryRules Map of category names to their keyword patterns
-     * @return A new RoutingWorkflow for content categorization
-     */
-    public static RoutingWorkflow<String, String> createContentCategorizationWorkflow(
-        String name,
-        ChatModel model,
-        Map<String, List<String>> categoryRules
-    ) {
-        return RoutingWorkflowFactory.createContentCategorizationWorkflow(name, model, categoryRules);
-    }
 
-    /**
-     * Creates a multi-language routing workflow.
-     *
-     * @param name The workflow name
-     * @param model The ChatModel to use for processing
-     * @param supportedLanguages List of supported language codes
-     * @return A new RoutingWorkflow for multi-language processing
-     */
-    public static RoutingWorkflow<String, String> createMultiLanguageRoutingWorkflow(
-        String name,
-        ChatModel model,
-        List<String> supportedLanguages
-    ) {
-        return RoutingWorkflowFactory.createMultiLanguageWorkflow(name, model, supportedLanguages);
-    }
+
+
+
 
     /**
      * Creates a routing workflow with LLM-based content router.
