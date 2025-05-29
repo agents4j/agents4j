@@ -3,12 +3,10 @@
  */
 package dev.agents4j.adapter;
 
-import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.output.Response;
-
+import dev.langchain4j.model.chat.response.ChatResponse;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -33,7 +31,11 @@ public class LangChain4JChatModelAdapter implements ChatModelAdapter {
      * @param providerName The name of the provider (e.g., "OpenAI", "Anthropic")
      * @param modelName The name of the specific model
      */
-    public LangChain4JChatModelAdapter(ChatModel chatModel, String providerName, String modelName) {
+    public LangChain4JChatModelAdapter(
+        ChatModel chatModel,
+        String providerName,
+        String modelName
+    ) {
         this(chatModel, providerName, modelName, new HashMap<>());
     }
 
@@ -45,44 +47,60 @@ public class LangChain4JChatModelAdapter implements ChatModelAdapter {
      * @param modelName The name of the specific model
      * @param configuration Additional configuration for the adapter
      */
-    public LangChain4JChatModelAdapter(ChatModel chatModel, String providerName, String modelName, Map<String, Object> configuration) {
+    public LangChain4JChatModelAdapter(
+        ChatModel chatModel,
+        String providerName,
+        String modelName,
+        Map<String, Object> configuration
+    ) {
         if (chatModel == null) {
             throw new IllegalArgumentException("ChatModel cannot be null");
         }
         if (providerName == null || providerName.trim().isEmpty()) {
-            throw new IllegalArgumentException("Provider name cannot be null or empty");
+            throw new IllegalArgumentException(
+                "Provider name cannot be null or empty"
+            );
         }
         if (modelName == null || modelName.trim().isEmpty()) {
-            throw new IllegalArgumentException("Model name cannot be null or empty");
+            throw new IllegalArgumentException(
+                "Model name cannot be null or empty"
+            );
         }
 
         this.chatModel = chatModel;
         this.providerName = providerName;
         this.modelName = modelName;
-        this.configuration = new HashMap<>(configuration != null ? configuration : Map.of());
+        this.configuration = new HashMap<>(
+            configuration != null ? configuration : Map.of()
+        );
     }
 
     @Override
-    public String chat(String prompt, Map<String, Object> context) throws ChatModelException {
+    public String chat(String prompt, Map<String, Object> context)
+        throws ChatModelException {
         if (prompt == null || prompt.trim().isEmpty()) {
-            throw new ChatModelException(providerName, modelName, "Prompt cannot be null or empty");
+            throw new ChatModelException(
+                providerName,
+                modelName,
+                "Prompt cannot be null or empty"
+            );
         }
 
         try {
             UserMessage userMessage = UserMessage.from(prompt);
-            Response<AiMessage> response = chatModel.generate(userMessage);
-            
-            if (response == null || response.content() == null) {
+            ChatResponse response = chatModel.chat(userMessage);
+
+            if (response == null || response.aiMessage() == null) {
                 throw new ChatModelException(
-                    providerName, 
-                    modelName, 
+                    providerName,
+                    modelName,
                     "Received null response from chat model",
                     null,
                     Map.of("prompt", prompt)
                 );
             }
 
-            return response.content().text();
+            return response.aiMessage().text();
         } catch (Exception e) {
             if (e instanceof ChatModelException) {
                 throw e;
@@ -98,7 +116,10 @@ public class LangChain4JChatModelAdapter implements ChatModelAdapter {
     }
 
     @Override
-    public CompletableFuture<String> chatAsync(String prompt, Map<String, Object> context) {
+    public CompletableFuture<String> chatAsync(
+        String prompt,
+        Map<String, Object> context
+    ) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 return chat(prompt, context);
@@ -109,31 +130,50 @@ public class LangChain4JChatModelAdapter implements ChatModelAdapter {
     }
 
     @Override
-    public String chatWithSystem(String systemPrompt, String userPrompt, Map<String, Object> context) throws ChatModelException {
+    public String chatWithSystem(
+        String systemPrompt,
+        String userPrompt,
+        Map<String, Object> context
+    ) throws ChatModelException {
         if (systemPrompt == null || systemPrompt.trim().isEmpty()) {
-            throw new ChatModelException(providerName, modelName, "System prompt cannot be null or empty");
+            throw new ChatModelException(
+                providerName,
+                modelName,
+                "System prompt cannot be null or empty"
+            );
         }
         if (userPrompt == null || userPrompt.trim().isEmpty()) {
-            throw new ChatModelException(providerName, modelName, "User prompt cannot be null or empty");
+            throw new ChatModelException(
+                providerName,
+                modelName,
+                "User prompt cannot be null or empty"
+            );
         }
 
         try {
             SystemMessage systemMessage = SystemMessage.from(systemPrompt);
             UserMessage userMessage = UserMessage.from(userPrompt);
-            
-            Response<AiMessage> response = chatModel.generate(List.of(systemMessage, userMessage));
-            
-            if (response == null || response.content() == null) {
+
+            ChatResponse response = chatModel.chat(
+                List.of(systemMessage, userMessage)
+            );
+
+            if (response == null || response.aiMessage() == null) {
                 throw new ChatModelException(
-                    providerName, 
-                    modelName, 
+                    providerName,
+                    modelName,
                     "Received null response from chat model",
                     null,
-                    Map.of("systemPrompt", systemPrompt, "userPrompt", userPrompt)
+                    Map.of(
+                        "systemPrompt",
+                        systemPrompt,
+                        "userPrompt",
+                        userPrompt
+                    )
                 );
             }
 
-            return response.content().text();
+            return response.aiMessage().text();
         } catch (Exception e) {
             if (e instanceof ChatModelException) {
                 throw e;
@@ -141,12 +181,16 @@ public class LangChain4JChatModelAdapter implements ChatModelAdapter {
             throw new ChatModelException(
                 providerName,
                 modelName,
-                "Failed to generate chat response with system prompt: " + e.getMessage(),
+                "Failed to generate chat response with system prompt: " +
+                e.getMessage(),
                 e,
                 Map.of(
-                    "systemPrompt", systemPrompt,
-                    "userPrompt", userPrompt,
-                    "errorType", determineErrorType(e)
+                    "systemPrompt",
+                    systemPrompt,
+                    "userPrompt",
+                    userPrompt,
+                    "errorType",
+                    determineErrorType(e)
                 )
             );
         }
@@ -185,19 +229,23 @@ public class LangChain4JChatModelAdapter implements ChatModelAdapter {
     @Override
     public void validateConfiguration() throws ChatModelException {
         if (chatModel == null) {
-            throw new ChatModelException(providerName, modelName, "ChatModel is not initialized");
+            throw new ChatModelException(
+                providerName,
+                modelName,
+                "ChatModel is not initialized"
+            );
         }
 
         // Additional validation can be added here based on specific provider requirements
         try {
             // Test with a minimal prompt to validate the model is working
             UserMessage testMessage = UserMessage.from("test");
-            Response<AiMessage> response = chatModel.generate(testMessage);
-            
+            ChatResponse response = chatModel.chat(testMessage);
+
             if (response == null) {
                 throw new ChatModelException(
-                    providerName, 
-                    modelName, 
+                    providerName,
+                    modelName,
                     "Model validation failed: received null response"
                 );
             }
@@ -215,7 +263,7 @@ public class LangChain4JChatModelAdapter implements ChatModelAdapter {
     @Override
     public int getMaxTokens() {
         // This would need to be configured based on the specific model
-        return configuration.containsKey("maxTokens") 
+        return configuration.containsKey("maxTokens")
             ? ((Number) configuration.get("maxTokens")).intValue()
             : -1;
     }
@@ -225,7 +273,7 @@ public class LangChain4JChatModelAdapter implements ChatModelAdapter {
         if (text == null || text.isEmpty()) {
             return 0;
         }
-        
+
         // Simple estimation: roughly 4 characters per token for most models
         // This is a rough approximation and should be replaced with proper tokenization
         return (int) Math.ceil(text.length() / 4.0);
@@ -254,12 +302,19 @@ public class LangChain4JChatModelAdapter implements ChatModelAdapter {
      * @param additionalConfig Additional configuration to merge
      * @return A new adapter instance with merged configuration
      */
-    public LangChain4JChatModelAdapter withConfiguration(Map<String, Object> additionalConfig) {
+    public LangChain4JChatModelAdapter withConfiguration(
+        Map<String, Object> additionalConfig
+    ) {
         Map<String, Object> mergedConfig = new HashMap<>(this.configuration);
         if (additionalConfig != null) {
             mergedConfig.putAll(additionalConfig);
         }
-        return new LangChain4JChatModelAdapter(chatModel, providerName, modelName, mergedConfig);
+        return new LangChain4JChatModelAdapter(
+            chatModel,
+            providerName,
+            modelName,
+            mergedConfig
+        );
     }
 
     /**
@@ -273,18 +328,30 @@ public class LangChain4JChatModelAdapter implements ChatModelAdapter {
         if (message == null) {
             return "unknown";
         }
-        
+
         String lowerMessage = message.toLowerCase();
-        
+
         if (lowerMessage.contains("rate") || lowerMessage.contains("limit")) {
             return "rate_limit";
-        } else if (lowerMessage.contains("auth") || lowerMessage.contains("unauthorized") || lowerMessage.contains("forbidden")) {
+        } else if (
+            lowerMessage.contains("auth") ||
+            lowerMessage.contains("unauthorized") ||
+            lowerMessage.contains("forbidden")
+        ) {
             return "authentication";
-        } else if (lowerMessage.contains("quota") || lowerMessage.contains("exceeded")) {
+        } else if (
+            lowerMessage.contains("quota") || lowerMessage.contains("exceeded")
+        ) {
             return "quota_exceeded";
-        } else if (lowerMessage.contains("timeout") || lowerMessage.contains("timed out")) {
+        } else if (
+            lowerMessage.contains("timeout") ||
+            lowerMessage.contains("timed out")
+        ) {
             return "timeout";
-        } else if (lowerMessage.contains("network") || lowerMessage.contains("connection")) {
+        } else if (
+            lowerMessage.contains("network") ||
+            lowerMessage.contains("connection")
+        ) {
             return "network";
         } else {
             return "model_error";
@@ -295,6 +362,7 @@ public class LangChain4JChatModelAdapter implements ChatModelAdapter {
      * Builder for creating LangChain4JChatModelAdapter instances.
      */
     public static class Builder {
+
         private ChatModel chatModel;
         private String providerName;
         private String modelName;
@@ -372,7 +440,12 @@ public class LangChain4JChatModelAdapter implements ChatModelAdapter {
          * @throws IllegalArgumentException if required parameters are missing
          */
         public LangChain4JChatModelAdapter build() {
-            return new LangChain4JChatModelAdapter(chatModel, providerName, modelName, configuration);
+            return new LangChain4JChatModelAdapter(
+                chatModel,
+                providerName,
+                modelName,
+                configuration
+            );
         }
     }
 
