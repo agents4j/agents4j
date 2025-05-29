@@ -8,13 +8,22 @@ import dev.agents4j.api.workflow.WorkflowCommand;
 import dev.agents4j.api.workflow.WorkflowRoute;
 import dev.agents4j.api.workflow.WorkflowState;
 
+import dev.agents4j.workflow.api.CommandProcessor;
+import dev.agents4j.workflow.api.ExecutionResult;
+import dev.agents4j.workflow.api.NodeRoutingStrategy;
+import dev.agents4j.workflow.api.WorkflowExecutionMonitor;
+import dev.agents4j.workflow.impl.*;
+
+import java.time.Duration;
+import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
 
 /**
- * Implementation of StatefulWorkflow that supports graph-based routing,
- * state management, and workflow suspension/resumption.
+ * Refactored implementation of StatefulWorkflow following SOLID principles.
+ * Uses composition and dependency injection for better separation of concerns.
  *
  * @param <I> The input type for the workflow
  * @param <O> The output type for the workflow
@@ -24,28 +33,28 @@ public class StatefulWorkflowImpl<I, O> implements StatefulWorkflow<I, O> {
     private final String name;
     private final Map<String, StatefulAgentNode<I>> nodes;
     private final List<WorkflowRoute<I>> routes;
-    private final Map<String, List<WorkflowRoute<I>>> routesByFromNode;
     private final List<StatefulAgentNode<I>> entryPoints;
     private final StatefulAgentNode<I> defaultEntryPoint;
     private final OutputExtractor<I, O> outputExtractor;
-    private final int maxExecutionSteps;
+    private final WorkflowExecutionConfiguration configuration;
+    
+    // Strategy dependencies
+    private final NodeRoutingStrategy<I> routingStrategy;
+    private final CommandProcessor<I, O> commandProcessor;
+    private final WorkflowExecutionMonitor monitor;
+    private final Executor asyncExecutor;
 
-    private StatefulWorkflowImpl(String name, 
-                                Map<String, StatefulAgentNode<I>> nodes,
-                                List<WorkflowRoute<I>> routes,
-                                StatefulAgentNode<I> defaultEntryPoint,
-                                OutputExtractor<I, O> outputExtractor,
-                                int maxExecutionSteps) {
-        this.name = Objects.requireNonNull(name, "Workflow name cannot be null");
-        this.nodes = Collections.unmodifiableMap(new HashMap<>(nodes));
-        this.routes = Collections.unmodifiableList(new ArrayList<>(routes));
-        this.defaultEntryPoint = defaultEntryPoint;
-        this.outputExtractor = Objects.requireNonNull(outputExtractor, "Output extractor cannot be null");
-        this.maxExecutionSteps = maxExecutionSteps;
-        
-        // Build route index for fast lookup
-        this.routesByFromNode = routes.stream()
-                .collect(Collectors.groupingBy(WorkflowRoute::getFromNodeId));
+    private StatefulWorkflowImpl(Builder<I, O> builder) {
+        this.name = builder.name;
+        this.nodes = Collections.unmodifiableMap(new HashMap<>(builder.nodes));
+        this.routes = Collections.unmodifiableList(new ArrayList<>(builder.routes));
+        this.defaultEntryPoint = builder.defaultEntryPoint;
+        this.outputExtractor = builder.outputExtractor;
+        this.configuration = builder.configuration;
+        this.routingStrategy = builder.routingStrategy;
+        this.commandProcessor = builder.commandProcessor;
+        this.monitor = builder.monitor;
+        this.asyncExecutor = builder.asyncExecutor;
         
         // Find entry points
         this.entryPoints = nodes.values().stream()
@@ -70,13 +79,24 @@ public class StatefulWorkflowImpl<I, O> implements StatefulWorkflow<I, O> {
     public StatefulWorkflowResult<O> start(I input, WorkflowState initialState, Map<String, Object> context) 
             throws WorkflowExecutionException {
         
-        // Determine entry point
-        StatefulAgentNode<I> entryNode = determineEntryPoint(input, initialState, context);
+        if (context == null) {
+            context = new HashMap<>();
+        }
         
-        // Update state with entry point
-        WorkflowState stateWithEntryPoint = initialState.withCurrentNode(entryNode.getNodeId());
+        monitor.onWorkflowStarted(initialState.getWorkflowId(), name, context);
         
-        return executeWorkflow(input, stateWithEntryPoint, context);
+        try {
+            // Determine entry point
+            StatefulAgentNode<I> entryNode = determineEntryPoint(input, initialState, context);
+            
+            // Update state with entry point
+            WorkflowState stateWithEntryPoint = initialState.withCurrentNode(entryNode.getNodeId());
+            
+            return executeWorkflow(input, stateWithEntryPoint, context);
+        } catch (Exception e) {
+            monitor.onWorkflowError(initialState.getWorkflowId(), e.getMessage(), initialState, e);
+            throw e;
+        }
     }
 
     @Override
@@ -92,7 +112,18 @@ public class StatefulWorkflowImpl<I, O> implements StatefulWorkflow<I, O> {
             throw new WorkflowExecutionException(name, "Cannot resume workflow: no current node in state");
         }
         
-        return executeWorkflow(input, state, context);
+        if (context == null) {
+            context = new HashMap<>();
+        }
+        
+        monitor.onWorkflowResumed(state.getWorkflowId(), state);
+        
+        try {
+            return executeWorkflow(input, state, context);
+        } catch (Exception e) {
+            monitor.onWorkflowError(state.getWorkflowId(), e.getMessage(), state, e);
+            throw e;
+        }
     }
 
     @Override
@@ -103,7 +134,7 @@ public class StatefulWorkflowImpl<I, O> implements StatefulWorkflow<I, O> {
             } catch (WorkflowExecutionException e) {
                 throw new RuntimeException(e);
             }
-        });
+        }, asyncExecutor);
     }
 
     @Override
@@ -114,7 +145,7 @@ public class StatefulWorkflowImpl<I, O> implements StatefulWorkflow<I, O> {
             } catch (WorkflowExecutionException e) {
                 throw new RuntimeException(e);
             }
-        });
+        }, asyncExecutor);
     }
 
     @Override
@@ -125,7 +156,7 @@ public class StatefulWorkflowImpl<I, O> implements StatefulWorkflow<I, O> {
             } catch (WorkflowExecutionException e) {
                 throw new RuntimeException(e);
             }
-        });
+        }, asyncExecutor);
     }
 
     @Override
@@ -136,7 +167,7 @@ public class StatefulWorkflowImpl<I, O> implements StatefulWorkflow<I, O> {
             } catch (WorkflowExecutionException e) {
                 throw new RuntimeException(e);
             }
-        });
+        }, asyncExecutor);
     }
 
     @Override
@@ -161,7 +192,11 @@ public class StatefulWorkflowImpl<I, O> implements StatefulWorkflow<I, O> {
 
     @Override
     public List<WorkflowRoute<I>> getRoutesFrom(String fromNodeId) {
-        return routesByFromNode.getOrDefault(fromNodeId, Collections.emptyList());
+        return routingStrategy instanceof DefaultNodeRoutingStrategy ? 
+            ((DefaultNodeRoutingStrategy<I>) routingStrategy).getRoutesFrom(fromNodeId) :
+            routes.stream()
+                .filter(route -> route.getFromNodeId().equals(fromNodeId))
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -207,9 +242,17 @@ public class StatefulWorkflowImpl<I, O> implements StatefulWorkflow<I, O> {
         WorkflowState currentState = state;
         I currentInput = input;
         int stepCount = 0;
+        Instant startTime = Instant.now();
         
-        while (stepCount < maxExecutionSteps) {
+        while (stepCount < configuration.getMaxExecutionSteps()) {
             stepCount++;
+            
+            // Check execution timeout
+            Duration elapsed = Duration.between(startTime, Instant.now());
+            if (elapsed.compareTo(configuration.getMaxExecutionTime()) > 0) {
+                monitor.onWorkflowSuspended(currentState.getWorkflowId(), currentState, "Execution timeout exceeded");
+                return StatefulWorkflowResult.suspended(currentState);
+            }
             
             // Get current node
             String currentNodeId = currentState.getCurrentNodeId()
@@ -220,62 +263,82 @@ public class StatefulWorkflowImpl<I, O> implements StatefulWorkflow<I, O> {
                 throw new WorkflowExecutionException(name, "Current node not found: " + currentNodeId);
             }
             
+            // Monitor node start
+            monitor.onNodeStarted(currentState.getWorkflowId(), currentNodeId, currentState);
+            Instant nodeStartTime = Instant.now();
+            
             // Execute current node
             WorkflowCommand<I> command;
             try {
                 command = currentNode.process(currentInput, currentState, context);
             } catch (Exception e) {
+                monitor.onWorkflowError(currentState.getWorkflowId(), "Node execution failed: " + e.getMessage(), currentState, e);
                 return StatefulWorkflowResult.error("Node execution failed: " + e.getMessage(), currentState);
             }
             
-            // Apply state updates
-            if (!command.getStateUpdates().isEmpty()) {
-                currentState = currentState.withUpdates(command.getStateUpdates());
+            // Monitor node completion
+            Duration nodeExecutionTime = Duration.between(nodeStartTime, Instant.now());
+            
+            // Process command using command processor
+            ExecutionResult<I, O> result = commandProcessor.process(command, currentState, context);
+            
+            if (result.isFailure()) {
+                WorkflowExecutionException error = result.getError().orElse(
+                    new WorkflowExecutionException("Unknown execution error"));
+                monitor.onWorkflowError(currentState.getWorkflowId(), error.getMessage(), currentState, error);
+                return StatefulWorkflowResult.error(error.getMessage(), currentState);
             }
             
-            // Process command
-            switch (command.getType()) {
-                case COMPLETE:
-                    O completeOutput = outputExtractor.extractOutput(currentInput, currentState, context);
-                    return StatefulWorkflowResult.completed(completeOutput, currentState);
+            // Update state
+            WorkflowState oldState = currentState;
+            currentState = result.getState();
+            monitor.onNodeCompleted(currentState.getWorkflowId(), currentNodeId, nodeExecutionTime, currentState);
+            monitor.onStateUpdated(currentState.getWorkflowId(), oldState, currentState);
+            
+            // Handle result type
+            switch (result.getType()) {
+                case COMPLETED:
+                    Duration totalTime = Duration.between(startTime, Instant.now());
+                    monitor.onWorkflowCompleted(currentState.getWorkflowId(), totalTime, currentState);
+                    return result.toWorkflowResult();
                     
-                case SUSPEND:
-                    return StatefulWorkflowResult.suspended(currentState);
-                    
-                case ERROR:
-                    String errorMessage = command.getErrorMessage().orElse("Unknown error");
-                    return StatefulWorkflowResult.error(errorMessage, currentState);
+                case SUSPENDED:
+                    monitor.onWorkflowSuspended(currentState.getWorkflowId(), currentState, "Workflow suspended by command");
+                    return result.toWorkflowResult();
                     
                 case GOTO:
-                    String targetNodeId = command.getTargetNodeId()
-                            .orElseThrow(() -> new WorkflowExecutionException(name, "GOTO command missing target node"));
+                    String targetNodeId = result.getTargetNodeId()
+                            .orElseThrow(() -> new WorkflowExecutionException(name, "GOTO result missing target node"));
                     
                     if (!nodes.containsKey(targetNodeId)) {
                         return StatefulWorkflowResult.error("GOTO target node not found: " + targetNodeId, currentState);
                     }
                     
                     currentState = currentState.withCurrentNode(targetNodeId);
-                    currentInput = command.getNextInput().orElse(currentInput);
+                    currentInput = result.getNextInput().orElse(currentInput);
                     break;
                     
                 case CONTINUE:
-                    StatefulAgentNode<I> nextNode = findNextNode(currentNode, currentInput, currentState);
-                    if (nextNode == null) {
+                    Optional<StatefulAgentNode<I>> nextNode = routingStrategy.findNextNode(currentNode, currentInput, currentState);
+                    if (!nextNode.isPresent()) {
                         // No more nodes to execute - complete the workflow
                         O continueOutput = outputExtractor.extractOutput(currentInput, currentState, context);
+                        Duration completionTime = Duration.between(startTime, Instant.now());
+                        monitor.onWorkflowCompleted(currentState.getWorkflowId(), completionTime, currentState);
                         return StatefulWorkflowResult.completed(continueOutput, currentState);
                     }
                     
-                    currentState = currentState.withCurrentNode(nextNode.getNodeId());
-                    currentInput = command.getNextInput().orElse(currentInput);
+                    currentState = currentState.withCurrentNode(nextNode.get().getNodeId());
+                    currentInput = result.getNextInput().orElse(currentInput);
                     break;
                     
                 default:
-                    return StatefulWorkflowResult.error("Unknown command type: " + command.getType(), currentState);
+                    return StatefulWorkflowResult.error("Unknown result type: " + result.getType(), currentState);
             }
         }
         
         // Max steps exceeded - suspend workflow
+        monitor.onWorkflowSuspended(currentState.getWorkflowId(), currentState, "Max execution steps exceeded");
         return StatefulWorkflowResult.suspended(currentState);
     }
 
@@ -292,36 +355,7 @@ public class StatefulWorkflowImpl<I, O> implements StatefulWorkflow<I, O> {
         return entryPoints.get(0);
     }
 
-    private StatefulAgentNode<I> findNextNode(StatefulAgentNode<I> currentNode, I input, WorkflowState state) {
-        List<WorkflowRoute<I>> candidateRoutes = getRoutesFrom(currentNode.getNodeId());
-        
-        if (candidateRoutes.isEmpty()) {
-            return null; // No outgoing routes
-        }
-        
-        // Find matching routes
-        List<WorkflowRoute<I>> matchingRoutes = candidateRoutes.stream()
-                .filter(route -> route.matches(input, state))
-                .sorted(Comparator.<WorkflowRoute<I>>comparingInt(WorkflowRoute::getPriority).reversed())
-                .collect(Collectors.toList());
-        
-        if (matchingRoutes.isEmpty()) {
-            // Try default routes
-            Optional<WorkflowRoute<I>> defaultRoute = candidateRoutes.stream()
-                    .filter(WorkflowRoute::isDefault)
-                    .findFirst();
-            
-            if (defaultRoute.isPresent()) {
-                return nodes.get(defaultRoute.get().getToNodeId());
-            }
-            
-            return null; // No matching routes
-        }
-        
-        // Use highest priority matching route
-        WorkflowRoute<I> selectedRoute = matchingRoutes.get(0);
-        return nodes.get(selectedRoute.getToNodeId());
-    }
+
 
     private Set<String> findReachableNodes() {
         Set<String> reachable = new HashSet<>();
@@ -357,7 +391,7 @@ public class StatefulWorkflowImpl<I, O> implements StatefulWorkflow<I, O> {
     }
 
     /**
-     * Builder for creating StatefulWorkflowImpl instances.
+     * Builder for creating StatefulWorkflowImpl instances with improved architecture.
      */
     public static class Builder<I, O> {
         private String name;
@@ -365,7 +399,11 @@ public class StatefulWorkflowImpl<I, O> implements StatefulWorkflow<I, O> {
         private final List<WorkflowRoute<I>> routes = new ArrayList<>();
         private StatefulAgentNode<I> defaultEntryPoint;
         private OutputExtractor<I, O> outputExtractor;
-        private int maxExecutionSteps = 1000;
+        private WorkflowExecutionConfiguration configuration = WorkflowExecutionConfiguration.defaultConfiguration();
+        private NodeRoutingStrategy<I> routingStrategy;
+        private CommandProcessor<I, O> commandProcessor;
+        private WorkflowExecutionMonitor monitor = NoOpWorkflowExecutionMonitor.INSTANCE;
+        private Executor asyncExecutor;
 
         public Builder<I, O> name(String name) {
             this.name = name;
@@ -396,8 +434,36 @@ public class StatefulWorkflowImpl<I, O> implements StatefulWorkflow<I, O> {
             return this;
         }
 
+        public Builder<I, O> configuration(WorkflowExecutionConfiguration config) {
+            this.configuration = Objects.requireNonNull(config, "Configuration cannot be null");
+            return this;
+        }
+
+        public Builder<I, O> routingStrategy(NodeRoutingStrategy<I> strategy) {
+            this.routingStrategy = strategy;
+            return this;
+        }
+
+        public Builder<I, O> commandProcessor(CommandProcessor<I, O> processor) {
+            this.commandProcessor = processor;
+            return this;
+        }
+
+        public Builder<I, O> monitor(WorkflowExecutionMonitor monitor) {
+            this.monitor = Objects.requireNonNull(monitor, "Monitor cannot be null");
+            return this;
+        }
+
+        public Builder<I, O> asyncExecutor(Executor executor) {
+            this.asyncExecutor = executor;
+            return this;
+        }
+
+        @Deprecated
         public Builder<I, O> maxExecutionSteps(int maxSteps) {
-            this.maxExecutionSteps = maxSteps;
+            this.configuration = WorkflowExecutionConfiguration.builder()
+                .maxExecutionSteps(maxSteps)
+                .build();
             return this;
         }
 
@@ -413,8 +479,30 @@ public class StatefulWorkflowImpl<I, O> implements StatefulWorkflow<I, O> {
                     return result;
                 };
             }
+            if (routingStrategy == null) {
+                routingStrategy = new DefaultNodeRoutingStrategy<>(routes, nodes);
+            }
+            if (commandProcessor == null) {
+                commandProcessor = createDefaultCommandProcessor();
+            }
+            if (asyncExecutor == null) {
+                asyncExecutor = configuration.getAsyncExecutor();
+            }
 
-            return new StatefulWorkflowImpl<>(name, nodes, routes, defaultEntryPoint, outputExtractor, maxExecutionSteps);
+            return new StatefulWorkflowImpl<>(this);
+        }
+
+        private CommandProcessor<I, O> createDefaultCommandProcessor() {
+            DefaultCommandProcessor<I, O> processor = new DefaultCommandProcessor<>();
+            
+            // Register default command handlers
+            processor.registerHandler(new CompleteCommandHandler<>(outputExtractor));
+            processor.registerHandler(new SuspendCommandHandler<>());
+            processor.registerHandler(new ContinueCommandHandler<>());
+            processor.registerHandler(new GotoCommandHandler<>());
+            processor.registerHandler(new ErrorCommandHandler<>());
+            
+            return processor;
         }
     }
 
