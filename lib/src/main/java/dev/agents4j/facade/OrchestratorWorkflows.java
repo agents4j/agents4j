@@ -4,8 +4,8 @@
 package dev.agents4j.facade;
 
 import dev.agents4j.api.exception.WorkflowExecutionException;
+import dev.agents4j.api.workflow.StatefulWorkflowResult;
 import dev.agents4j.exception.AgentExecutionException;
-import dev.agents4j.workflow.AgentWorkflowFactory;
 import dev.agents4j.workflow.OrchestratorWorkersWorkflow;
 import dev.langchain4j.model.chat.ChatModel;
 
@@ -36,11 +36,14 @@ public final class OrchestratorWorkflows {
         ChatModel model
     ) {
         validateCreateParameters(name, model);
-
-        return AgentWorkflowFactory.createStandardOrchestratorWorkersWorkflow(
-            name,
-            model
-        );
+    
+        return OrchestratorWorkersWorkflow.builder()
+            .name(name)
+            .chatModel(model)
+            .addWorker("general", "General purpose worker", "You are a helpful assistant.")
+            .addWorker("analyst", "Data analysis specialist", "You are a data analysis expert.")
+            .addWorker("researcher", "Research specialist", "You are a research expert.")
+            .build();
     }
 
     /**
@@ -55,7 +58,7 @@ public final class OrchestratorWorkflows {
     public static OrchestratorWorkersWorkflow createCustom(
         String name,
         ChatModel model,
-        AgentWorkflowFactory.WorkerDefinition... workers
+        WorkerDefinition... workers
     ) {
         validateCreateParameters(name, model);
         if (workers == null || workers.length == 0) {
@@ -72,11 +75,15 @@ public final class OrchestratorWorkflows {
             }
         }
 
-        return AgentWorkflowFactory.createCustomOrchestratorWorkersWorkflow(
-            name,
-            model,
-            workers
-        );
+        OrchestratorWorkersWorkflow.Builder builder = OrchestratorWorkersWorkflow.builder()
+            .name(name)
+            .chatModel(model);
+        
+        for (WorkerDefinition worker : workers) {
+            builder.addWorker(worker.getType(), worker.getDescription(), worker.getSystemPrompt());
+        }
+        
+        return builder.build();
     }
 
     /**
@@ -101,8 +108,15 @@ public final class OrchestratorWorkflows {
                 new OrchestratorWorkersWorkflow.OrchestratorInput(
                     taskDescription
                 );
-            OrchestratorWorkersWorkflow.WorkerResponse response =
-                workflow.execute(input);
+            StatefulWorkflowResult<OrchestratorWorkersWorkflow.WorkerResponse> result =
+                workflow.start(input);
+            OrchestratorWorkersWorkflow.WorkerResponse response = result.getOutput()
+                .orElseThrow(() -> new AgentExecutionException(
+                    "OrchestratedQuery",
+                    "Workflow completed but produced no output",
+                    null,
+                    Map.of("taskDescription", taskDescription)
+                ));
             return response.getFinalResult();
         } catch (WorkflowExecutionException e) {
             throw new AgentExecutionException(
@@ -126,7 +140,7 @@ public final class OrchestratorWorkflows {
     public static String executeCustom(
         ChatModel model,
         String taskDescription,
-        AgentWorkflowFactory.WorkerDefinition... workers
+        WorkerDefinition... workers
     ) {
         validateExecuteParameters(model, taskDescription);
         if (workers == null || workers.length == 0) {
@@ -146,8 +160,15 @@ public final class OrchestratorWorkflows {
                 new OrchestratorWorkersWorkflow.OrchestratorInput(
                     taskDescription
                 );
-            OrchestratorWorkersWorkflow.WorkerResponse response =
-                workflow.execute(input);
+            StatefulWorkflowResult<OrchestratorWorkersWorkflow.WorkerResponse> result =
+                workflow.start(input);
+            OrchestratorWorkersWorkflow.WorkerResponse response = result.getOutput()
+                .orElseThrow(() -> new AgentExecutionException(
+                    "CustomOrchestratedQuery",
+                    "Workflow completed but produced no output",
+                    null,
+                    Map.of("taskDescription", taskDescription)
+                ));
             return response.getFinalResult();
         } catch (WorkflowExecutionException e) {
             throw new AgentExecutionException(
@@ -172,15 +193,18 @@ public final class OrchestratorWorkflows {
      * @return Detailed response including individual worker outputs
      * @throws AgentExecutionException if workflow execution fails
      */
-    public static OrchestratorResult executeDetailed(
+    public static OrchestratorResult executeAdaptive(
         ChatModel model,
-        String taskDescription
+        String taskDescription,
+        WorkerDefinition... workers
     ) {
         validateExecuteParameters(model, taskDescription);
+        validateWorkers(workers);
 
-        OrchestratorWorkersWorkflow workflow = create(
-            "DetailedOrchestratedQuery",
-            model
+        OrchestratorWorkersWorkflow workflow = createCustom(
+            "AdaptiveOrchestratedQuery",
+            model,
+            workers
         );
 
         try {
@@ -188,9 +212,15 @@ public final class OrchestratorWorkflows {
                 new OrchestratorWorkersWorkflow.OrchestratorInput(
                     taskDescription
                 );
-            OrchestratorWorkersWorkflow.WorkerResponse response =
-                workflow.execute(input);
-
+            StatefulWorkflowResult<OrchestratorWorkersWorkflow.WorkerResponse> result =
+                workflow.start(input);
+            OrchestratorWorkersWorkflow.WorkerResponse response = result.getOutput()
+                .orElseThrow(() -> new AgentExecutionException(
+                    "AdaptiveOrchestratedQuery",
+                    "Workflow completed but produced no output",
+                    null,
+                    Map.of("taskDescription", taskDescription)
+                ));
             return new OrchestratorResult(
                 taskDescription,
                 response.getFinalResult(),
@@ -199,8 +229,8 @@ public final class OrchestratorWorkflows {
             );
         } catch (WorkflowExecutionException e) {
             throw new AgentExecutionException(
-                "DetailedOrchestratedQuery",
-                "Failed to execute detailed orchestrated query",
+                "AdaptiveOrchestratedQuery", 
+                "Failed to execute adaptive orchestrated query",
                 e,
                 Map.of("taskDescription", taskDescription)
             );
@@ -219,7 +249,7 @@ public final class OrchestratorWorkflows {
     public static OrchestratorResult executeCustomDetailed(
         ChatModel model,
         String taskDescription,
-        AgentWorkflowFactory.WorkerDefinition... workers
+        WorkerDefinition... workers
     ) {
         validateExecuteParameters(model, taskDescription);
         if (workers == null || workers.length == 0) {
@@ -239,9 +269,15 @@ public final class OrchestratorWorkflows {
                 new OrchestratorWorkersWorkflow.OrchestratorInput(
                     taskDescription
                 );
-            OrchestratorWorkersWorkflow.WorkerResponse response =
-                workflow.execute(input);
-
+            StatefulWorkflowResult<OrchestratorWorkersWorkflow.WorkerResponse> result =
+                workflow.start(input);
+            OrchestratorWorkersWorkflow.WorkerResponse response = result.getOutput()
+                .orElseThrow(() -> new AgentExecutionException(
+                    "AdaptiveOrchestratedQuery",
+                    "Workflow completed but produced no output",
+                    null,
+                    Map.of("taskDescription", taskDescription)
+                ));
             return new OrchestratorResult(
                 taskDescription,
                 response.getFinalResult(),
@@ -271,7 +307,7 @@ public final class OrchestratorWorkflows {
      * @param systemPrompt The system prompt for this worker
      * @return A new WorkerDefinition instance
      */
-    public static AgentWorkflowFactory.WorkerDefinition worker(
+    public static WorkerDefinition worker(
         String type,
         String description,
         String systemPrompt
@@ -292,7 +328,24 @@ public final class OrchestratorWorkflows {
             );
         }
 
-        return AgentWorkflowFactory.worker(type, description, systemPrompt);
+        return new WorkerDefinition(type, description, systemPrompt);
+    }
+
+    private static void validateWorkers(WorkerDefinition... workers) {
+        if (workers == null || workers.length == 0) {
+            throw new IllegalArgumentException("At least one worker must be provided");
+        }
+        for (WorkerDefinition worker : workers) {
+            if (worker.getType() == null || worker.getType().trim().isEmpty()) {
+                throw new IllegalArgumentException("Worker type cannot be null or empty");
+            }
+            if (worker.getDescription() == null || worker.getDescription().trim().isEmpty()) {
+                throw new IllegalArgumentException("Worker description cannot be null or empty");
+            }
+            if (worker.getSystemPrompt() == null || worker.getSystemPrompt().trim().isEmpty()) {
+                throw new IllegalArgumentException("Worker system prompt cannot be null or empty");
+            }
+        }
     }
 
     private static void validateCreateParameters(String name, ChatModel model) {
@@ -371,6 +424,33 @@ public final class OrchestratorWorkflows {
                 .filter(result -> workerType.equals(result.getWorkerType()))
                 .findFirst()
                 .map(OrchestratorWorkersWorkflow.SubtaskResult::getResult);
+        }
+    }
+
+    /**
+     * Worker definition for creating orchestrator workflows.
+     */
+    public static class WorkerDefinition {
+        private final String type;
+        private final String description;
+        private final String systemPrompt;
+
+        public WorkerDefinition(String type, String description, String systemPrompt) {
+            this.type = type;
+            this.description = description;
+            this.systemPrompt = systemPrompt;
+        }
+
+        public String getType() {
+            return type;
+        }
+
+        public String getDescription() {
+            return description;
+        }
+
+        public String getSystemPrompt() {
+            return systemPrompt;
         }
     }
 }

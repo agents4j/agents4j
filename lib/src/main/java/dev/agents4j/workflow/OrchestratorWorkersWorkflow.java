@@ -3,8 +3,13 @@
  */
 package dev.agents4j.workflow;
 
-import dev.agents4j.api.AgentWorkflow;
+import dev.agents4j.api.StatefulWorkflow;
+import dev.agents4j.api.StatefulAgentNode;
 import dev.agents4j.api.exception.WorkflowExecutionException;
+import dev.agents4j.api.workflow.StatefulWorkflowResult;
+import dev.agents4j.api.workflow.WorkflowState;
+import dev.agents4j.api.workflow.WorkflowRoute;
+import dev.agents4j.api.workflow.WorkflowCommand;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -12,10 +17,12 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -46,6 +53,7 @@ import java.util.stream.Collectors;
  * <li>Parallel execution of independent subtasks</li>
  * <li>Clear boundaries that maintain system reliability</li>
  * <li>Adaptive problem-solving capabilities</li>
+ * <li>Stateful execution with suspend/resume capabilities</li>
  * </ul>
  *
  * <p><b>When to Use:</b></p>
@@ -71,13 +79,19 @@ import java.util.stream.Collectors;
  * @see <a href="https://docs.langchain4j.dev/">LangChain4J Documentation</a>
  * @see <a href="https://www.anthropic.com/research/building-effective-agents">Building Effective Agents</a>
  */
-public class OrchestratorWorkersWorkflow implements AgentWorkflow<OrchestratorWorkersWorkflow.OrchestratorInput, OrchestratorWorkersWorkflow.WorkerResponse> {
+public class OrchestratorWorkersWorkflow implements StatefulWorkflow<OrchestratorWorkersWorkflow.OrchestratorInput, OrchestratorWorkersWorkflow.WorkerResponse> {
+
+    private static final String ORCHESTRATOR_NODE = "orchestrator";
+    private static final String WORKERS_NODE = "workers";
+    private static final String SYNTHESIZER_NODE = "synthesizer";
 
     private final String name;
     private final ChatModel chatModel;
     private final Map<String, WorkerConfig> workerConfigs;
     private final String orchestratorPrompt;
     private final String synthesizerPrompt;
+    private final List<StatefulAgentNode<OrchestratorInput>> nodes;
+    private final List<WorkflowRoute<OrchestratorInput>> routes;
 
     /**
      * Creates a new OrchestratorWorkersWorkflow.
@@ -104,6 +118,9 @@ public class OrchestratorWorkersWorkflow implements AgentWorkflow<OrchestratorWo
         if (workerConfigs.isEmpty()) {
             throw new IllegalArgumentException("At least one worker configuration must be provided");
         }
+
+        this.nodes = createNodes();
+        this.routes = createRoutes();
     }
 
     /**
@@ -118,25 +135,56 @@ public class OrchestratorWorkersWorkflow implements AgentWorkflow<OrchestratorWo
      * {@inheritDoc}
      */
     @Override
-    public WorkerResponse execute(OrchestratorInput input) throws WorkflowExecutionException {
+    public StatefulWorkflowResult<WorkerResponse> start(OrchestratorInput input) throws WorkflowExecutionException {
+        return start(input, new HashMap<>());
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public StatefulWorkflowResult<WorkerResponse> start(OrchestratorInput input, Map<String, Object> context) 
+            throws WorkflowExecutionException {
+        WorkflowState initialState = WorkflowState.create(name + "-" + System.currentTimeMillis());
+        return start(input, initialState, context);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public StatefulWorkflowResult<WorkerResponse> start(OrchestratorInput input, WorkflowState initialState, 
+            Map<String, Object> context) throws WorkflowExecutionException {
         try {
-            // Phase 1: Orchestrator analyzes task and determines subtasks
-            OrchestratorResponse orchestratorResponse = orchestrate(input.getTaskDescription());
+            // Store execution context
+            context.put("workflow_name", name);
+            context.put("task_description", input.getTaskDescription());
+            context.put("available_workers", workerConfigs.keySet());
             
-            // Phase 2: Workers process subtasks in parallel
-            List<SubtaskResult> workerResponses = executeSubtasks(orchestratorResponse.getSubtasks());
+            long startTime = System.currentTimeMillis();
             
-            // Phase 3: Synthesize results into final response
-            String finalResult = synthesizeResults(input.getTaskDescription(), workerResponses);
+            // Initialize state with input data
+            Map<String, Object> stateData = new HashMap<>();
+            stateData.put("input", input);
+            stateData.put("startTime", startTime);
+            stateData.put("workerConfigs", workerConfigs);
+            stateData.put("orchestratorPrompt", orchestratorPrompt);
+            stateData.put("synthesizerPrompt", synthesizerPrompt);
             
-            return new WorkerResponse(
-                finalResult,
-                orchestratorResponse.getSubtasks(),
-                workerResponses,
-                true
-            );
+            WorkflowState state = initialState.withUpdatesAndCurrentNode(stateData, ORCHESTRATOR_NODE);
+            
+            // Execute orchestration logic
+            StatefulAgentNode<OrchestratorInput> orchestratorNode = getNode(ORCHESTRATOR_NODE)
+                    .orElseThrow(() -> new WorkflowExecutionException(name, "Orchestrator node not found"));
+            
+            WorkflowCommand<OrchestratorInput> command = orchestratorNode.process(input, state, context);
+            
+            // Handle the command
+            return handleCommand(command, input, state, context);
             
         } catch (Exception e) {
+            Map<String, Object> errorContext = new HashMap<>();
+            errorContext.put("error_message", e.getMessage());
             throw new WorkflowExecutionException(name, "Orchestrator-Workers workflow execution failed", e);
         }
     }
@@ -145,248 +193,559 @@ public class OrchestratorWorkersWorkflow implements AgentWorkflow<OrchestratorWo
      * {@inheritDoc}
      */
     @Override
-    public WorkerResponse execute(OrchestratorInput input, Map<String, Object> context) throws WorkflowExecutionException {
-        // Store execution context
-        context.put("workflow_name", name);
-        context.put("task_description", input.getTaskDescription());
-        context.put("available_workers", workerConfigs.keySet());
-        
-        long startTime = System.currentTimeMillis();
-        WorkerResponse response = execute(input);
-        long endTime = System.currentTimeMillis();
-        
-        // Store results in context
-        context.put("subtasks_count", response.getSubtasks().size());
-        context.put("execution_time", endTime - startTime);
-        context.put("successful_subtasks", response.getSubtaskResults().stream().mapToLong(r -> r.isSuccessful() ? 1 : 0).sum());
-        
-        return response;
+    public StatefulWorkflowResult<WorkerResponse> resume(OrchestratorInput input, WorkflowState state) 
+            throws WorkflowExecutionException {
+        return resume(input, state, new HashMap<>());
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public CompletableFuture<WorkerResponse> executeAsync(OrchestratorInput input) {
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                return execute(input);
-            } catch (WorkflowExecutionException e) {
-                throw new RuntimeException(e);
-            }
-        });
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public CompletableFuture<WorkerResponse> executeAsync(OrchestratorInput input, Map<String, Object> context) {
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                return execute(input, context);
-            } catch (WorkflowExecutionException e) {
-                throw new RuntimeException(e);
-            }
-        });
-    }
-
-    /**
-     * Phase 1: Orchestrator analyzes the task and decomposes it into subtasks.
-     */
-    private OrchestratorResponse orchestrate(String taskDescription) {
-        List<ChatMessage> messages = new ArrayList<>();
-        
-        String fullPrompt = orchestratorPrompt + "\n\nAvailable workers: " + 
-            workerConfigs.entrySet().stream()
-                .map(entry -> entry.getKey() + ": " + entry.getValue().getDescription())
-                .collect(Collectors.joining(", ")) + 
-            "\n\nTask: " + taskDescription;
-            
-        messages.add(SystemMessage.from(fullPrompt));
-        messages.add(UserMessage.from("Please analyze this task and decompose it into subtasks. " +
-            "For each subtask, specify the worker type and provide clear instructions."));
-        
-        AiMessage response = chatModel.chat(messages).aiMessage();
-        
-        // Parse the orchestrator response to extract subtasks
-        return parseOrchestratorResponse(response.text());
-    }
-
-    /**
-     * Phase 2: Execute subtasks in parallel using appropriate workers.
-     */
-    private List<SubtaskResult> executeSubtasks(List<Subtask> subtasks) {
-        if (subtasks.isEmpty()) {
-            return new ArrayList<>();
-        }
-
-        int numWorkers = Math.min(subtasks.size(), Runtime.getRuntime().availableProcessors());
-        ExecutorService executor = Executors.newFixedThreadPool(numWorkers);
-        
+    public StatefulWorkflowResult<WorkerResponse> resume(OrchestratorInput input, WorkflowState state, 
+            Map<String, Object> context) throws WorkflowExecutionException {
         try {
-            List<CompletableFuture<SubtaskResult>> futures = subtasks.stream()
-                .map(subtask -> CompletableFuture.supplyAsync(() -> {
-                    try {
-                        return executeSubtask(subtask);
-                    } catch (Exception e) {
-                        return new SubtaskResult(
-                            subtask.getId(),
-                            subtask.getWorkerType(),
-                            "Error: " + e.getMessage(),
-                            false
-                        );
-                    }
-                }, executor))
-                .collect(Collectors.toList());
-
-            // Wait for all subtasks to complete
-            CompletableFuture<Void> allFutures = CompletableFuture.allOf(
-                futures.toArray(new CompletableFuture[0]));
-            allFutures.join();
-
-            return futures.stream()
-                .map(CompletableFuture::join)
-                .collect(Collectors.toList());
-                
-        } finally {
-            executor.shutdown();
-        }
-    }
-
-    /**
-     * Execute a single subtask using the appropriate worker.
-     */
-    private SubtaskResult executeSubtask(Subtask subtask) {
-        WorkerConfig workerConfig = workerConfigs.get(subtask.getWorkerType());
-        if (workerConfig == null) {
-            throw new IllegalArgumentException("Unknown worker type: " + subtask.getWorkerType());
-        }
-
-        List<ChatMessage> messages = new ArrayList<>();
-        messages.add(SystemMessage.from(workerConfig.getSystemPrompt()));
-        messages.add(UserMessage.from(subtask.getInstructions()));
-        
-        AiMessage response = chatModel.chat(messages).aiMessage();
-        
-        return new SubtaskResult(
-            subtask.getId(),
-            subtask.getWorkerType(),
-            response.text(),
-            true
-        );
-    }
-
-    /**
-     * Phase 3: Synthesize all worker results into a final coherent response.
-     */
-    private String synthesizeResults(String originalTask, List<SubtaskResult> results) {
-        List<ChatMessage> messages = new ArrayList<>();
-        
-        String resultsText = results.stream()
-            .map(result -> "Worker " + result.getWorkerType() + " (Task " + result.getSubtaskId() + "): " + result.getResult())
-            .collect(Collectors.joining("\n\n"));
-        
-        String fullPrompt = synthesizerPrompt + 
-            "\n\nOriginal task: " + originalTask +
-            "\n\nWorker results:\n" + resultsText;
+            String currentNodeId = state.getCurrentNodeId()
+                    .orElseThrow(() -> new WorkflowExecutionException(name, "Cannot resume: no current node in state"));
             
-        messages.add(SystemMessage.from(fullPrompt));
-        messages.add(UserMessage.from("Please synthesize these results into a coherent final response."));
-        
-        AiMessage response = chatModel.chat(messages).aiMessage();
-        return response.text();
+            StatefulAgentNode<OrchestratorInput> currentNode = getNode(currentNodeId)
+                    .orElseThrow(() -> new WorkflowExecutionException(name, "Current node not found: " + currentNodeId));
+            
+            WorkflowCommand<OrchestratorInput> command = currentNode.process(input, state, context);
+            
+            return handleCommand(command, input, state, context);
+            
+        } catch (Exception e) {
+            throw new WorkflowExecutionException(name, "Failed to resume workflow", e);
+        }
     }
 
     /**
-     * Parse the orchestrator response to extract subtasks.
-     * This is a simplified parser - in production, you might want to use JSON or more structured parsing.
+     * {@inheritDoc}
      */
-    private OrchestratorResponse parseOrchestratorResponse(String responseText) {
-        List<Subtask> subtasks = new ArrayList<>();
+    @Override
+    public CompletableFuture<StatefulWorkflowResult<WorkerResponse>> startAsync(OrchestratorInput input) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                return start(input);
+            } catch (WorkflowExecutionException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public CompletableFuture<StatefulWorkflowResult<WorkerResponse>> startAsync(OrchestratorInput input, 
+            Map<String, Object> context) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                return start(input, context);
+            } catch (WorkflowExecutionException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public CompletableFuture<StatefulWorkflowResult<WorkerResponse>> resumeAsync(OrchestratorInput input, 
+            WorkflowState state) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                return resume(input, state);
+            } catch (WorkflowExecutionException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public CompletableFuture<StatefulWorkflowResult<WorkerResponse>> resumeAsync(OrchestratorInput input, 
+            WorkflowState state, Map<String, Object> context) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                return resume(input, state, context);
+            } catch (WorkflowExecutionException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public List<StatefulAgentNode<OrchestratorInput>> getNodes() {
+        return Collections.unmodifiableList(nodes);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public List<WorkflowRoute<OrchestratorInput>> getRoutes() {
+        return Collections.unmodifiableList(routes);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Optional<StatefulAgentNode<OrchestratorInput>> getNode(String nodeId) {
+        return nodes.stream()
+                .filter(node -> node.getNodeId().equals(nodeId))
+                .findFirst();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public List<WorkflowRoute<OrchestratorInput>> getRoutesFrom(String fromNodeId) {
+        return routes.stream()
+                .filter(route -> route.getFromNodeId().equals(fromNodeId))
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public List<StatefulAgentNode<OrchestratorInput>> getEntryPoints() {
+        return nodes.stream()
+                .filter(StatefulAgentNode::canBeEntryPoint)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void validate() throws IllegalStateException {
+        if (nodes.isEmpty()) {
+            throw new IllegalStateException("Workflow must have at least one node");
+        }
         
-        // Simple parsing logic - look for patterns like "Worker: [type] - [instructions]"
-        String[] lines = responseText.split("\n");
-        int taskId = 1;
+        if (getEntryPoints().isEmpty()) {
+            throw new IllegalStateException("Workflow must have at least one entry point");
+        }
         
-        for (String line : lines) {
-            line = line.trim();
-            if (line.startsWith("Worker:") || line.contains(" worker") || line.contains(" Worker")) {
-                // Try to extract worker type and instructions
-                String workerType = extractWorkerType(line);
-                String instructions = extractInstructions(line);
+        // Validate all routes reference existing nodes
+        for (WorkflowRoute<OrchestratorInput> route : routes) {
+            if (getNode(route.getFromNodeId()).isEmpty()) {
+                throw new IllegalStateException("Route references non-existent from node: " + route.getFromNodeId());
+            }
+            if (getNode(route.getToNodeId()).isEmpty()) {
+                throw new IllegalStateException("Route references non-existent to node: " + route.getToNodeId());
+            }
+        }
+    }
+
+    private List<StatefulAgentNode<OrchestratorInput>> createNodes() {
+        List<StatefulAgentNode<OrchestratorInput>> nodeList = new ArrayList<>();
+        
+        // Orchestrator node
+        nodeList.add(new OrchestratorNode(ORCHESTRATOR_NODE, chatModel));
+        
+        // Workers node
+        nodeList.add(new WorkersNode(WORKERS_NODE, chatModel));
+        
+        // Synthesizer node
+        nodeList.add(new SynthesizerNode(SYNTHESIZER_NODE, chatModel));
+        
+        return nodeList;
+    }
+
+    private List<WorkflowRoute<OrchestratorInput>> createRoutes() {
+        List<WorkflowRoute<OrchestratorInput>> routeList = new ArrayList<>();
+        
+        // Route from orchestrator to workers
+        routeList.add(WorkflowRoute.<OrchestratorInput>builder()
+                .id("orchestrator-to-workers")
+                .from(ORCHESTRATOR_NODE)
+                .to(WORKERS_NODE)
+                .description("Route from orchestrator to workers")
+                .build());
+        
+        // Route from workers to synthesizer
+        routeList.add(WorkflowRoute.<OrchestratorInput>builder()
+                .id("workers-to-synthesizer")
+                .from(WORKERS_NODE)
+                .to(SYNTHESIZER_NODE)
+                .description("Route from workers to synthesizer")
+                .build());
+        
+        return routeList;
+    }
+
+    private StatefulWorkflowResult<WorkerResponse> handleCommand(WorkflowCommand<OrchestratorInput> command, 
+            OrchestratorInput input, WorkflowState state, Map<String, Object> context) {
+        
+        // Apply state updates
+        WorkflowState newState = state.withUpdates(command.getStateUpdates());
+        
+        switch (command.getType()) {
+            case COMPLETE:
+                @SuppressWarnings("unchecked")
+                WorkerResponse result = (WorkerResponse) newState.get("result").orElse(null);
                 
-                if (workerType != null && instructions != null && workerConfigs.containsKey(workerType)) {
-                    subtasks.add(new Subtask(String.valueOf(taskId++), workerType, instructions));
+                // Add execution metadata
+                long endTime = System.currentTimeMillis();
+                long startTime = newState.get("startTime", 0L);
+                
+                // Update context
+                context.put("subtasks_count", result != null ? result.getSubtasks().size() : 0);
+                context.put("execution_time", endTime - startTime);
+                context.put("successful_subtasks", result != null ? 
+                    result.getSubtaskResults().stream().mapToLong(r -> r.isSuccessful() ? 1 : 0).sum() : 0);
+                
+                Map<String, Object> metadata = new HashMap<>();
+                metadata.put("execution_time", endTime - startTime);
+                metadata.put("subtasks_count", result != null ? result.getSubtasks().size() : 0);
+                
+                return StatefulWorkflowResult.withMetadata(
+                        StatefulWorkflowResult.Status.COMPLETED, 
+                        result, 
+                        newState, 
+                        null, 
+                        metadata);
+                
+            case CONTINUE:
+                // Find next node via routes
+                String currentNodeId = newState.getCurrentNodeId().orElse("");
+                List<WorkflowRoute<OrchestratorInput>> availableRoutes = getRoutesFrom(currentNodeId);
+                
+                if (availableRoutes.isEmpty()) {
+                    return StatefulWorkflowResult.error("No routes available from node: " + currentNodeId, newState);
                 }
-            }
+                
+                // Take the first matching route
+                WorkflowRoute<OrchestratorInput> route = availableRoutes.get(0);
+                String nextNodeId = route.getToNodeId();
+                
+                StatefulAgentNode<OrchestratorInput> nextNode = getNode(nextNodeId)
+                        .orElseThrow(() -> new RuntimeException("Next node not found: " + nextNodeId));
+                
+                WorkflowState nextState = newState.withCurrentNode(nextNodeId);
+                OrchestratorInput nextInput = command.getNextInput().orElse(input);
+                
+                WorkflowCommand<OrchestratorInput> nextCommand = nextNode.process(nextInput, nextState, context);
+                return handleCommand(nextCommand, nextInput, nextState, context);
+                
+            case GOTO:
+                String targetNodeId = command.getTargetNodeId()
+                        .orElseThrow(() -> new RuntimeException("GOTO command missing target node"));
+                
+                StatefulAgentNode<OrchestratorInput> targetNode = getNode(targetNodeId)
+                        .orElseThrow(() -> new RuntimeException("Target node not found: " + targetNodeId));
+                
+                WorkflowState gotoState = newState.withCurrentNode(targetNodeId);
+                OrchestratorInput gotoInput = command.getNextInput().orElse(input);
+                
+                WorkflowCommand<OrchestratorInput> gotoCommand = targetNode.process(gotoInput, gotoState, context);
+                return handleCommand(gotoCommand, gotoInput, gotoState, context);
+                
+            case SUSPEND:
+                return StatefulWorkflowResult.suspended(newState);
+                
+            case ERROR:
+                String errorMessage = command.getErrorMessage().orElse("Unknown error occurred");
+                return StatefulWorkflowResult.error(errorMessage, newState);
+                
+            default:
+                return StatefulWorkflowResult.error("Unknown command type: " + command.getType(), newState);
         }
-        
-        // If no subtasks were parsed, create a default subtask
-        if (subtasks.isEmpty()) {
-            String defaultWorker = workerConfigs.keySet().iterator().next();
-            subtasks.add(new Subtask("1", defaultWorker, responseText));
-        }
-        
-        return new OrchestratorResponse(responseText, subtasks);
-    }
-
-    private String extractWorkerType(String line) {
-        // Simple extraction logic - look for known worker types
-        for (String workerType : workerConfigs.keySet()) {
-            if (line.toLowerCase().contains(workerType.toLowerCase())) {
-                return workerType;
-            }
-        }
-        return null;
-    }
-
-    private String extractInstructions(String line) {
-        // Extract everything after a dash or colon
-        int dashIndex = line.indexOf(" - ");
-        int colonIndex = line.indexOf(": ");
-        
-        if (dashIndex != -1) {
-            return line.substring(dashIndex + 3).trim();
-        } else if (colonIndex != -1) {
-            return line.substring(colonIndex + 2).trim();
-        }
-        
-        return line.trim();
     }
 
     private String getDefaultOrchestratorPrompt() {
-        return "You are an intelligent task orchestrator. Your job is to analyze complex tasks and break them down into smaller, manageable subtasks that can be handled by specialized workers. " +
-            "For each subtask, you should specify which worker should handle it and provide clear, specific instructions. " +
-            "Consider the capabilities of each available worker and assign tasks accordingly. " +
-            "Output your analysis in a clear format specifying: Worker: [worker_type] - [specific instructions for the subtask].";
+        return "You are an intelligent task orchestrator. Analyze the given task and break it down into specific subtasks that can be handled by specialized workers. For each subtask, specify the worker type and detailed instructions.";
     }
 
     private String getDefaultSynthesizerPrompt() {
-        return "You are a result synthesizer. Your job is to take the outputs from multiple specialized workers and combine them into a single, coherent, and comprehensive response. " +
-            "Ensure the final response directly addresses the original task while incorporating insights from all worker results. " +
-            "Maintain consistency and clarity while preserving important details from each worker's contribution.";
+        return "You are a synthesis specialist. Combine the results from different workers into a coherent, comprehensive final response that addresses the original task.";
     }
 
     /**
-     * {@inheritDoc}
+     * Node that handles task orchestration and decomposition.
      */
-    @Override
-    public Map<String, Object> getConfiguration() {
-        Map<String, Object> config = new HashMap<>();
-        config.put("workflowType", "orchestrator-workers");
-        config.put("workerTypes", workerConfigs.keySet());
-        config.put("maxParallelWorkers", Runtime.getRuntime().availableProcessors());
-        return config;
+    private static class OrchestratorNode implements StatefulAgentNode<OrchestratorInput> {
+        private final String nodeId;
+        private final ChatModel chatModel;
+
+        public OrchestratorNode(String nodeId, ChatModel chatModel) {
+            this.nodeId = nodeId;
+            this.chatModel = chatModel;
+        }
+
+        @Override
+        public WorkflowCommand<OrchestratorInput> process(OrchestratorInput input, WorkflowState state, 
+                Map<String, Object> context) {
+            try {
+                @SuppressWarnings("unchecked")
+                Map<String, WorkerConfig> workerConfigs = (Map<String, WorkerConfig>) state.get("workerConfigs")
+                        .orElseThrow(() -> new RuntimeException("Worker configs not found in state"));
+                
+                String orchestratorPrompt = state.get("orchestratorPrompt")
+                        .map(obj -> (String) obj)
+                        .orElseThrow(() -> new RuntimeException("Orchestrator prompt not found in state"));
+
+                // Orchestrate task decomposition
+                OrchestratorResponse orchestratorResponse = orchestrate(input.getTaskDescription(), 
+                        orchestratorPrompt, workerConfigs, chatModel);
+                
+                return WorkflowCommand.<OrchestratorInput>continueWith()
+                        .updateState("orchestratorResponse", orchestratorResponse)
+                        .updateState("subtasks", orchestratorResponse.getSubtasks())
+                        .build();
+                        
+            } catch (Exception e) {
+                return WorkflowCommand.<OrchestratorInput>error("Failed to orchestrate task: " + e.getMessage())
+                        .build();
+            }
+        }
+
+        private OrchestratorResponse orchestrate(String taskDescription, String orchestratorPrompt, 
+                Map<String, WorkerConfig> workerConfigs, ChatModel chatModel) {
+            List<ChatMessage> messages = new ArrayList<>();
+            
+            String fullPrompt = orchestratorPrompt + "\n\nAvailable workers: " + 
+                workerConfigs.entrySet().stream()
+                    .map(entry -> entry.getKey() + " - " + entry.getValue().getDescription())
+                    .collect(Collectors.joining(", ")) +
+                "\n\nTask: " + taskDescription;
+            
+            messages.add(SystemMessage.from(fullPrompt));
+            messages.add(UserMessage.from("Please analyze this task and break it down into subtasks. For each subtask, specify the worker type and detailed instructions."));
+            
+            AiMessage response = chatModel.chat(messages).aiMessage();
+            
+            return parseOrchestratorResponse(response.text());
+        }
+
+        private OrchestratorResponse parseOrchestratorResponse(String response) {
+            List<Subtask> subtasks = new ArrayList<>();
+            
+            // Simple parsing logic - in practice, this would be more sophisticated
+            String[] lines = response.split("\n");
+            String analysisText = "";
+            int subtaskCounter = 1;
+            
+            for (String line : lines) {
+                if (line.trim().isEmpty()) continue;
+                
+                if (line.toLowerCase().contains("subtask") || line.toLowerCase().contains("task")) {
+                    String workerType = extractWorkerType(line);
+                    String instructions = extractInstructions(line);
+                    
+                    if (workerType != null && instructions != null) {
+                        subtasks.add(new Subtask("subtask-" + subtaskCounter++, workerType, instructions));
+                    }
+                } else {
+                    analysisText += line + "\n";
+                }
+            }
+            
+            return new OrchestratorResponse(analysisText.trim(), subtasks);
+        }
+
+        private String extractWorkerType(String line) {
+            // Simple extraction logic
+            if (line.toLowerCase().contains("technical")) return "technical";
+            if (line.toLowerCase().contains("analyst")) return "analyst";
+            if (line.toLowerCase().contains("researcher")) return "researcher";
+            return "general";
+        }
+
+        private String extractInstructions(String line) {
+            return line.trim();
+        }
+
+        @Override
+        public String getNodeId() {
+            return nodeId;
+        }
+
+        @Override
+        public String getName() {
+            return "Orchestrator";
+        }
+
+        @Override
+        public boolean canBeEntryPoint() {
+            return true;
+        }
     }
 
     /**
-     * {@inheritDoc}
+     * Node that executes subtasks using specialized workers.
      */
-    @Override
-    @SuppressWarnings("unchecked")
-    public <T> T getConfigurationProperty(String key, T defaultValue) {
-        return (T) getConfiguration().getOrDefault(key, defaultValue);
+    private static class WorkersNode implements StatefulAgentNode<OrchestratorInput> {
+        private final String nodeId;
+        private final ChatModel chatModel;
+
+        public WorkersNode(String nodeId, ChatModel chatModel) {
+            this.nodeId = nodeId;
+            this.chatModel = chatModel;
+        }
+
+        @Override
+        public WorkflowCommand<OrchestratorInput> process(OrchestratorInput input, WorkflowState state, 
+                Map<String, Object> context) {
+            try {
+                @SuppressWarnings("unchecked")
+                List<Subtask> subtasks = (List<Subtask>) state.get("subtasks")
+                        .orElseThrow(() -> new RuntimeException("Subtasks not found in state"));
+                
+                @SuppressWarnings("unchecked")
+                Map<String, WorkerConfig> workerConfigs = (Map<String, WorkerConfig>) state.get("workerConfigs")
+                        .orElseThrow(() -> new RuntimeException("Worker configs not found in state"));
+
+                // Execute subtasks in parallel
+                List<SubtaskResult> subtaskResults = executeSubtasks(subtasks, workerConfigs, chatModel);
+                
+                return WorkflowCommand.<OrchestratorInput>continueWith()
+                        .updateState("subtaskResults", subtaskResults)
+                        .build();
+                        
+            } catch (Exception e) {
+                return WorkflowCommand.<OrchestratorInput>error("Failed to execute subtasks: " + e.getMessage())
+                        .build();
+            }
+        }
+
+        private List<SubtaskResult> executeSubtasks(List<Subtask> subtasks, 
+                Map<String, WorkerConfig> workerConfigs, ChatModel chatModel) {
+            ExecutorService executor = Executors.newFixedThreadPool(Math.min(subtasks.size(), 4));
+            try {
+                List<CompletableFuture<SubtaskResult>> futures = subtasks.stream()
+                        .map(subtask -> CompletableFuture.supplyAsync(() -> 
+                            executeSubtask(subtask, workerConfigs, chatModel), executor))
+                        .collect(Collectors.toList());
+
+                return futures.stream()
+                        .map(CompletableFuture::join)
+                        .collect(Collectors.toList());
+            } finally {
+                executor.shutdown();
+            }
+        }
+
+        private SubtaskResult executeSubtask(Subtask subtask, Map<String, WorkerConfig> workerConfigs, 
+                ChatModel chatModel) {
+            try {
+                WorkerConfig config = workerConfigs.get(subtask.getWorkerType());
+                if (config == null) {
+                    config = workerConfigs.values().iterator().next(); // Use first available worker
+                }
+
+                List<ChatMessage> messages = new ArrayList<>();
+                messages.add(SystemMessage.from(config.getSystemPrompt()));
+                messages.add(UserMessage.from(subtask.getInstructions()));
+
+                AiMessage response = chatModel.chat(messages).aiMessage();
+                
+                return new SubtaskResult(subtask.getId(), subtask.getWorkerType(), response.text(), true);
+            } catch (Exception e) {
+                return new SubtaskResult(subtask.getId(), subtask.getWorkerType(), 
+                        "Error executing subtask: " + e.getMessage(), false);
+            }
+        }
+
+        @Override
+        public String getNodeId() {
+            return nodeId;
+        }
+
+        @Override
+        public String getName() {
+            return "Workers";
+        }
+    }
+
+    /**
+     * Node that synthesizes results from all workers.
+     */
+    private static class SynthesizerNode implements StatefulAgentNode<OrchestratorInput> {
+        private final String nodeId;
+        private final ChatModel chatModel;
+
+        public SynthesizerNode(String nodeId, ChatModel chatModel) {
+            this.nodeId = nodeId;
+            this.chatModel = chatModel;
+        }
+
+        @Override
+        public WorkflowCommand<OrchestratorInput> process(OrchestratorInput input, WorkflowState state, 
+                Map<String, Object> context) {
+            try {
+                @SuppressWarnings("unchecked")
+                List<SubtaskResult> subtaskResults = (List<SubtaskResult>) state.get("subtaskResults")
+                        .orElseThrow(() -> new RuntimeException("Subtask results not found in state"));
+                
+                @SuppressWarnings("unchecked")
+                List<Subtask> subtasks = (List<Subtask>) state.get("subtasks")
+                        .orElseThrow(() -> new RuntimeException("Subtasks not found in state"));
+                
+                String synthesizerPrompt = state.get("synthesizerPrompt")
+                        .map(obj -> (String) obj)
+                        .orElseThrow(() -> new RuntimeException("Synthesizer prompt not found in state"));
+
+                // Synthesize results
+                String finalResult = synthesizeResults(input.getTaskDescription(), subtaskResults, 
+                        synthesizerPrompt, chatModel);
+                
+                // Create final response
+                WorkerResponse workerResponse = new WorkerResponse(finalResult, subtasks, subtaskResults, true);
+                
+                return WorkflowCommand.<OrchestratorInput>complete()
+                        .updateState("result", workerResponse)
+                        .updateState("finalResult", finalResult)
+                        .updateState("completed", true)
+                        .build();
+                        
+            } catch (Exception e) {
+                return WorkflowCommand.<OrchestratorInput>error("Failed to synthesize results: " + e.getMessage())
+                        .build();
+            }
+        }
+
+        private String synthesizeResults(String originalTask, List<SubtaskResult> subtaskResults, 
+                String synthesizerPrompt, ChatModel chatModel) {
+            List<ChatMessage> messages = new ArrayList<>();
+            
+            StringBuilder contextBuilder = new StringBuilder();
+            contextBuilder.append("Original task: ").append(originalTask).append("\n\n");
+            contextBuilder.append("Subtask results:\n");
+            
+            for (SubtaskResult result : subtaskResults) {
+                contextBuilder.append("- ").append(result.getWorkerType()).append(": ");
+                contextBuilder.append(result.getResult()).append("\n");
+            }
+            
+            messages.add(SystemMessage.from(synthesizerPrompt));
+            messages.add(UserMessage.from(contextBuilder.toString()));
+            
+            AiMessage response = chatModel.chat(messages).aiMessage();
+            return response.text();
+        }
+
+        @Override
+        public String getNodeId() {
+            return nodeId;
+        }
+
+        @Override
+        public String getName() {
+            return "Synthesizer";
+        }
     }
 
     /**
@@ -402,7 +761,7 @@ public class OrchestratorWorkersWorkflow implements AgentWorkflow<OrchestratorWo
 
         public OrchestratorInput(String taskDescription, Map<String, Object> context) {
             this.taskDescription = Objects.requireNonNull(taskDescription, "Task description cannot be null");
-            this.context = new HashMap<>(Objects.requireNonNull(context, "Context cannot be null"));
+            this.context = context != null ? new HashMap<>(context) : new HashMap<>();
         }
 
         public String getTaskDescription() {
@@ -410,12 +769,12 @@ public class OrchestratorWorkersWorkflow implements AgentWorkflow<OrchestratorWo
         }
 
         public Map<String, Object> getContext() {
-            return new HashMap<>(context);
+            return context;
         }
     }
 
     /**
-     * Response from the orchestrator containing task decomposition.
+     * Response from the orchestrator containing analysis and subtasks.
      */
     public static class OrchestratorResponse {
         private final String analysisText;
