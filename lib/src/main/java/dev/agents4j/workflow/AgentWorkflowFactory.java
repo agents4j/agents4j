@@ -6,9 +6,9 @@ import dev.agents4j.api.routing.Route;
 import dev.agents4j.api.strategy.WorkflowExecutionStrategy;
 import dev.agents4j.impl.StringLangChain4JAgentNode;
 import dev.agents4j.workflow.routing.LLMContentRouter;
-import dev.agents4j.workflow.routing.RuleBasedContentRouter;
 import dev.agents4j.workflow.routing.RoutingWorkflow;
 import dev.agents4j.workflow.routing.RoutingWorkflowFactory;
+import dev.agents4j.workflow.routing.RuleBasedContentRouter;
 import dev.agents4j.workflow.strategy.StrategyFactory;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
@@ -190,7 +190,9 @@ public class AgentWorkflowFactory {
         String strategyName,
         AgentNode<?, ?>... nodes
     ) {
-        WorkflowExecutionStrategy<I, O> strategy = StrategyFactory.getStrategy(strategyName);
+        WorkflowExecutionStrategy<I, O> strategy = StrategyFactory.getStrategy(
+            strategyName
+        );
         return StrategyWorkflow.create(name, strategy, nodes);
     }
 
@@ -212,7 +214,8 @@ public class AgentWorkflowFactory {
         Map<String, Object> config,
         AgentNode<?, ?>... nodes
     ) {
-        WorkflowExecutionStrategy<I, O> strategy = StrategyFactory.createStrategy(strategyName, config);
+        WorkflowExecutionStrategy<I, O> strategy =
+            StrategyFactory.createStrategy(strategyName, config);
         return StrategyWorkflow.<I, O>builder()
             .name(name)
             .strategy(strategy)
@@ -229,7 +232,10 @@ public class AgentWorkflowFactory {
      * @param systemPrompts The system prompts for each agent in the sequence
      * @return A new StrategyWorkflow instance with sequential execution
      */
-    public static StrategyWorkflow<String, String> createSequentialStringWorkflow(
+    public static StrategyWorkflow<
+        String,
+        String
+    > createSequentialStringWorkflow(
         String name,
         ChatModel model,
         String... systemPrompts
@@ -243,11 +249,12 @@ public class AgentWorkflowFactory {
         List<AgentNode<?, ?>> nodes = new ArrayList<>();
         for (int i = 0; i < systemPrompts.length; i++) {
             String nodeName = name + "-Node" + (i + 1);
-            StringLangChain4JAgentNode node = StringLangChain4JAgentNode.builder()
-                .name(nodeName)
-                .model(model)
-                .systemPrompt(systemPrompts[i])
-                .build();
+            StringLangChain4JAgentNode node =
+                StringLangChain4JAgentNode.builder()
+                    .name(nodeName)
+                    .model(model)
+                    .systemPrompt(systemPrompts[i])
+                    .build();
             nodes.add(node);
         }
 
@@ -266,7 +273,10 @@ public class AgentWorkflowFactory {
      * @param systemPrompts The system prompts for each agent to run in parallel
      * @return A new StrategyWorkflow instance with parallel execution
      */
-    public static StrategyWorkflow<String, List<String>> createParallelStringWorkflow(
+    public static StrategyWorkflow<
+        String,
+        List<String>
+    > createParallelStringWorkflow(
         String name,
         ChatModel model,
         String... systemPrompts
@@ -280,11 +290,12 @@ public class AgentWorkflowFactory {
         List<AgentNode<?, ?>> nodes = new ArrayList<>();
         for (int i = 0; i < systemPrompts.length; i++) {
             String nodeName = name + "-Node" + (i + 1);
-            StringLangChain4JAgentNode node = StringLangChain4JAgentNode.builder()
-                .name(nodeName)
-                .model(model)
-                .systemPrompt(systemPrompts[i])
-                .build();
+            StringLangChain4JAgentNode node =
+                StringLangChain4JAgentNode.builder()
+                    .name(nodeName)
+                    .model(model)
+                    .systemPrompt(systemPrompts[i])
+                    .build();
             nodes.add(node);
         }
 
@@ -342,157 +353,6 @@ public class AgentWorkflowFactory {
             .build();
     }
 
-    // =================== ROUTING WORKFLOW METHODS ===================
-
-
-
-
-
-
-
-    /**
-     * Creates a routing workflow with LLM-based content router.
-     *
-     * @param <I> The input type for the workflow
-     * @param <O> The output type for the workflow
-     * @param name The workflow name
-     * @param model The ChatModel for routing
-     * @param classificationPrompt The classification prompt
-     * @param routes The routes to add to the workflow
-     * @return A new RoutingWorkflow instance
-     */
-    @SafeVarargs
-    public static <I, O> RoutingWorkflow<I, O> createLLMRoutingWorkflow(
-        String name,
-        ChatModel model,
-        String classificationPrompt,
-        Route<I, O>... routes
-    ) {
-        ContentRouter<I> router = LLMContentRouter.<I>builder()
-            .model(model)
-            .classificationPrompt(classificationPrompt)
-            .includeConfidenceScoring(true)
-            .includeReasoning(true)
-            .build();
-
-        return RoutingWorkflowFactory.createSimpleRoutingWorkflow(name, router, routes);
-    }
-
-    /**
-     * Creates a routing workflow with rule-based content router.
-     *
-     * @param <I> The input type for the workflow
-     * @param <O> The output type for the workflow
-     * @param name The workflow name
-     * @param keywordRules Map of route IDs to their keyword lists
-     * @param routes The routes to add to the workflow
-     * @return A new RoutingWorkflow instance
-     */
-    @SafeVarargs
-    public static <I, O> RoutingWorkflow<I, O> createRuleBasedRoutingWorkflow(
-        String name,
-        Map<String, List<String>> keywordRules,
-        Route<I, O>... routes
-    ) {
-        ContentRouter<I> router = RuleBasedContentRouter.createWithKeywords(keywordRules);
-        return RoutingWorkflowFactory.createSimpleRoutingWorkflow(name, router, routes);
-    }
-
-    /**
-     * Creates a simple routing workflow with custom router.
-     *
-     * @param <I> The input type for the workflow
-     * @param <O> The output type for the workflow
-     * @param name The workflow name
-     * @param router The content router to use
-     * @param routes The routes to add to the workflow
-     * @return A new RoutingWorkflow instance
-     */
-    @SafeVarargs
-    public static <I, O> RoutingWorkflow<I, O> createRoutingWorkflow(
-        String name,
-        ContentRouter<I> router,
-        Route<I, O>... routes
-    ) {
-        return RoutingWorkflowFactory.createSimpleRoutingWorkflow(name, router, routes);
-    }
-
-    /**
-     * Creates a string processing route with sequential strategy.
-     *
-     * @param routeId The route identifier
-     * @param description The route description
-     * @param model The ChatModel to use
-     * @param systemPrompts The system prompts for the route nodes
-     * @return A new Route instance
-     */
-    public static Route<String, String> createStringRoute(
-        String routeId,
-        String description,
-        ChatModel model,
-        String... systemPrompts
-    ) {
-        if (systemPrompts.length == 0) {
-            throw new IllegalArgumentException("At least one system prompt is required");
-        }
-
-        Route.Builder<String, String> builder = Route.<String, String>builder()
-            .id(routeId)
-            .description(description)
-            .strategy(StrategyFactory.sequential());
-
-        for (int i = 0; i < systemPrompts.length; i++) {
-            String nodeName = routeId + "-Node" + (i + 1);
-            StringLangChain4JAgentNode node = StringLangChain4JAgentNode.builder()
-                .name(nodeName)
-                .model(model)
-                .systemPrompt(systemPrompts[i])
-                .build();
-            builder.addNode(node);
-        }
-
-        return builder.build();
-    }
-
-    /**
-     * Creates a string processing route with custom strategy.
-     *
-     * @param routeId The route identifier
-     * @param description The route description
-     * @param model The ChatModel to use
-     * @param strategy The execution strategy to use
-     * @param systemPrompts The system prompts for the route nodes
-     * @return A new Route instance
-     */
-    public static Route<String, String> createStringRouteWithStrategy(
-        String routeId,
-        String description,
-        ChatModel model,
-        WorkflowExecutionStrategy<String, String> strategy,
-        String... systemPrompts
-    ) {
-        if (systemPrompts.length == 0) {
-            throw new IllegalArgumentException("At least one system prompt is required");
-        }
-
-        Route.Builder<String, String> builder = Route.<String, String>builder()
-            .id(routeId)
-            .description(description)
-            .strategy(strategy);
-
-        for (int i = 0; i < systemPrompts.length; i++) {
-            String nodeName = routeId + "-Node" + (i + 1);
-            StringLangChain4JAgentNode node = StringLangChain4JAgentNode.builder()
-                .name(nodeName)
-                .model(model)
-                .systemPrompt(systemPrompts[i])
-                .build();
-            builder.addNode(node);
-        }
-
-        return builder.build();
-    }
-
     /**
      * Creates an orchestrator-workers workflow with the specified workers.
      *
@@ -506,14 +366,13 @@ public class AgentWorkflowFactory {
         ChatModel model,
         Map<String, OrchestratorWorkersWorkflow.WorkerConfig> workerConfigs
     ) {
-        OrchestratorWorkersWorkflow.Builder builder = OrchestratorWorkersWorkflow.builder()
-            .name(name)
-            .chatModel(model);
-        
+        OrchestratorWorkersWorkflow.Builder builder =
+            OrchestratorWorkersWorkflow.builder().name(name).chatModel(model);
+
         for (OrchestratorWorkersWorkflow.WorkerConfig config : workerConfigs.values()) {
             builder.addWorker(config);
         }
-        
+
         return builder.build();
     }
 
@@ -531,14 +390,26 @@ public class AgentWorkflowFactory {
         return OrchestratorWorkersWorkflow.builder()
             .name(name)
             .chatModel(model)
-            .addWorker("analyst", "Analyzes data and provides insights", 
-                "You are a data analyst. Analyze the given information and provide detailed insights, patterns, and conclusions.")
-            .addWorker("writer", "Creates written content and documentation", 
-                "You are a professional writer. Create clear, engaging, and well-structured written content based on the given requirements.")
-            .addWorker("researcher", "Conducts research and fact-checking", 
-                "You are a researcher. Investigate the given topic thoroughly and provide accurate, well-sourced information.")
-            .addWorker("summarizer", "Summarizes and condenses information", 
-                "You are a content summarizer. Create concise, accurate summaries that capture the key points and essential information.")
+            .addWorker(
+                "analyst",
+                "Analyzes data and provides insights",
+                "You are a data analyst. Analyze the given information and provide detailed insights, patterns, and conclusions."
+            )
+            .addWorker(
+                "writer",
+                "Creates written content and documentation",
+                "You are a professional writer. Create clear, engaging, and well-structured written content based on the given requirements."
+            )
+            .addWorker(
+                "researcher",
+                "Conducts research and fact-checking",
+                "You are a researcher. Investigate the given topic thoroughly and provide accurate, well-sourced information."
+            )
+            .addWorker(
+                "summarizer",
+                "Summarizes and condenses information",
+                "You are a content summarizer. Create concise, accurate summaries that capture the key points and essential information."
+            )
             .build();
     }
 
@@ -556,15 +427,20 @@ public class AgentWorkflowFactory {
         WorkerDefinition... workers
     ) {
         if (workers.length == 0) {
-            throw new IllegalArgumentException("At least one worker must be provided");
+            throw new IllegalArgumentException(
+                "At least one worker must be provided"
+            );
         }
 
-        OrchestratorWorkersWorkflow.Builder builder = OrchestratorWorkersWorkflow.builder()
-            .name(name)
-            .chatModel(model);
+        OrchestratorWorkersWorkflow.Builder builder =
+            OrchestratorWorkersWorkflow.builder().name(name).chatModel(model);
 
         for (WorkerDefinition worker : workers) {
-            builder.addWorker(worker.type, worker.description, worker.systemPrompt);
+            builder.addWorker(
+                worker.type,
+                worker.description,
+                worker.systemPrompt
+            );
         }
 
         return builder.build();
@@ -574,11 +450,16 @@ public class AgentWorkflowFactory {
      * Helper class for defining workers in a compact way.
      */
     public static class WorkerDefinition {
+
         public final String type;
         public final String description;
         public final String systemPrompt;
 
-        public WorkerDefinition(String type, String description, String systemPrompt) {
+        public WorkerDefinition(
+            String type,
+            String description,
+            String systemPrompt
+        ) {
             this.type = type;
             this.description = description;
             this.systemPrompt = systemPrompt;
@@ -588,7 +469,11 @@ public class AgentWorkflowFactory {
     /**
      * Creates a worker definition.
      */
-    public static WorkerDefinition worker(String type, String description, String systemPrompt) {
+    public static WorkerDefinition worker(
+        String type,
+        String description,
+        String systemPrompt
+    ) {
         return new WorkerDefinition(type, description, systemPrompt);
     }
 }
