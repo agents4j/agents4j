@@ -1,6 +1,6 @@
 package agents4j.integration.examples;
 
-import dev.agents4j.Agents4J;
+import dev.agents4j.facade.ChainWorkflows;
 import dev.agents4j.workflow.ChainWorkflow;
 import dev.agents4j.impl.StringLangChain4JAgentNode;
 import dev.langchain4j.model.chat.ChatModel;
@@ -44,7 +44,7 @@ public class ChainWorkflowResource {
         }
 
         try {
-            String result = Agents4J.query(chatModel, request.getSystemPrompt(), request.getQuery());
+            String result = ChainWorkflows.executeSimple(chatModel, request.getSystemPrompt(), request.getQuery());
             
             Map<String, Object> response = new HashMap<>();
             response.put("query", request.getQuery());
@@ -72,7 +72,7 @@ public class ChainWorkflowResource {
         }
 
         try {
-            String result = Agents4J.complexQuery(
+            String result = ChainWorkflows.executeComplex(
                 chatModel,
                 request.getQuery(),
                 request.getSystemPrompts().toArray(new String[0])
@@ -135,7 +135,7 @@ public class ChainWorkflowResource {
         }
 
         try {
-            ChainWorkflow<String, String> workflow = Agents4J.createConversationalWorkflow(
+            ChainWorkflow<String, String> workflow = ChainWorkflows.createConversational(
                 "ConversationalWorkflow",
                 chatModel,
                 request.getMaxMessages() != null ? request.getMaxMessages() : 10,

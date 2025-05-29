@@ -3,19 +3,24 @@
  */
 package dev.agents4j;
 
-import dev.agents4j.api.exception.WorkflowExecutionException;
+import dev.agents4j.facade.ChainWorkflows;
+import dev.agents4j.facade.OrchestratorWorkflows;
+import dev.agents4j.facade.ParallelWorkflows;
 import dev.agents4j.workflow.AgentWorkflowFactory;
 import dev.agents4j.workflow.ChainWorkflow;
 import dev.agents4j.workflow.OrchestratorWorkersWorkflow;
 import dev.agents4j.workflow.ParallelizationWorkflow;
-import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import java.util.List;
 
 /**
  * Main library class for Agents4J that provides convenience methods
  * for creating and using agent workflows.
+ * 
+ * @deprecated This class delegates to focused facade classes for better organization.
+ * Use {@link ChainWorkflows}, {@link ParallelWorkflows}, or {@link OrchestratorWorkflows} directly.
  */
+@Deprecated(since = "2.0.0", forRemoval = true)
 public class Agents4J {
 
     /**
@@ -25,17 +30,15 @@ public class Agents4J {
      * @param model The ChatModel to use
      * @param systemPrompts System prompts for each agent in the chain
      * @return A new ChainWorkflow instance
+     * @deprecated Use {@link ChainWorkflows#create(String, ChatModel, String...)} instead
      */
+    @Deprecated(since = "2.0.0", forRemoval = true)
     public static ChainWorkflow<String, String> createChainWorkflow(
         String name,
         ChatModel model,
         String... systemPrompts
     ) {
-        return AgentWorkflowFactory.createStringChainWorkflow(
-            name,
-            model,
-            systemPrompts
-        );
+        return ChainWorkflows.create(name, model, systemPrompts);
     }
 
     /**
@@ -46,23 +49,16 @@ public class Agents4J {
      * @param maxMessages Maximum number of messages to keep in memory
      * @param systemPrompts System prompts for each agent in the chain
      * @return A new ChainWorkflow instance
+     * @deprecated Use {@link ChainWorkflows#createConversational(String, ChatModel, int, String...)} instead
      */
+    @Deprecated(since = "2.0.0", forRemoval = true)
     public static ChainWorkflow<String, String> createConversationalWorkflow(
         String name,
         ChatModel model,
         int maxMessages,
         String... systemPrompts
     ) {
-        MessageWindowChatMemory memory = MessageWindowChatMemory.builder()
-            .maxMessages(maxMessages)
-            .build();
-
-        return AgentWorkflowFactory.createStringChainWorkflowWithMemory(
-            name,
-            model,
-            memory,
-            systemPrompts
-        );
+        return ChainWorkflows.createConversational(name, model, maxMessages, systemPrompts);
     }
 
     /**
@@ -73,23 +69,15 @@ public class Agents4J {
      * @param query The query to process
      * @return The response from the agent
      * @throws RuntimeException if workflow execution fails
+     * @deprecated Use {@link ChainWorkflows#executeSimple(ChatModel, String, String)} instead
      */
+    @Deprecated(since = "2.0.0", forRemoval = true)
     public static String query(
         ChatModel model,
         String systemPrompt,
         String query
     ) {
-        ChainWorkflow<String, String> workflow = createChainWorkflow(
-            "SingleAgentWorkflow",
-            model,
-            systemPrompt
-        );
-
-        try {
-            return workflow.execute(query);
-        } catch (WorkflowExecutionException e) {
-            throw new RuntimeException("Failed to execute query", e);
-        }
+        return ChainWorkflows.executeSimple(model, systemPrompt, query);
     }
 
     /**
@@ -100,23 +88,15 @@ public class Agents4J {
      * @param systemPrompts The system prompts for each agent in the chain
      * @return The final response from the chain
      * @throws RuntimeException if workflow execution fails
+     * @deprecated Use {@link ChainWorkflows#executeComplex(ChatModel, String, String...)} instead
      */
+    @Deprecated(since = "2.0.0", forRemoval = true)
     public static String complexQuery(
         ChatModel model,
         String query,
         String... systemPrompts
     ) {
-        ChainWorkflow<String, String> workflow = createChainWorkflow(
-            "ComplexQueryWorkflow",
-            model,
-            systemPrompts
-        );
-
-        try {
-            return workflow.execute(query);
-        } catch (WorkflowExecutionException e) {
-            throw new RuntimeException("Failed to execute complex query", e);
-        }
+        return ChainWorkflows.executeComplex(model, query, systemPrompts);
     }
 
     /**
@@ -125,15 +105,14 @@ public class Agents4J {
      * @param name The name of the workflow
      * @param model The ChatModel to use
      * @return A new ParallelizationWorkflow instance
+     * @deprecated Use {@link ParallelWorkflows#create(String, ChatModel)} instead
      */
+    @Deprecated(since = "2.0.0", forRemoval = true)
     public static ParallelizationWorkflow createParallelizationWorkflow(
         String name,
         ChatModel model
     ) {
-        return ParallelizationWorkflow.builder()
-            .name(name)
-            .chatModel(model)
-            .build();
+        return ParallelWorkflows.create(name, model);
     }
 
     /**
@@ -145,26 +124,16 @@ public class Agents4J {
      * @param numWorkers The number of worker threads to use
      * @return List of responses in the same order as inputs
      * @throws RuntimeException if workflow execution fails
+     * @deprecated Use {@link ParallelWorkflows#execute(ChatModel, String, List, int)} instead
      */
+    @Deprecated(since = "2.0.0", forRemoval = true)
     public static List<String> parallelQuery(
         ChatModel model,
         String prompt,
         List<String> inputs,
         int numWorkers
     ) {
-        ParallelizationWorkflow workflow = createParallelizationWorkflow(
-            "ParallelQueryWorkflow",
-            model
-        );
-
-        ParallelizationWorkflow.ParallelInput parallelInput = 
-            new ParallelizationWorkflow.ParallelInput(prompt, inputs, numWorkers);
-
-        try {
-            return workflow.execute(parallelInput);
-        } catch (WorkflowExecutionException e) {
-            throw new RuntimeException("Failed to execute parallel query", e);
-        }
+        return ParallelWorkflows.execute(model, prompt, inputs, numWorkers);
     }
 
     /**
@@ -175,13 +144,15 @@ public class Agents4J {
      * @param prompt The prompt template to apply to each input
      * @param inputs The list of inputs to process in parallel
      * @return List of responses in the same order as inputs
+     * @deprecated Use {@link ParallelWorkflows#execute(ChatModel, String, List)} instead
      */
+    @Deprecated(since = "2.0.0", forRemoval = true)
     public static List<String> parallelQuery(
         ChatModel model,
         String prompt,
         List<String> inputs
     ) {
-        return parallelQuery(model, prompt, inputs, 4);
+        return ParallelWorkflows.execute(model, prompt, inputs);
     }
 
     /**
@@ -190,12 +161,14 @@ public class Agents4J {
      * @param name The name of the workflow
      * @param model The ChatModel to use
      * @return A new OrchestratorWorkersWorkflow instance
+     * @deprecated Use {@link OrchestratorWorkflows#create(String, ChatModel)} instead
      */
+    @Deprecated(since = "2.0.0", forRemoval = true)
     public static OrchestratorWorkersWorkflow createOrchestratorWorkersWorkflow(
         String name,
         ChatModel model
     ) {
-        return AgentWorkflowFactory.createStandardOrchestratorWorkersWorkflow(name, model);
+        return OrchestratorWorkflows.create(name, model);
     }
 
     /**
@@ -205,13 +178,15 @@ public class Agents4J {
      * @param model The ChatModel to use
      * @param workers Worker definitions
      * @return A new OrchestratorWorkersWorkflow instance
+     * @deprecated Use {@link OrchestratorWorkflows#createCustom(String, ChatModel, AgentWorkflowFactory.WorkerDefinition...)} instead
      */
+    @Deprecated(since = "2.0.0", forRemoval = true)
     public static OrchestratorWorkersWorkflow createCustomOrchestratorWorkersWorkflow(
         String name,
         ChatModel model,
         AgentWorkflowFactory.WorkerDefinition... workers
     ) {
-        return AgentWorkflowFactory.createCustomOrchestratorWorkersWorkflow(name, model, workers);
+        return OrchestratorWorkflows.createCustom(name, model, workers);
     }
 
     /**
@@ -222,24 +197,14 @@ public class Agents4J {
      * @param taskDescription The complex task to process
      * @return The synthesized response from all workers
      * @throws RuntimeException if workflow execution fails
+     * @deprecated Use {@link OrchestratorWorkflows#execute(ChatModel, String)} instead
      */
+    @Deprecated(since = "2.0.0", forRemoval = true)
     public static String orchestratedQuery(
         ChatModel model,
         String taskDescription
     ) {
-        OrchestratorWorkersWorkflow workflow = createOrchestratorWorkersWorkflow(
-            "OrchestratedQuery",
-            model
-        );
-
-        try {
-            OrchestratorWorkersWorkflow.OrchestratorInput input = 
-                new OrchestratorWorkersWorkflow.OrchestratorInput(taskDescription);
-            OrchestratorWorkersWorkflow.WorkerResponse response = workflow.execute(input);
-            return response.getFinalResult();
-        } catch (WorkflowExecutionException e) {
-            throw new RuntimeException("Failed to execute orchestrated query", e);
-        }
+        return OrchestratorWorkflows.execute(model, taskDescription);
     }
 
     /**
@@ -250,26 +215,15 @@ public class Agents4J {
      * @param workers Custom worker definitions
      * @return The synthesized response from all workers
      * @throws RuntimeException if workflow execution fails
+     * @deprecated Use {@link OrchestratorWorkflows#executeCustom(ChatModel, String, AgentWorkflowFactory.WorkerDefinition...)} instead
      */
+    @Deprecated(since = "2.0.0", forRemoval = true)
     public static String customOrchestratedQuery(
         ChatModel model,
         String taskDescription,
         AgentWorkflowFactory.WorkerDefinition... workers
     ) {
-        OrchestratorWorkersWorkflow workflow = createCustomOrchestratorWorkersWorkflow(
-            "CustomOrchestratedQuery",
-            model,
-            workers
-        );
-
-        try {
-            OrchestratorWorkersWorkflow.OrchestratorInput input = 
-                new OrchestratorWorkersWorkflow.OrchestratorInput(taskDescription);
-            OrchestratorWorkersWorkflow.WorkerResponse response = workflow.execute(input);
-            return response.getFinalResult();
-        } catch (WorkflowExecutionException e) {
-            throw new RuntimeException("Failed to execute custom orchestrated query", e);
-        }
+        return OrchestratorWorkflows.executeCustom(model, taskDescription, workers);
     }
 
     /**
@@ -279,9 +233,11 @@ public class Agents4J {
      * @param description A description of what this worker does
      * @param systemPrompt The system prompt for this worker
      * @return A new WorkerDefinition instance
+     * @deprecated Use {@link OrchestratorWorkflows#worker(String, String, String)} instead
      */
+    @Deprecated(since = "2.0.0", forRemoval = true)
     public static AgentWorkflowFactory.WorkerDefinition worker(String type, String description, String systemPrompt) {
-        return AgentWorkflowFactory.worker(type, description, systemPrompt);
+        return OrchestratorWorkflows.worker(type, description, systemPrompt);
     }
 
     /**
