@@ -1,5 +1,6 @@
-package dev.agents4j.api;
+package dev.agents4j.langchain4j;
 
+import dev.agents4j.api.AgentNode;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import java.util.Map;

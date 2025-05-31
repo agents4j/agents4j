@@ -1,6 +1,6 @@
-package dev.agents4j.impl;
+package dev.agents4j.langchain4j.impl;
 
-import dev.agents4j.api.LangChain4JAgentNode;
+import dev.agents4j.langchain4j.LangChain4JAgentNode;
 import dev.agents4j.model.AgentInput;
 import dev.agents4j.model.AgentOutput;
 import dev.langchain4j.data.message.AiMessage;

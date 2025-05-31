@@ -17,7 +17,7 @@ dependencies {
     implementation 'io.quarkus:quarkus-smallrye-health'
     implementation 'io.quarkus:quarkus-smallrye-metrics'
     implementation 'io.quarkus:quarkus-config-yaml'
-    implementation project(':lib')
+    implementation project(':agents4j-core')
 
     // Add OpenAI integration for LangChain4j
     implementation 'dev.langchain4j:langchain4j-open-ai:1.0.0'

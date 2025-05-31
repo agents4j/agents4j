@@ -1,5 +1,6 @@
-package dev.agents4j.impl;
+package dev.agents4j.langchain4j.impl;
 
+import dev.agents4j.langchain4j.LangChain4JAgentNode;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;

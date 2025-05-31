@@ -22,18 +22,16 @@ repositories {
 }
 
 dependencies {
+    // API dependency - contains all the interfaces and contracts
+    api project(':agents4j-api')
+
     // This dependency is exported to consumers, that is to say found on their compile classpath.
     api 'org.apache.commons:commons-math3:3.6.1'
 
     // This dependency is used internally, and not exposed to consumers on their own compile classpath.
     implementation 'com.google.guava:guava:30.1.1-jre'
 
-    // LangChain4J BOM for consistent version management
-    api platform('dev.langchain4j:langchain4j-bom:1.0.0')
 
-    // LangChain4J dependencies - versions managed by BOM
-    api 'dev.langchain4j:langchain4j'
-    api 'dev.langchain4j:langchain4j-core'
 
     // Testing dependencies
     testImplementation 'org.mockito:mockito-core:5.3.1'

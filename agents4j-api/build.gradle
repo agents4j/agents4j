@@ -1,0 +1,82 @@
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+    id 'signing'
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+    withJavadocJar()
+    withSourcesJar()
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // Testing dependencies
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testImplementation 'org.mockito:mockito-core:5.3.1'
+    testImplementation 'org.mockito:mockito-junit-jupiter:5.3.1'
+}
+
+testing {
+    suites {
+        test {
+            useJUnitJupiter('5.8.1')
+        }
+    }
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            groupId = 'dev.agents4j'
+            artifactId = 'agents4j-api'
+
+            from components.java
+
+            pom {
+                name = 'agents4j-api'
+                description = 'Core API interfaces and contracts for Agents4J'
+                url = 'https://github.com/agents4j/agents4j'
+
+                inceptionYear = '2025'
+
+                licenses {
+                    license {
+                        name = 'MIT'
+                        url = 'https://opensource.org/licenses/MIT'
+                    }
+                }
+
+                developers {
+                    developer {
+                        id = 'jdbranham'
+                        name = 'Jeremy Branham'
+                    }
+                    developer {
+                        id = 'charathram'
+                        name = 'Charath Ranganathan'
+                    }
+                }
+
+                scm {
+                    connection = 'scm:git:git://github.com/agents4j/agents4j.git'
+                    developerConnection = 'scm:git:ssh://github.com/agents4j/agents4j.git'
+                    url = 'https://github.com/agents4j/agents4j'
+                }
+            }
+        }
+    }
+    repositories {
+        maven {
+            url = layout.buildDirectory.dir('staging-deploy')
+        }
+    }
+}

@@ -9,5 +9,7 @@
  */
 
 rootProject.name = 'agents4j'
-include('lib')
+include('agents4j-api')
+include('agents4j-core')
+include('agents4j-langchain4j')
 include('quarkus-integration')
