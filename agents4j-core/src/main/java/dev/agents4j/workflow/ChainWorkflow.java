@@ -1,8 +1,8 @@
 package dev.agents4j.workflow;
 
 import dev.agents4j.api.AgentNode;
-import dev.agents4j.api.AgentWorkflow;
 import dev.agents4j.api.StatefulWorkflow;
+import dev.agents4j.api.Workflow;
 import dev.agents4j.api.exception.WorkflowExecutionException;
 import dev.agents4j.api.workflow.StatefulWorkflowResult;
 import dev.agents4j.api.workflow.WorkflowRoute;
@@ -18,14 +18,14 @@ import java.util.concurrent.CompletableFuture;
 /**
  * A workflow that chains multiple agent nodes together.
  * The output of each node becomes the input to the next node in the chain.
- * 
+ *
  * This implementation uses StatefulWorkflow internally for enhanced capabilities
  * including state tracking, error handling, and debugging support.
  *
  * @param <I> The input type for the first node in the chain
  * @param <O> The output type of the last node in the chain
  */
-public class ChainWorkflow<I, O> implements AgentWorkflow<I, O> {
+public class ChainWorkflow<I, O> implements Workflow<I, O> {
 
     private final String name;
     private final List<AgentNode<?, ?>> nodes;
@@ -38,12 +38,17 @@ public class ChainWorkflow<I, O> implements AgentWorkflow<I, O> {
      * @param nodes The list of agent nodes that form the chain
      */
     private ChainWorkflow(String name, List<? extends AgentNode<?, ?>> nodes) {
-        this.name = Objects.requireNonNull(name, "Workflow name cannot be null");
-        
+        this.name = Objects.requireNonNull(
+            name,
+            "Workflow name cannot be null"
+        );
+
         if (nodes == null || nodes.isEmpty()) {
-            throw new IllegalArgumentException("Chain workflow must contain at least one node");
+            throw new IllegalArgumentException(
+                "Chain workflow must contain at least one node"
+            );
         }
-        
+
         this.nodes = Collections.unmodifiableList(new ArrayList<>(nodes));
         this.statefulWorkflow = createStatefulWorkflow(name, nodes);
     }
@@ -52,56 +57,72 @@ public class ChainWorkflow<I, O> implements AgentWorkflow<I, O> {
      * Creates the internal StatefulWorkflow from the list of AgentNodes.
      */
     @SuppressWarnings("unchecked")
-    private StatefulWorkflow<I, O> createStatefulWorkflow(String name, List<? extends AgentNode<?, ?>> nodes) {
-        StatefulWorkflowImpl.Builder<I, O> builder = StatefulWorkflowImpl.<I, O>builder()
-                .name(name + "_stateful")
-                .outputExtractor((input, state, context) -> {
-                    // Extract final output from state
-                    @SuppressWarnings("unchecked")
-                    O finalOutput = (O) state.get("final_output").orElse(null);
-                    if (finalOutput != null) {
-                        return finalOutput;
-                    }
-                    // Fallback to input if no final output (shouldn't happen in normal flow)
-                    return (O) input;
-                })
-                .configuration(WorkflowExecutionConfiguration.builder()
+    private StatefulWorkflow<I, O> createStatefulWorkflow(
+        String name,
+        List<? extends AgentNode<?, ?>> nodes
+    ) {
+        StatefulWorkflowImpl.Builder<I, O> builder = StatefulWorkflowImpl.<
+                I,
+                O
+            >builder()
+            .name(name + "_stateful")
+            .outputExtractor((input, state, context) -> {
+                // Extract final output from state
+                @SuppressWarnings("unchecked")
+                O finalOutput = (O) state.get("final_output").orElse(null);
+                if (finalOutput != null) {
+                    return finalOutput;
+                }
+                // Fallback to input if no final output (shouldn't happen in normal flow)
+                return (O) input;
+            })
+            .configuration(
+                WorkflowExecutionConfiguration.builder()
                     .maxExecutionSteps(nodes.size() + 10) // Allow some buffer for error handling
-                    .build());
+                    .build()
+            );
 
         // Convert each AgentNode to StatefulAgentNode and build the chain
         AgentNodeAdapter<I> entryPoint = null;
-        
+
         for (int i = 0; i < nodes.size(); i++) {
             AgentNode<?, ?> node = nodes.get(i);
             String nodeId = "chain_node_" + i;
-            
+
             boolean isEntryPoint = (i == 0);
             boolean isLastNode = (i == nodes.size() - 1);
-            
+
             @SuppressWarnings("unchecked")
             AgentNode<I, ?> typedNode = (AgentNode<I, ?>) node;
-            
+
             AgentNodeAdapter<I> adapter = new AgentNodeAdapter<>(
-                typedNode, nodeId, isEntryPoint, isLastNode
+                typedNode,
+                nodeId,
+                isEntryPoint,
+                isLastNode
             );
-            
+
             builder.addNode(adapter);
-            
+
             if (isEntryPoint) {
                 entryPoint = adapter;
                 builder.defaultEntryPoint(adapter);
             }
-            
+
             // Add route to next node (except for last node)
             if (!isLastNode) {
                 String nextNodeId = "chain_node_" + (i + 1);
                 WorkflowRoute<I> route = WorkflowRoute.<I>builder()
-                        .id("chain_route_" + i + "_to_" + (i + 1))
-                        .from(nodeId)
-                        .to(nextNodeId)
-                        .description("Sequential chain route from node " + i + " to " + (i + 1))
-                        .build();
+                    .id("chain_route_" + i + "_to_" + (i + 1))
+                    .from(nodeId)
+                    .to(nextNodeId)
+                    .description(
+                        "Sequential chain route from node " +
+                        i +
+                        " to " +
+                        (i + 1)
+                    )
+                    .build();
                 builder.addRoute(route);
             }
         }
@@ -120,24 +141,44 @@ public class ChainWorkflow<I, O> implements AgentWorkflow<I, O> {
     }
 
     @Override
-    public O execute(I input, Map<String, Object> context) throws WorkflowExecutionException {
+    public O execute(I input, Map<String, Object> context)
+        throws WorkflowExecutionException {
         Objects.requireNonNull(input, "Input cannot be null");
 
         try {
-            StatefulWorkflowResult<O> result = statefulWorkflow.start(input, context);
-            
+            StatefulWorkflowResult<O> result = statefulWorkflow.start(
+                input,
+                context
+            );
+
             if (result.isCompleted()) {
-                return result.getOutput().orElseThrow(() -> 
-                    new WorkflowExecutionException(name, "Workflow completed but no output available"));
+                return result
+                    .getOutput()
+                    .orElseThrow(() ->
+                        new WorkflowExecutionException(
+                            name,
+                            "Workflow completed but no output available"
+                        )
+                    );
             } else if (result.isError()) {
-                String errorMessage = result.getErrorMessage().orElse("Unknown error occurred");
-                throw new WorkflowExecutionException(name, "Chain workflow execution failed: " + errorMessage);
+                String errorMessage = result
+                    .getErrorMessage()
+                    .orElse("Unknown error occurred");
+                throw new WorkflowExecutionException(
+                    name,
+                    "Chain workflow execution failed: " + errorMessage
+                );
             } else if (result.isSuspended()) {
-                throw new WorkflowExecutionException(name, 
-                    "Chain workflow unexpectedly suspended - this should not happen in normal execution");
+                throw new WorkflowExecutionException(
+                    name,
+                    "Chain workflow unexpectedly suspended - this should not happen in normal execution"
+                );
             } else {
-                throw new WorkflowExecutionException(name, 
-                    "Chain workflow completed with unexpected status: " + result.getStatus());
+                throw new WorkflowExecutionException(
+                    name,
+                    "Chain workflow completed with unexpected status: " +
+                    result.getStatus()
+                );
             }
         } catch (WorkflowExecutionException e) {
             throw e; // Re-throw workflow exceptions as-is
@@ -146,7 +187,11 @@ public class ChainWorkflow<I, O> implements AgentWorkflow<I, O> {
             errorContext.put("inputType", input.getClass().getSimpleName());
             errorContext.put("nodeCount", nodes.size());
             errorContext.put("contextKeys", context.keySet());
-            throw new WorkflowExecutionException(name, "Chain workflow execution failed", e);
+            throw new WorkflowExecutionException(
+                name,
+                "Chain workflow execution failed",
+                e
+            );
         }
     }
 
@@ -156,19 +201,35 @@ public class ChainWorkflow<I, O> implements AgentWorkflow<I, O> {
     }
 
     @Override
-    public CompletableFuture<O> executeAsync(I input, Map<String, Object> context) {
-        return statefulWorkflow.startAsync(input, context)
-                .thenApply(result -> {
-                    if (result.isCompleted()) {
-                        return result.getOutput().orElseThrow(() -> 
-                            new RuntimeException("Workflow completed but no output available"));
-                    } else if (result.isError()) {
-                        String errorMessage = result.getErrorMessage().orElse("Unknown error occurred");
-                        throw new RuntimeException("Chain workflow execution failed: " + errorMessage);
-                    } else {
-                        throw new RuntimeException("Chain workflow completed with unexpected status: " + result.getStatus());
-                    }
-                });
+    public CompletableFuture<O> executeAsync(
+        I input,
+        Map<String, Object> context
+    ) {
+        return statefulWorkflow
+            .startAsync(input, context)
+            .thenApply(result -> {
+                if (result.isCompleted()) {
+                    return result
+                        .getOutput()
+                        .orElseThrow(() ->
+                            new RuntimeException(
+                                "Workflow completed but no output available"
+                            )
+                        );
+                } else if (result.isError()) {
+                    String errorMessage = result
+                        .getErrorMessage()
+                        .orElse("Unknown error occurred");
+                    throw new RuntimeException(
+                        "Chain workflow execution failed: " + errorMessage
+                    );
+                } else {
+                    throw new RuntimeException(
+                        "Chain workflow completed with unexpected status: " +
+                        result.getStatus()
+                    );
+                }
+            });
     }
 
     @Override
@@ -177,7 +238,10 @@ public class ChainWorkflow<I, O> implements AgentWorkflow<I, O> {
         config.put("nodeCount", nodes.size());
         config.put("workflowType", "chain");
         config.put("implementation", "stateful");
-        config.put("nodes", nodes.stream().map(AgentNode::getName).toArray(String[]::new));
+        config.put(
+            "nodes",
+            nodes.stream().map(AgentNode::getName).toArray(String[]::new)
+        );
         config.put("statefulNodes", statefulWorkflow.getNodes().size());
         config.put("routes", statefulWorkflow.getRoutes().size());
         return config;
@@ -218,8 +282,10 @@ public class ChainWorkflow<I, O> implements AgentWorkflow<I, O> {
      * @return The complete StatefulWorkflowResult
      * @throws WorkflowExecutionException if execution fails
      */
-    public StatefulWorkflowResult<O> executeWithState(I input, Map<String, Object> context) 
-            throws WorkflowExecutionException {
+    public StatefulWorkflowResult<O> executeWithState(
+        I input,
+        Map<String, Object> context
+    ) throws WorkflowExecutionException {
         return statefulWorkflow.start(input, context);
     }
 
@@ -231,7 +297,8 @@ public class ChainWorkflow<I, O> implements AgentWorkflow<I, O> {
      * @return The complete StatefulWorkflowResult
      * @throws WorkflowExecutionException if execution fails
      */
-    public StatefulWorkflowResult<O> executeWithState(I input) throws WorkflowExecutionException {
+    public StatefulWorkflowResult<O> executeWithState(I input)
+        throws WorkflowExecutionException {
         return executeWithState(input, new HashMap<>());
     }
 
@@ -301,13 +368,15 @@ public class ChainWorkflow<I, O> implements AgentWorkflow<I, O> {
          */
         public ChainWorkflow<I, O> build() {
             if (nodes.isEmpty()) {
-                throw new IllegalStateException("Chain workflow must contain at least one node");
+                throw new IllegalStateException(
+                    "Chain workflow must contain at least one node"
+                );
             }
-            
+
             if (name == null) {
                 name = "ChainWorkflow-" + System.currentTimeMillis();
             }
-            
+
             return new ChainWorkflow<>(name, nodes);
         }
     }

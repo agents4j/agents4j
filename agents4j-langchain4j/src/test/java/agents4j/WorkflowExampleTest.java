@@ -6,13 +6,12 @@ import static org.mockito.Mockito.when;
 
 import dev.agents4j.api.AgentNode;
 import dev.agents4j.api.exception.WorkflowExecutionException;
-import dev.agents4j.impl.ComplexLangChain4JAgentNode;
-import dev.agents4j.impl.StringLangChain4JAgentNode;
+import dev.agents4j.langchain4j.impl.ComplexLangChain4JAgentNode;
+import dev.agents4j.langchain4j.impl.StringLangChain4JAgentNode;
+import dev.agents4j.langchain4j.workflow.WorkflowConfiguration;
 import dev.agents4j.model.AgentInput;
 import dev.agents4j.model.AgentOutput;
-import dev.agents4j.workflow.AgentWorkflowFactory;
 import dev.agents4j.workflow.ChainWorkflow;
-import dev.agents4j.workflow.WorkflowConfiguration;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;

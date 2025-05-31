@@ -3,7 +3,7 @@
  */
 package dev.agents4j.registry;
 
-import dev.agents4j.api.AgentWorkflow;
+import dev.agents4j.api.Workflow;
 import java.util.Map;
 
 /**
@@ -22,7 +22,7 @@ public interface WorkflowProvider<I, O> {
      * @return A new workflow instance
      * @throws WorkflowCreationException if workflow creation fails
      */
-    AgentWorkflow<I, O> create(WorkflowConfig config)
+    Workflow<I, O> create(WorkflowConfig config)
         throws WorkflowCreationException;
 
     /**

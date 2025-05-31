@@ -7,7 +7,7 @@ import static org.mockito.Mockito.when;
 
 import dev.agents4j.api.AgentNode;
 import dev.agents4j.api.exception.WorkflowExecutionException;
-import dev.agents4j.workflow.AgentWorkflowFactory;
+import dev.agents4j.langchain4j.workflow.AgentWorkflowFactory;
 import dev.agents4j.workflow.ChainWorkflow;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;

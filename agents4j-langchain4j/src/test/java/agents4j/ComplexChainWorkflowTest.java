@@ -1,18 +1,21 @@
 package agents4j;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.when;
 
 import dev.agents4j.api.AgentNode;
-import dev.agents4j.api.AgentWorkflow;
+import dev.agents4j.api.Workflow;
 import dev.agents4j.api.exception.WorkflowExecutionException;
-import dev.agents4j.impl.ComplexLangChain4JAgentNode;
-import dev.agents4j.impl.StringLangChain4JAgentNode;
+import dev.agents4j.langchain4j.impl.ComplexLangChain4JAgentNode;
+import dev.agents4j.langchain4j.impl.StringLangChain4JAgentNode;
+import dev.agents4j.langchain4j.workflow.WorkflowConfiguration;
 import dev.agents4j.model.AgentInput;
 import dev.agents4j.model.AgentOutput;
 import dev.agents4j.workflow.ChainWorkflow;
-import dev.agents4j.workflow.WorkflowConfiguration;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
@@ -20,16 +23,11 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
-
-import java.util.concurrent.CompletableFuture;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.Mockito.when;
 
 class ComplexChainWorkflowTest {
 
@@ -282,10 +280,11 @@ class ComplexChainWorkflowTest {
             .build();
 
         // Create a wrapper workflow with custom type conversion
-        AgentWorkflow<CustomInputType, CustomOutputType> customWorkflow =
-            new AgentWorkflow<>() {
+        Workflow<CustomInputType, CustomOutputType> customWorkflow =
+            new Workflow<>() {
                 @Override
-                public CustomOutputType execute(CustomInputType input) throws WorkflowExecutionException {
+                public CustomOutputType execute(CustomInputType input)
+                    throws WorkflowExecutionException {
                     AgentInput convertedInput = inputConverter.apply(input);
                     AgentOutput output = baseWorkflow.execute(convertedInput);
                     return outputConverter.apply(output);
@@ -305,7 +304,9 @@ class ComplexChainWorkflowTest {
                 }
 
                 @Override
-                public CompletableFuture<CustomOutputType> executeAsync(CustomInputType input) {
+                public CompletableFuture<CustomOutputType> executeAsync(
+                    CustomInputType input
+                ) {
                     return CompletableFuture.supplyAsync(() -> {
                         try {
                             return execute(input);
@@ -316,7 +317,10 @@ class ComplexChainWorkflowTest {
                 }
 
                 @Override
-                public CompletableFuture<CustomOutputType> executeAsync(CustomInputType input, Map<String, Object> context) {
+                public CompletableFuture<CustomOutputType> executeAsync(
+                    CustomInputType input,
+                    Map<String, Object> context
+                ) {
                     return CompletableFuture.supplyAsync(() -> {
                         try {
                             return execute(input, context);
@@ -339,8 +343,12 @@ class ComplexChainWorkflowTest {
                 }
 
                 @Override
-                public <T> T getConfigurationProperty(String key, T defaultValue) {
-                    return (T) getConfiguration().getOrDefault(key, defaultValue);
+                public <T> T getConfigurationProperty(
+                    String key,
+                    T defaultValue
+                ) {
+                    return (T) getConfiguration()
+                        .getOrDefault(key, defaultValue);
                 }
             };
 

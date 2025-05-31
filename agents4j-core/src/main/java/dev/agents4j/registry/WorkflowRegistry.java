@@ -3,8 +3,7 @@
  */
 package dev.agents4j.registry;
 
-import dev.agents4j.api.AgentWorkflow;
-
+import dev.agents4j.api.Workflow;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -15,7 +14,6 @@ import java.util.Set;
  * This interface allows new workflow types to be registered without modifying existing code.
  */
 public interface WorkflowRegistry {
-
     /**
      * Registers a workflow provider for a specific workflow type.
      *
@@ -26,8 +24,10 @@ public interface WorkflowRegistry {
      * @throws IllegalArgumentException if workflowType is null or empty, or provider is null
      * @throws WorkflowRegistrationException if registration fails
      */
-    <I, O> void registerWorkflowType(String workflowType, WorkflowProvider<I, O> provider) 
-        throws WorkflowRegistrationException;
+    <I, O> void registerWorkflowType(
+        String workflowType,
+        WorkflowProvider<I, O> provider
+    ) throws WorkflowRegistrationException;
 
     /**
      * Unregisters a workflow provider for a specific workflow type.
@@ -47,8 +47,10 @@ public interface WorkflowRegistry {
      * @return The created workflow wrapped in an Optional, or empty if no provider is registered
      * @throws WorkflowCreationException if workflow creation fails
      */
-    <I, O> Optional<AgentWorkflow<I, O>> createWorkflow(String workflowType, WorkflowConfig config) 
-        throws WorkflowCreationException;
+    <I, O> Optional<Workflow<I, O>> createWorkflow(
+        String workflowType,
+        WorkflowConfig config
+    ) throws WorkflowCreationException;
 
     /**
      * Checks if a workflow type is registered.
@@ -131,11 +133,16 @@ public interface WorkflowRegistry {
      * Information about a registered workflow provider.
      */
     class WorkflowProviderInfo {
+
         private final String workflowType;
         private final WorkflowTypeMetadata metadata;
         private final boolean isAvailable;
 
-        public WorkflowProviderInfo(String workflowType, WorkflowTypeMetadata metadata, boolean isAvailable) {
+        public WorkflowProviderInfo(
+            String workflowType,
+            WorkflowTypeMetadata metadata,
+            boolean isAvailable
+        ) {
             this.workflowType = workflowType;
             this.metadata = metadata;
             this.isAvailable = isAvailable;
@@ -158,6 +165,7 @@ public interface WorkflowRegistry {
      * Validation result for provider validation.
      */
     class ValidationResult {
+
         private final boolean valid;
         private final Map<String, String> errors;
 

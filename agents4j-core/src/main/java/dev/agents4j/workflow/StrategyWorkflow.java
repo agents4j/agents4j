@@ -1,7 +1,7 @@
 package dev.agents4j.workflow;
 
 import dev.agents4j.api.AgentNode;
-import dev.agents4j.api.AgentWorkflow;
+import dev.agents4j.api.Workflow;
 import dev.agents4j.api.exception.WorkflowExecutionException;
 import dev.agents4j.api.strategy.WorkflowExecutionStrategy;
 import java.util.Collections;
@@ -13,12 +13,12 @@ import java.util.concurrent.CompletableFuture;
 
 /**
  * A workflow implementation that uses pluggable execution strategies.
- * 
+ *
  * <p>This workflow delegates the actual execution logic to a configurable
  * {@link WorkflowExecutionStrategy}, enabling different execution patterns
  * to be applied to the same set of nodes. This implements the Strategy Pattern
  * to separate workflow structure from execution behavior.</p>
- * 
+ *
  * <p><b>Key Benefits:</b></p>
  * <ul>
  * <li>Flexible execution patterns through strategy injection</li>
@@ -26,7 +26,7 @@ import java.util.concurrent.CompletableFuture;
  * <li>Reusable node configurations with different execution strategies</li>
  * <li>Easy testing with mock strategies</li>
  * </ul>
- * 
+ *
  * <p><b>Usage Example:</b></p>
  * <pre>{@code
  * // Create workflow with sequential strategy
@@ -36,7 +36,7 @@ import java.util.concurrent.CompletableFuture;
  *     .addNode(node1)
  *     .addNode(node2)
  *     .build();
- * 
+ *
  * // Execute with custom context
  * Map<String, Object> context = new HashMap<>();
  * context.put("storeIntermediateResults", true);
@@ -46,7 +46,7 @@ import java.util.concurrent.CompletableFuture;
  * @param <I> The input type for the workflow
  * @param <O> The output type for the workflow
  */
-public class StrategyWorkflow<I, O> implements AgentWorkflow<I, O> {
+public class StrategyWorkflow<I, O> implements Workflow<I, O> {
 
     private final String name;
     private final List<AgentNode<?, ?>> nodes;
@@ -61,16 +61,31 @@ public class StrategyWorkflow<I, O> implements AgentWorkflow<I, O> {
      * @param strategy The execution strategy to use
      * @param defaultContext Default context values for execution
      */
-    private StrategyWorkflow(String name, List<AgentNode<?, ?>> nodes, 
-                           WorkflowExecutionStrategy<I, O> strategy,
-                           Map<String, Object> defaultContext) {
-        this.name = Objects.requireNonNull(name, "Workflow name cannot be null");
-        this.nodes = Collections.unmodifiableList(Objects.requireNonNull(nodes, "Nodes cannot be null"));
-        this.strategy = Objects.requireNonNull(strategy, "Strategy cannot be null");
-        this.defaultContext = new HashMap<>(defaultContext != null ? defaultContext : Collections.emptyMap());
-        
+    private StrategyWorkflow(
+        String name,
+        List<AgentNode<?, ?>> nodes,
+        WorkflowExecutionStrategy<I, O> strategy,
+        Map<String, Object> defaultContext
+    ) {
+        this.name = Objects.requireNonNull(
+            name,
+            "Workflow name cannot be null"
+        );
+        this.nodes = Collections.unmodifiableList(
+            Objects.requireNonNull(nodes, "Nodes cannot be null")
+        );
+        this.strategy = Objects.requireNonNull(
+            strategy,
+            "Strategy cannot be null"
+        );
+        this.defaultContext = new HashMap<>(
+            defaultContext != null ? defaultContext : Collections.emptyMap()
+        );
+
         if (nodes.isEmpty()) {
-            throw new IllegalArgumentException("Workflow must contain at least one node");
+            throw new IllegalArgumentException(
+                "Workflow must contain at least one node"
+            );
         }
     }
 
@@ -94,47 +109,50 @@ public class StrategyWorkflow<I, O> implements AgentWorkflow<I, O> {
      * {@inheritDoc}
      */
     @Override
-    public O execute(I input, Map<String, Object> context) throws WorkflowExecutionException {
+    public O execute(I input, Map<String, Object> context)
+        throws WorkflowExecutionException {
         Objects.requireNonNull(input, "Input cannot be null");
         Objects.requireNonNull(context, "Context cannot be null");
 
         // Merge default context with provided context
         Map<String, Object> mergedContext = new HashMap<>(defaultContext);
         mergedContext.putAll(context);
-        
+
         // Add workflow metadata to context
         mergedContext.put("workflow_name", name);
         mergedContext.put("workflow_type", "strategy");
         mergedContext.put("strategy_name", strategy.getStrategyName());
         mergedContext.put("node_count", nodes.size());
-        
+
         try {
             // Validate that the strategy can execute these nodes
             if (!strategy.canExecute(nodes, mergedContext)) {
                 throw new WorkflowExecutionException(
-                    name, 
-                    "Strategy " + strategy.getStrategyName() + " cannot execute the configured nodes"
+                    name,
+                    "Strategy " +
+                    strategy.getStrategyName() +
+                    " cannot execute the configured nodes"
                 );
             }
-            
+
             long startTime = System.currentTimeMillis();
-            
+
             // Execute using the strategy
             O result = strategy.execute(nodes, input, mergedContext);
-            
+
             long endTime = System.currentTimeMillis();
             mergedContext.put("total_execution_time_ms", endTime - startTime);
-            
+
             return result;
-            
         } catch (WorkflowExecutionException e) {
             // Re-throw workflow exceptions as-is
             throw e;
         } catch (Exception e) {
             // Wrap other exceptions
             throw new WorkflowExecutionException(
-                name, 
-                "Strategy workflow execution failed with strategy: " + strategy.getStrategyName(), 
+                name,
+                "Strategy workflow execution failed with strategy: " +
+                strategy.getStrategyName(),
                 e
             );
         }
@@ -152,14 +170,17 @@ public class StrategyWorkflow<I, O> implements AgentWorkflow<I, O> {
      * {@inheritDoc}
      */
     @Override
-    public CompletableFuture<O> executeAsync(I input, Map<String, Object> context) {
+    public CompletableFuture<O> executeAsync(
+        I input,
+        Map<String, Object> context
+    ) {
         Objects.requireNonNull(input, "Input cannot be null");
         Objects.requireNonNull(context, "Context cannot be null");
 
         // Merge contexts
         Map<String, Object> mergedContext = new HashMap<>(defaultContext);
         mergedContext.putAll(context);
-        
+
         // Use the strategy's async execution
         return strategy.executeAsync(nodes, input, mergedContext);
     }
@@ -173,19 +194,23 @@ public class StrategyWorkflow<I, O> implements AgentWorkflow<I, O> {
         config.put("workflowType", "strategy");
         config.put("strategyName", strategy.getStrategyName());
         config.put("nodeCount", nodes.size());
-        config.put("nodes", nodes.stream().map(AgentNode::getName).toArray(String[]::new));
-        
+        config.put(
+            "nodes",
+            nodes.stream().map(AgentNode::getName).toArray(String[]::new)
+        );
+
         // Include strategy configuration
-        Map<String, Object> strategyConfig = strategy.getStrategyConfiguration();
+        Map<String, Object> strategyConfig =
+            strategy.getStrategyConfiguration();
         config.put("strategyConfiguration", strategyConfig);
-        
+
         // Include default context (excluding sensitive data)
         Map<String, Object> safeContext = new HashMap<>(defaultContext);
         safeContext.remove("apiKey");
         safeContext.remove("password");
         safeContext.remove("secret");
         config.put("defaultContext", safeContext);
-        
+
         return config;
     }
 
@@ -200,7 +225,7 @@ public class StrategyWorkflow<I, O> implements AgentWorkflow<I, O> {
 
     /**
      * Get the execution strategy used by this workflow.
-     * 
+     *
      * @return The execution strategy
      */
     public WorkflowExecutionStrategy<I, O> getStrategy() {
@@ -209,7 +234,7 @@ public class StrategyWorkflow<I, O> implements AgentWorkflow<I, O> {
 
     /**
      * Get the list of nodes in this workflow.
-     * 
+     *
      * @return An unmodifiable list of the nodes
      */
     public List<AgentNode<?, ?>> getNodes() {
@@ -218,7 +243,7 @@ public class StrategyWorkflow<I, O> implements AgentWorkflow<I, O> {
 
     /**
      * Get the default context for this workflow.
-     * 
+     *
      * @return A copy of the default context
      */
     public Map<String, Object> getDefaultContext() {
@@ -227,11 +252,13 @@ public class StrategyWorkflow<I, O> implements AgentWorkflow<I, O> {
 
     /**
      * Get execution characteristics for this workflow.
-     * 
+     *
      * @param context The execution context
      * @return A map containing execution characteristics
      */
-    public Map<String, Object> getExecutionCharacteristics(Map<String, Object> context) {
+    public Map<String, Object> getExecutionCharacteristics(
+        Map<String, Object> context
+    ) {
         Map<String, Object> mergedContext = new HashMap<>(defaultContext);
         if (context != null) {
             mergedContext.putAll(context);
@@ -246,6 +273,7 @@ public class StrategyWorkflow<I, O> implements AgentWorkflow<I, O> {
      * @param <O> The output type for the workflow
      */
     public static class Builder<I, O> {
+
         private String name;
         private final List<AgentNode<?, ?>> nodes = new java.util.ArrayList<>();
         private WorkflowExecutionStrategy<I, O> strategy;
@@ -268,7 +296,9 @@ public class StrategyWorkflow<I, O> implements AgentWorkflow<I, O> {
          * @param strategy The execution strategy to use
          * @return This builder instance for method chaining
          */
-        public Builder<I, O> strategy(WorkflowExecutionStrategy<I, O> strategy) {
+        public Builder<I, O> strategy(
+            WorkflowExecutionStrategy<I, O> strategy
+        ) {
             this.strategy = strategy;
             return this;
         }
@@ -332,10 +362,17 @@ public class StrategyWorkflow<I, O> implements AgentWorkflow<I, O> {
                 throw new IllegalStateException("Strategy must be set");
             }
             if (nodes.isEmpty()) {
-                throw new IllegalStateException("At least one node must be added");
+                throw new IllegalStateException(
+                    "At least one node must be added"
+                );
             }
-            
-            return new StrategyWorkflow<>(name, nodes, strategy, defaultContext);
+
+            return new StrategyWorkflow<>(
+                name,
+                nodes,
+                strategy,
+                defaultContext
+            );
         }
     }
 
@@ -352,7 +389,7 @@ public class StrategyWorkflow<I, O> implements AgentWorkflow<I, O> {
 
     /**
      * Creates a new StrategyWorkflow with the specified parameters.
-     * 
+     *
      * @param <I> The input type
      * @param <O> The output type
      * @param name The workflow name
@@ -360,9 +397,11 @@ public class StrategyWorkflow<I, O> implements AgentWorkflow<I, O> {
      * @param nodes The agent nodes
      * @return A new StrategyWorkflow instance
      */
-    public static <I, O> StrategyWorkflow<I, O> create(String name, 
-                                                      WorkflowExecutionStrategy<I, O> strategy,
-                                                      AgentNode<?, ?>... nodes) {
+    public static <I, O> StrategyWorkflow<I, O> create(
+        String name,
+        WorkflowExecutionStrategy<I, O> strategy,
+        AgentNode<?, ?>... nodes
+    ) {
         return StrategyWorkflow.<I, O>builder()
             .name(name)
             .strategy(strategy)

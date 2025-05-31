@@ -1,6 +1,11 @@
 package dev.agents4j.facade;
 
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
 import dev.agents4j.exception.AgentExecutionException;
+import dev.agents4j.langchain4j.facade.ChainWorkflows;
 import dev.agents4j.workflow.ChainWorkflow;
 import dev.langchain4j.model.chat.ChatModel;
 import org.junit.jupiter.api.BeforeEach;
@@ -8,10 +13,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class ChainWorkflowsTest {
@@ -31,7 +32,11 @@ class ChainWorkflowsTest {
         String systemPrompt = "You are a helpful assistant";
 
         // When
-        ChainWorkflow<String, String> workflow = ChainWorkflows.create(name, mockChatModel, systemPrompt);
+        ChainWorkflow<String, String> workflow = ChainWorkflows.create(
+            name,
+            mockChatModel,
+            systemPrompt
+        );
 
         // Then
         assertNotNull(workflow);
@@ -44,8 +49,9 @@ class ChainWorkflowsTest {
         String systemPrompt = "You are a helpful assistant";
 
         // When & Then
-        assertThrows(IllegalArgumentException.class, () -> 
-            ChainWorkflows.create(null, mockChatModel, systemPrompt));
+        assertThrows(IllegalArgumentException.class, () ->
+            ChainWorkflows.create(null, mockChatModel, systemPrompt)
+        );
     }
 
     @Test
@@ -54,8 +60,9 @@ class ChainWorkflowsTest {
         String systemPrompt = "You are a helpful assistant";
 
         // When & Then
-        assertThrows(IllegalArgumentException.class, () -> 
-            ChainWorkflows.create("", mockChatModel, systemPrompt));
+        assertThrows(IllegalArgumentException.class, () ->
+            ChainWorkflows.create("", mockChatModel, systemPrompt)
+        );
     }
 
     @Test
@@ -65,8 +72,9 @@ class ChainWorkflowsTest {
         String systemPrompt = "You are a helpful assistant";
 
         // When & Then
-        assertThrows(IllegalArgumentException.class, () -> 
-            ChainWorkflows.create(name, null, systemPrompt));
+        assertThrows(IllegalArgumentException.class, () ->
+            ChainWorkflows.create(name, null, systemPrompt)
+        );
     }
 
     @Test
@@ -75,8 +83,9 @@ class ChainWorkflowsTest {
         String name = "TestWorkflow";
 
         // When & Then
-        assertThrows(IllegalArgumentException.class, () -> 
-            ChainWorkflows.create(name, mockChatModel));
+        assertThrows(IllegalArgumentException.class, () ->
+            ChainWorkflows.create(name, mockChatModel)
+        );
     }
 
     @Test
@@ -85,8 +94,9 @@ class ChainWorkflowsTest {
         String name = "TestWorkflow";
 
         // When & Then
-        assertThrows(IllegalArgumentException.class, () -> 
-            ChainWorkflows.create(name, mockChatModel, (String) null));
+        assertThrows(IllegalArgumentException.class, () ->
+            ChainWorkflows.create(name, mockChatModel, (String) null)
+        );
     }
 
     @Test
@@ -97,8 +107,13 @@ class ChainWorkflowsTest {
         String systemPrompt = "You are a helpful assistant";
 
         // When
-        ChainWorkflow<String, String> workflow = ChainWorkflows.createConversational(
-            name, mockChatModel, maxMessages, systemPrompt);
+        ChainWorkflow<String, String> workflow =
+            ChainWorkflows.createConversational(
+                name,
+                mockChatModel,
+                maxMessages,
+                systemPrompt
+            );
 
         // Then
         assertNotNull(workflow);
@@ -113,8 +128,14 @@ class ChainWorkflowsTest {
         String systemPrompt = "You are a helpful assistant";
 
         // When & Then
-        assertThrows(IllegalArgumentException.class, () -> 
-            ChainWorkflows.createConversational(name, mockChatModel, maxMessages, systemPrompt));
+        assertThrows(IllegalArgumentException.class, () ->
+            ChainWorkflows.createConversational(
+                name,
+                mockChatModel,
+                maxMessages,
+                systemPrompt
+            )
+        );
     }
 
     @Test
@@ -125,8 +146,14 @@ class ChainWorkflowsTest {
         String systemPrompt = "You are a helpful assistant";
 
         // When & Then
-        assertThrows(IllegalArgumentException.class, () -> 
-            ChainWorkflows.createConversational(name, mockChatModel, maxMessages, systemPrompt));
+        assertThrows(IllegalArgumentException.class, () ->
+            ChainWorkflows.createConversational(
+                name,
+                mockChatModel,
+                maxMessages,
+                systemPrompt
+            )
+        );
     }
 
     @Test
@@ -136,8 +163,9 @@ class ChainWorkflowsTest {
         String query = "Test query";
 
         // When & Then
-        assertThrows(IllegalArgumentException.class, () -> 
-            ChainWorkflows.executeSimple(null, systemPrompt, query));
+        assertThrows(IllegalArgumentException.class, () ->
+            ChainWorkflows.executeSimple(null, systemPrompt, query)
+        );
     }
 
     @Test
@@ -146,8 +174,9 @@ class ChainWorkflowsTest {
         String query = "Test query";
 
         // When & Then
-        assertThrows(IllegalArgumentException.class, () -> 
-            ChainWorkflows.executeSimple(mockChatModel, null, query));
+        assertThrows(IllegalArgumentException.class, () ->
+            ChainWorkflows.executeSimple(mockChatModel, null, query)
+        );
     }
 
     @Test
@@ -156,8 +185,9 @@ class ChainWorkflowsTest {
         String query = "Test query";
 
         // When & Then
-        assertThrows(IllegalArgumentException.class, () -> 
-            ChainWorkflows.executeSimple(mockChatModel, "", query));
+        assertThrows(IllegalArgumentException.class, () ->
+            ChainWorkflows.executeSimple(mockChatModel, "", query)
+        );
     }
 
     @Test
@@ -166,8 +196,9 @@ class ChainWorkflowsTest {
         String systemPrompt = "You are a helpful assistant";
 
         // When & Then
-        assertThrows(IllegalArgumentException.class, () -> 
-            ChainWorkflows.executeSimple(mockChatModel, systemPrompt, null));
+        assertThrows(IllegalArgumentException.class, () ->
+            ChainWorkflows.executeSimple(mockChatModel, systemPrompt, null)
+        );
     }
 
     @Test
@@ -176,39 +207,43 @@ class ChainWorkflowsTest {
         String systemPrompt = "You are a helpful assistant";
 
         // When & Then
-        assertThrows(IllegalArgumentException.class, () -> 
-            ChainWorkflows.executeSimple(mockChatModel, systemPrompt, ""));
+        assertThrows(IllegalArgumentException.class, () ->
+            ChainWorkflows.executeSimple(mockChatModel, systemPrompt, "")
+        );
     }
 
     @Test
     void shouldThrowExceptionForNullModelInExecuteComplex() {
         // Given
         String query = "Test query";
-        String[] systemPrompts = {"Prompt 1", "Prompt 2"};
+        String[] systemPrompts = { "Prompt 1", "Prompt 2" };
 
         // When & Then
-        assertThrows(IllegalArgumentException.class, () -> 
-            ChainWorkflows.executeComplex(null, query, systemPrompts));
+        assertThrows(IllegalArgumentException.class, () ->
+            ChainWorkflows.executeComplex(null, query, systemPrompts)
+        );
     }
 
     @Test
     void shouldThrowExceptionForNullQueryInExecuteComplex() {
         // Given
-        String[] systemPrompts = {"Prompt 1", "Prompt 2"};
+        String[] systemPrompts = { "Prompt 1", "Prompt 2" };
 
         // When & Then
-        assertThrows(IllegalArgumentException.class, () -> 
-            ChainWorkflows.executeComplex(mockChatModel, null, systemPrompts));
+        assertThrows(IllegalArgumentException.class, () ->
+            ChainWorkflows.executeComplex(mockChatModel, null, systemPrompts)
+        );
     }
 
     @Test
     void shouldThrowExceptionForEmptyQueryInExecuteComplex() {
         // Given
-        String[] systemPrompts = {"Prompt 1", "Prompt 2"};
+        String[] systemPrompts = { "Prompt 1", "Prompt 2" };
 
         // When & Then
-        assertThrows(IllegalArgumentException.class, () -> 
-            ChainWorkflows.executeComplex(mockChatModel, "", systemPrompts));
+        assertThrows(IllegalArgumentException.class, () ->
+            ChainWorkflows.executeComplex(mockChatModel, "", systemPrompts)
+        );
     }
 
     @Test
@@ -217,8 +252,9 @@ class ChainWorkflowsTest {
         String query = "Test query";
 
         // When & Then
-        assertThrows(IllegalArgumentException.class, () -> 
-            ChainWorkflows.executeComplex(mockChatModel, query));
+        assertThrows(IllegalArgumentException.class, () ->
+            ChainWorkflows.executeComplex(mockChatModel, query)
+        );
     }
 
     @Test
@@ -226,11 +262,17 @@ class ChainWorkflowsTest {
         // Given
         String query = "Test query";
         int maxMessages = -1;
-        String[] systemPrompts = {"Prompt 1", "Prompt 2"};
+        String[] systemPrompts = { "Prompt 1", "Prompt 2" };
 
         // When & Then
-        assertThrows(IllegalArgumentException.class, () -> 
-            ChainWorkflows.executeConversational(mockChatModel, query, maxMessages, systemPrompts));
+        assertThrows(IllegalArgumentException.class, () ->
+            ChainWorkflows.executeConversational(
+                mockChatModel,
+                query,
+                maxMessages,
+                systemPrompts
+            )
+        );
     }
 
     @Test
@@ -238,11 +280,17 @@ class ChainWorkflowsTest {
         // Given
         String query = "Test query";
         int maxMessages = 0;
-        String[] systemPrompts = {"Prompt 1", "Prompt 2"};
+        String[] systemPrompts = { "Prompt 1", "Prompt 2" };
 
         // When & Then
-        assertThrows(IllegalArgumentException.class, () -> 
-            ChainWorkflows.executeConversational(mockChatModel, query, maxMessages, systemPrompts));
+        assertThrows(IllegalArgumentException.class, () ->
+            ChainWorkflows.executeConversational(
+                mockChatModel,
+                query,
+                maxMessages,
+                systemPrompts
+            )
+        );
     }
 
     @Test
@@ -251,12 +299,16 @@ class ChainWorkflowsTest {
         String name = "MultiAgentWorkflow";
         String[] systemPrompts = {
             "You are a researcher",
-            "You are an analyst", 
-            "You are a writer"
+            "You are an analyst",
+            "You are a writer",
         };
 
         // When
-        ChainWorkflow<String, String> workflow = ChainWorkflows.create(name, mockChatModel, systemPrompts);
+        ChainWorkflow<String, String> workflow = ChainWorkflows.create(
+            name,
+            mockChatModel,
+            systemPrompts
+        );
 
         // Then
         assertNotNull(workflow);
@@ -267,33 +319,44 @@ class ChainWorkflowsTest {
     void shouldHandleNullInSystemPromptsArray() {
         // Given
         String name = "TestWorkflow";
-        String[] systemPrompts = {"Valid prompt", null, "Another valid prompt"};
+        String[] systemPrompts = {
+            "Valid prompt",
+            null,
+            "Another valid prompt",
+        };
 
         // When & Then
-        assertThrows(IllegalArgumentException.class, () -> 
-            ChainWorkflows.create(name, mockChatModel, systemPrompts));
+        assertThrows(IllegalArgumentException.class, () ->
+            ChainWorkflows.create(name, mockChatModel, systemPrompts)
+        );
     }
 
     @Test
     void shouldHandleEmptyStringInSystemPromptsArray() {
         // Given
         String name = "TestWorkflow";
-        String[] systemPrompts = {"Valid prompt", "", "Another valid prompt"};
+        String[] systemPrompts = { "Valid prompt", "", "Another valid prompt" };
 
         // When & Then
-        assertThrows(IllegalArgumentException.class, () -> 
-            ChainWorkflows.create(name, mockChatModel, systemPrompts));
+        assertThrows(IllegalArgumentException.class, () ->
+            ChainWorkflows.create(name, mockChatModel, systemPrompts)
+        );
     }
 
     @Test
     void shouldHandleWhitespaceOnlyStringInSystemPromptsArray() {
         // Given
         String name = "TestWorkflow";
-        String[] systemPrompts = {"Valid prompt", "   ", "Another valid prompt"};
+        String[] systemPrompts = {
+            "Valid prompt",
+            "   ",
+            "Another valid prompt",
+        };
 
         // When & Then
-        assertThrows(IllegalArgumentException.class, () -> 
-            ChainWorkflows.create(name, mockChatModel, systemPrompts));
+        assertThrows(IllegalArgumentException.class, () ->
+            ChainWorkflows.create(name, mockChatModel, systemPrompts)
+        );
     }
 
     @Test
@@ -303,8 +366,9 @@ class ChainWorkflowsTest {
         String systemPrompt = "You are a helpful assistant";
 
         // When & Then - should not throw for name with whitespace
-        assertDoesNotThrow(() -> 
-            ChainWorkflows.create(name, mockChatModel, systemPrompt));
+        assertDoesNotThrow(() ->
+            ChainWorkflows.create(name, mockChatModel, systemPrompt)
+        );
     }
 
     @Test
@@ -314,7 +378,8 @@ class ChainWorkflowsTest {
         String systemPrompt = "You are a helpful assistant";
 
         // When & Then
-        assertThrows(IllegalArgumentException.class, () -> 
-            ChainWorkflows.create(name, mockChatModel, systemPrompt));
+        assertThrows(IllegalArgumentException.class, () ->
+            ChainWorkflows.create(name, mockChatModel, systemPrompt)
+        );
     }
 }

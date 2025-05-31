@@ -1,6 +1,7 @@
 package dev.agents4j.langchain4j.workflow;
 
-import dev.agents4j.api.AgentWorkflow;
+import dev.agents4j.api.Workflow;
+import dev.agents4j.workflow.ChainWorkflow;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import java.util.HashMap;
@@ -110,7 +111,7 @@ public class WorkflowConfiguration {
      * @param workflowBuilder A consumer that configures a workflow builder
      * @return The configured workflow
      */
-    public <I, O> AgentWorkflow<I, O> createWorkflow(
+    public <I, O> Workflow<I, O> createWorkflow(
         Consumer<ChainWorkflow.Builder<I, O>> workflowBuilder
     ) {
         ChainWorkflow.Builder<I, O> builder = ChainWorkflow.builder();
@@ -126,9 +127,7 @@ public class WorkflowConfiguration {
      * @param workflow The workflow to configure
      * @return The configured workflow
      */
-    public <I, O> AgentWorkflow<I, O> configureWorkflow(
-        AgentWorkflow<I, O> workflow
-    ) {
+    public <I, O> Workflow<I, O> configureWorkflow(Workflow<I, O> workflow) {
         // Apply any global configuration to the workflow
         // This could involve setting up monitoring, logging, etc.
         return workflow;

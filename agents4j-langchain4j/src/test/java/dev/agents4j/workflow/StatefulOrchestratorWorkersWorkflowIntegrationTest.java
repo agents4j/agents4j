@@ -1,25 +1,25 @@
 package dev.agents4j.workflow;
 
-import dev.agents4j.api.exception.WorkflowExecutionException;
-import dev.agents4j.api.workflow.StatefulWorkflowResult;
-import dev.agents4j.api.workflow.WorkflowState;
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.response.ChatResponse;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
-
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.*;
 import static org.mockito.Mockito.atLeast;
+
+import dev.agents4j.api.exception.WorkflowExecutionException;
+import dev.agents4j.api.workflow.StatefulWorkflowResult;
+import dev.agents4j.api.workflow.WorkflowState;
+import dev.agents4j.langchain4j.workflow.OrchestratorWorkersWorkflow;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 /**
  * Integration test for the refactored StatefulOrchestratorWorkersWorkflow.
@@ -42,9 +42,21 @@ class StatefulOrchestratorWorkersWorkflowIntegrationTest {
         workflow = OrchestratorWorkersWorkflow.builder()
             .name("StatefulOrchestratorTest")
             .chatModel(mockModel)
-            .addWorker("analyst", "Data analysis specialist", "You are a data analysis expert.")
-            .addWorker("researcher", "Research specialist", "You are a research expert.")
-            .addWorker("technical", "Technical specialist", "You are a technical expert.")
+            .addWorker(
+                "analyst",
+                "Data analysis specialist",
+                "You are a data analysis expert."
+            )
+            .addWorker(
+                "researcher",
+                "Research specialist",
+                "You are a research expert."
+            )
+            .addWorker(
+                "technical",
+                "Technical specialist",
+                "You are a technical expert."
+            )
             .build();
     }
 
@@ -60,10 +72,14 @@ class StatefulOrchestratorWorkersWorkflowIntegrationTest {
 
         // Mock worker responses
         AiMessage workerResponse1 = Mockito.mock(AiMessage.class);
-        when(workerResponse1.text()).thenReturn("Technical analysis complete: System is functioning optimally.");
+        when(workerResponse1.text()).thenReturn(
+            "Technical analysis complete: System is functioning optimally."
+        );
 
         AiMessage workerResponse2 = Mockito.mock(AiMessage.class);
-        when(workerResponse2.text()).thenReturn("Research complete: Found relevant best practices.");
+        when(workerResponse2.text()).thenReturn(
+            "Research complete: Found relevant best practices."
+        );
 
         // Mock synthesizer response
         AiMessage synthesizerResponse = Mockito.mock(AiMessage.class);
@@ -91,26 +107,36 @@ class StatefulOrchestratorWorkersWorkflowIntegrationTest {
 
     @Test
     void testStatefulWorkflowStart() throws WorkflowExecutionException {
-        OrchestratorWorkersWorkflow.OrchestratorInput input = 
-            new OrchestratorWorkersWorkflow.OrchestratorInput("Analyze system performance and recommend improvements");
+        OrchestratorWorkersWorkflow.OrchestratorInput input =
+            new OrchestratorWorkersWorkflow.OrchestratorInput(
+                "Analyze system performance and recommend improvements"
+            );
 
-        StatefulWorkflowResult<OrchestratorWorkersWorkflow.WorkerResponse> result = workflow.start(input);
+        StatefulWorkflowResult<
+            OrchestratorWorkersWorkflow.WorkerResponse
+        > result = workflow.start(input);
 
         assertNotNull(result);
         assertTrue(result.isCompleted());
         assertFalse(result.isSuspended());
         assertFalse(result.isError());
 
-        OrchestratorWorkersWorkflow.WorkerResponse output = result.getOutput().orElse(null);
+        OrchestratorWorkersWorkflow.WorkerResponse output = result
+            .getOutput()
+            .orElse(null);
         assertNotNull(output);
         assertTrue(output.isSuccessful());
         assertNotNull(output.getFinalResult());
-        assertTrue(output.getFinalResult().contains("system is performing well"));
+        assertTrue(
+            output.getFinalResult().contains("system is performing well")
+        );
 
         // Verify state
         WorkflowState finalState = result.getState();
         assertNotNull(finalState);
-        assertTrue(finalState.getWorkflowId().startsWith("StatefulOrchestratorTest-"));
+        assertTrue(
+            finalState.getWorkflowId().startsWith("StatefulOrchestratorTest-")
+        );
         assertTrue(finalState.get("completed", false));
 
         // Verify model was called at least for orchestrator, workers, and synthesizer
@@ -119,20 +145,27 @@ class StatefulOrchestratorWorkersWorkflowIntegrationTest {
 
     @Test
     void testStatefulWorkflowWithContext() throws WorkflowExecutionException {
-        OrchestratorWorkersWorkflow.OrchestratorInput input = 
-            new OrchestratorWorkersWorkflow.OrchestratorInput("Evaluate system architecture");
+        OrchestratorWorkersWorkflow.OrchestratorInput input =
+            new OrchestratorWorkersWorkflow.OrchestratorInput(
+                "Evaluate system architecture"
+            );
 
         Map<String, Object> context = new HashMap<>();
         context.put("user_id", "test_user");
         context.put("priority", "high");
 
-        StatefulWorkflowResult<OrchestratorWorkersWorkflow.WorkerResponse> result = workflow.start(input, context);
+        StatefulWorkflowResult<
+            OrchestratorWorkersWorkflow.WorkerResponse
+        > result = workflow.start(input, context);
 
         assertTrue(result.isCompleted());
-        
+
         // Verify context was populated with workflow information
         assertEquals("StatefulOrchestratorTest", context.get("workflow_name"));
-        assertEquals("Evaluate system architecture", context.get("task_description"));
+        assertEquals(
+            "Evaluate system architecture",
+            context.get("task_description")
+        );
         assertNotNull(context.get("available_workers"));
         assertNotNull(context.get("execution_time"));
 
@@ -145,15 +178,22 @@ class StatefulOrchestratorWorkersWorkflowIntegrationTest {
 
     @Test
     void testStatefulWorkflowAsync() throws Exception {
-        OrchestratorWorkersWorkflow.OrchestratorInput input = 
-            new OrchestratorWorkersWorkflow.OrchestratorInput("Perform comprehensive system audit");
+        OrchestratorWorkersWorkflow.OrchestratorInput input =
+            new OrchestratorWorkersWorkflow.OrchestratorInput(
+                "Perform comprehensive system audit"
+            );
 
-        CompletableFuture<StatefulWorkflowResult<OrchestratorWorkersWorkflow.WorkerResponse>> future = 
-            workflow.startAsync(input);
-        StatefulWorkflowResult<OrchestratorWorkersWorkflow.WorkerResponse> result = future.get();
+        CompletableFuture<
+            StatefulWorkflowResult<OrchestratorWorkersWorkflow.WorkerResponse>
+        > future = workflow.startAsync(input);
+        StatefulWorkflowResult<
+            OrchestratorWorkersWorkflow.WorkerResponse
+        > result = future.get();
 
         assertTrue(result.isCompleted());
-        OrchestratorWorkersWorkflow.WorkerResponse output = result.getOutput().orElse(null);
+        OrchestratorWorkersWorkflow.WorkerResponse output = result
+            .getOutput()
+            .orElse(null);
         assertNotNull(output);
         assertTrue(output.isSuccessful());
 
@@ -181,11 +221,17 @@ class StatefulOrchestratorWorkersWorkflowIntegrationTest {
         // Verify entry points
         assertFalse(workflow.getEntryPoints().isEmpty());
         assertEquals(1, workflow.getEntryPoints().size());
-        assertEquals("orchestrator", workflow.getEntryPoints().get(0).getNodeId());
+        assertEquals(
+            "orchestrator",
+            workflow.getEntryPoints().get(0).getNodeId()
+        );
 
         // Verify routes from orchestrator node
-        List<dev.agents4j.api.workflow.WorkflowRoute<OrchestratorWorkersWorkflow.OrchestratorInput>> routesFromOrchestrator = 
-            workflow.getRoutesFrom("orchestrator");
+        List<
+            dev.agents4j.api.workflow.WorkflowRoute<
+                OrchestratorWorkersWorkflow.OrchestratorInput
+            >
+        > routesFromOrchestrator = workflow.getRoutesFrom("orchestrator");
         assertEquals(1, routesFromOrchestrator.size());
         assertEquals("workers", routesFromOrchestrator.get(0).getToNodeId());
     }
@@ -193,12 +239,18 @@ class StatefulOrchestratorWorkersWorkflowIntegrationTest {
     @Test
     void testErrorHandling() throws WorkflowExecutionException {
         // Setup mock to throw exception during orchestration
-        when(mockModel.chat(anyList())).thenThrow(new RuntimeException("Orchestration error"));
+        when(mockModel.chat(anyList())).thenThrow(
+            new RuntimeException("Orchestration error")
+        );
 
-        OrchestratorWorkersWorkflow.OrchestratorInput input = 
-            new OrchestratorWorkersWorkflow.OrchestratorInput("Task that will fail");
+        OrchestratorWorkersWorkflow.OrchestratorInput input =
+            new OrchestratorWorkersWorkflow.OrchestratorInput(
+                "Task that will fail"
+            );
 
-        StatefulWorkflowResult<OrchestratorWorkersWorkflow.WorkerResponse> result = workflow.start(input);
+        StatefulWorkflowResult<
+            OrchestratorWorkersWorkflow.WorkerResponse
+        > result = workflow.start(input);
 
         assertTrue(result.isError());
         assertFalse(result.isCompleted());
@@ -213,10 +265,14 @@ class StatefulOrchestratorWorkersWorkflowIntegrationTest {
 
     @Test
     void testWorkflowMetadata() throws WorkflowExecutionException {
-        OrchestratorWorkersWorkflow.OrchestratorInput input = 
-            new OrchestratorWorkersWorkflow.OrchestratorInput("Test task for metadata");
+        OrchestratorWorkersWorkflow.OrchestratorInput input =
+            new OrchestratorWorkersWorkflow.OrchestratorInput(
+                "Test task for metadata"
+            );
 
-        StatefulWorkflowResult<OrchestratorWorkersWorkflow.WorkerResponse> result = workflow.start(input);
+        StatefulWorkflowResult<
+            OrchestratorWorkersWorkflow.WorkerResponse
+        > result = workflow.start(input);
 
         assertTrue(result.isCompleted());
 
@@ -235,31 +291,50 @@ class StatefulOrchestratorWorkersWorkflowIntegrationTest {
 
     @Test
     void testSubtaskExecution() throws WorkflowExecutionException {
-        OrchestratorWorkersWorkflow.OrchestratorInput input = 
-            new OrchestratorWorkersWorkflow.OrchestratorInput("Complex multi-step analysis");
+        OrchestratorWorkersWorkflow.OrchestratorInput input =
+            new OrchestratorWorkersWorkflow.OrchestratorInput(
+                "Complex multi-step analysis"
+            );
 
-        StatefulWorkflowResult<OrchestratorWorkersWorkflow.WorkerResponse> result = workflow.start(input);
+        StatefulWorkflowResult<
+            OrchestratorWorkersWorkflow.WorkerResponse
+        > result = workflow.start(input);
 
         assertTrue(result.isCompleted());
-        OrchestratorWorkersWorkflow.WorkerResponse output = result.getOutput().orElse(null);
+        OrchestratorWorkersWorkflow.WorkerResponse output = result
+            .getOutput()
+            .orElse(null);
         assertNotNull(output);
 
         // Verify subtasks were created and executed
         assertFalse(output.getSubtasks().isEmpty());
         assertFalse(output.getSubtaskResults().isEmpty());
-        assertEquals(output.getSubtasks().size(), output.getSubtaskResults().size());
+        assertEquals(
+            output.getSubtasks().size(),
+            output.getSubtaskResults().size()
+        );
 
         // Verify all subtasks were successful
-        assertTrue(output.getSubtaskResults().stream().allMatch(
-            OrchestratorWorkersWorkflow.SubtaskResult::isSuccessful));
+        assertTrue(
+            output
+                .getSubtaskResults()
+                .stream()
+                .allMatch(
+                    OrchestratorWorkersWorkflow.SubtaskResult::isSuccessful
+                )
+        );
     }
 
     @Test
     void testStateProgression() throws WorkflowExecutionException {
-        OrchestratorWorkersWorkflow.OrchestratorInput input = 
-            new OrchestratorWorkersWorkflow.OrchestratorInput("Test state progression");
+        OrchestratorWorkersWorkflow.OrchestratorInput input =
+            new OrchestratorWorkersWorkflow.OrchestratorInput(
+                "Test state progression"
+            );
 
-        StatefulWorkflowResult<OrchestratorWorkersWorkflow.WorkerResponse> result = workflow.start(input);
+        StatefulWorkflowResult<
+            OrchestratorWorkersWorkflow.WorkerResponse
+        > result = workflow.start(input);
 
         // Verify final state contains expected data
         WorkflowState finalState = result.getState();

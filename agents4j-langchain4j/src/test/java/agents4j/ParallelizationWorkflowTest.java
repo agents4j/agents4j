@@ -1,27 +1,26 @@
 package agents4j;
 
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.Mockito.*;
+
 import dev.agents4j.api.exception.WorkflowExecutionException;
 import dev.agents4j.api.workflow.StatefulWorkflowResult;
-import dev.agents4j.workflow.ParallelizationWorkflow;
+import dev.agents4j.langchain4j.workflow.ParallelizationWorkflow;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentMatchers;
-import org.mockito.Mockito;
-
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.Mockito.*;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentMatchers;
+import org.mockito.Mockito;
 
 class ParallelizationWorkflowTest {
 
@@ -56,27 +55,26 @@ class ParallelizationWorkflowTest {
 
     @Test
     void testParallelizationWorkflowBuilderWithDefaultName() {
-        ParallelizationWorkflow defaultNameWorkflow = ParallelizationWorkflow.builder()
-            .chatModel(mockModel)
-            .build();
-        
+        ParallelizationWorkflow defaultNameWorkflow =
+            ParallelizationWorkflow.builder().chatModel(mockModel).build();
+
         assertNotNull(defaultNameWorkflow);
-        assertTrue(defaultNameWorkflow.getName().startsWith("ParallelizationWorkflow-"));
+        assertTrue(
+            defaultNameWorkflow.getName().startsWith("ParallelizationWorkflow-")
+        );
     }
 
     @Test
     void testParallelizationWorkflowBuilderMissingModel() {
         assertThrows(IllegalStateException.class, () -> {
-            ParallelizationWorkflow.builder()
-                .name("TestWorkflow")
-                .build();
+            ParallelizationWorkflow.builder().name("TestWorkflow").build();
         });
     }
 
     @Test
     void testParallelInput() {
         List<String> inputs = Arrays.asList("Hello", "World", "Test");
-        ParallelizationWorkflow.ParallelInput parallelInput = 
+        ParallelizationWorkflow.ParallelInput parallelInput =
             new ParallelizationWorkflow.ParallelInput("Translate:", inputs, 2);
 
         assertEquals("Translate:", parallelInput.getPrompt());
@@ -100,7 +98,11 @@ class ParallelizationWorkflowTest {
 
         // Test empty inputs
         assertThrows(IllegalArgumentException.class, () -> {
-            new ParallelizationWorkflow.ParallelInput("Prompt", Arrays.asList(), 2);
+            new ParallelizationWorkflow.ParallelInput(
+                "Prompt",
+                Arrays.asList(),
+                2
+            );
         });
 
         // Test invalid worker count
@@ -119,7 +121,7 @@ class ParallelizationWorkflowTest {
 
         assertNotNull(results);
         assertEquals(3, results.size());
-        
+
         // Verify that each result is the expected mock response
         for (String result : results) {
             assertEquals("Processed response", result);
@@ -158,20 +160,22 @@ class ParallelizationWorkflowTest {
     void testStartMethod() throws WorkflowExecutionException {
         String prompt = "Analyze the following text:";
         List<String> inputs = Arrays.asList("Text 1", "Text 2");
-        ParallelizationWorkflow.ParallelInput parallelInput = 
+        ParallelizationWorkflow.ParallelInput parallelInput =
             new ParallelizationWorkflow.ParallelInput(prompt, inputs, 2);
 
-        StatefulWorkflowResult<List<String>> result = workflow.start(parallelInput);
+        StatefulWorkflowResult<List<String>> result = workflow.start(
+            parallelInput
+        );
 
         assertNotNull(result);
         assertTrue(result.isCompleted());
         assertFalse(result.isSuspended());
         assertFalse(result.isError());
-        
+
         List<String> output = result.getOutput().orElse(null);
         assertNotNull(output);
         assertEquals(2, output.size());
-        
+
         for (String response : output) {
             assertEquals("Processed response", response);
         }
@@ -183,17 +187,20 @@ class ParallelizationWorkflowTest {
     void testStartMethodWithContext() throws WorkflowExecutionException {
         String prompt = "Analyze the following text:";
         List<String> inputs = Arrays.asList("Text 1", "Text 2");
-        ParallelizationWorkflow.ParallelInput parallelInput = 
+        ParallelizationWorkflow.ParallelInput parallelInput =
             new ParallelizationWorkflow.ParallelInput(prompt, inputs, 2);
 
         Map<String, Object> context = new HashMap<>();
         context.put("test_key", "test_value");
 
-        StatefulWorkflowResult<List<String>> result = workflow.start(parallelInput, context);
+        StatefulWorkflowResult<List<String>> result = workflow.start(
+            parallelInput,
+            context
+        );
 
         assertNotNull(result);
         assertTrue(result.isCompleted());
-        
+
         List<String> output = result.getOutput().orElse(null);
         assertNotNull(output);
         assertEquals(2, output.size());
@@ -209,22 +216,24 @@ class ParallelizationWorkflowTest {
     }
 
     @Test
-    void testStartAsyncMethod() throws ExecutionException, InterruptedException {
+    void testStartAsyncMethod()
+        throws ExecutionException, InterruptedException {
         String prompt = "Summarize:";
         List<String> inputs = Arrays.asList("Document 1", "Document 2");
-        ParallelizationWorkflow.ParallelInput parallelInput = 
+        ParallelizationWorkflow.ParallelInput parallelInput =
             new ParallelizationWorkflow.ParallelInput(prompt, inputs, 2);
 
-        CompletableFuture<StatefulWorkflowResult<List<String>>> future = workflow.startAsync(parallelInput);
+        CompletableFuture<StatefulWorkflowResult<List<String>>> future =
+            workflow.startAsync(parallelInput);
         StatefulWorkflowResult<List<String>> result = future.get();
 
         assertNotNull(result);
         assertTrue(result.isCompleted());
-        
+
         List<String> output = result.getOutput().orElse(null);
         assertNotNull(output);
         assertEquals(2, output.size());
-        
+
         for (String response : output) {
             assertEquals("Processed response", response);
         }
@@ -236,12 +245,12 @@ class ParallelizationWorkflowTest {
     void testWorkflowValidation() {
         // Test that the workflow has proper structure
         assertDoesNotThrow(() -> workflow.validate());
-        
+
         // Verify nodes and routes exist
         assertFalse(workflow.getNodes().isEmpty());
         assertFalse(workflow.getRoutes().isEmpty());
         assertFalse(workflow.getEntryPoints().isEmpty());
-        
+
         // Verify we can get nodes by ID
         assertTrue(workflow.getNode("parallel-processor").isPresent());
         assertTrue(workflow.getNode("aggregator").isPresent());
@@ -250,15 +259,19 @@ class ParallelizationWorkflowTest {
     @Test
     void testErrorHandling() throws WorkflowExecutionException {
         // Setup mock to throw exception
-        when(mockModel.chat(anyList())).thenThrow(new RuntimeException("API Error"));
+        when(mockModel.chat(anyList())).thenThrow(
+            new RuntimeException("API Error")
+        );
 
         String prompt = "Process:";
         List<String> inputs = Arrays.asList("Input 1");
-        ParallelizationWorkflow.ParallelInput parallelInput = 
+        ParallelizationWorkflow.ParallelInput parallelInput =
             new ParallelizationWorkflow.ParallelInput(prompt, inputs, 1);
 
-        StatefulWorkflowResult<List<String>> result = workflow.start(parallelInput);
-        
+        StatefulWorkflowResult<List<String>> result = workflow.start(
+            parallelInput
+        );
+
         assertTrue(result.isError());
         assertFalse(result.isCompleted());
         assertFalse(result.isSuspended());
@@ -297,23 +310,33 @@ class ParallelizationWorkflowTest {
     void testLargeNumberOfInputs() throws WorkflowExecutionException {
         // Test with a larger number of inputs to verify parallel processing
         List<String> inputs = Arrays.asList(
-            "Item 1", "Item 2", "Item 3", "Item 4", "Item 5",
-            "Item 6", "Item 7", "Item 8", "Item 9", "Item 10"
+            "Item 1",
+            "Item 2",
+            "Item 3",
+            "Item 4",
+            "Item 5",
+            "Item 6",
+            "Item 7",
+            "Item 8",
+            "Item 9",
+            "Item 10"
         );
 
         String prompt = "Process item:";
-        ParallelizationWorkflow.ParallelInput parallelInput = 
+        ParallelizationWorkflow.ParallelInput parallelInput =
             new ParallelizationWorkflow.ParallelInput(prompt, inputs, 3);
 
-        StatefulWorkflowResult<List<String>> result = workflow.start(parallelInput);
+        StatefulWorkflowResult<List<String>> result = workflow.start(
+            parallelInput
+        );
 
         assertNotNull(result);
         assertTrue(result.isCompleted());
-        
+
         List<String> output = result.getOutput().orElse(null);
         assertNotNull(output);
         assertEquals(10, output.size());
-        
+
         // Verify all results are present
         for (String response : output) {
             assertEquals("Processed response", response);
@@ -327,13 +350,15 @@ class ParallelizationWorkflowTest {
     void testWorkflowMetadata() throws WorkflowExecutionException {
         String prompt = "Test prompt";
         List<String> inputs = Arrays.asList("Input 1", "Input 2");
-        ParallelizationWorkflow.ParallelInput parallelInput = 
+        ParallelizationWorkflow.ParallelInput parallelInput =
             new ParallelizationWorkflow.ParallelInput(prompt, inputs, 2);
 
-        StatefulWorkflowResult<List<String>> result = workflow.start(parallelInput);
+        StatefulWorkflowResult<List<String>> result = workflow.start(
+            parallelInput
+        );
 
         assertTrue(result.isCompleted());
-        
+
         // Check metadata
         Map<String, Object> metadata = result.getMetadata();
         assertNotNull(metadata);

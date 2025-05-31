@@ -8,7 +8,6 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -18,11 +17,11 @@ import java.util.concurrent.CompletableFuture;
 /**
  * Base implementation of LangChain4JAgentNode that provides common functionality
  * for working with LangChain4J chat models and memory.
- * 
+ *
  * @param <I> Input type
  * @param <O> Output type
  */
-public abstract class BaseLangChain4JAgentNode<I, O> 
+public abstract class BaseLangChain4JAgentNode<I, O>
     implements LangChain4JAgentNode<I, O> {
 
     private final String name;
@@ -70,19 +69,25 @@ public abstract class BaseLangChain4JAgentNode<I, O>
         try {
             // Create user message from input
             UserMessage userMessage = createUserMessage(input, context);
-            
+
             // Get AI response
             AiMessage aiMessage = getAiResponse(userMessage, context);
-            
+
             // Convert AI response to output
             return createOutput(aiMessage, input, context);
         } catch (Exception e) {
-            throw new RuntimeException("Failed to process input with LangChain4J agent: " + name, e);
+            throw new RuntimeException(
+                "Failed to process input with LangChain4J agent: " + name,
+                e
+            );
         }
     }
 
     @Override
-    public CompletableFuture<O> processAsync(I input, Map<String, Object> context) {
+    public CompletableFuture<O> processAsync(
+        I input,
+        Map<String, Object> context
+    ) {
         return CompletableFuture.supplyAsync(() -> process(input, context));
     }
 
@@ -94,7 +99,10 @@ public abstract class BaseLangChain4JAgentNode<I, O>
      * @param context Additional context information
      * @return UserMessage for the LangChain4J model
      */
-    protected abstract UserMessage createUserMessage(I input, Map<String, Object> context);
+    protected abstract UserMessage createUserMessage(
+        I input,
+        Map<String, Object> context
+    );
 
     /**
      * Gets the AI response from the model.
@@ -109,29 +117,29 @@ public abstract class BaseLangChain4JAgentNode<I, O>
         Map<String, Object> context
     ) {
         List<ChatMessage> messages = new ArrayList<>();
-        
+
         // Add system message if configured
         if (systemPrompt != null && !systemPrompt.trim().isEmpty()) {
             messages.add(SystemMessage.from(systemPrompt));
         }
-        
+
         // Add messages from memory if available
         if (memory != null) {
             messages.addAll(memory.messages());
         }
-        
+
         // Add the current user message
         messages.add(userMessage);
-        
+
         // Get AI response
-        AiMessage aiMessage = model.generate(messages);
-        
+        AiMessage aiMessage = model.chat(messages).aiMessage();
+
         // Store messages in memory if available
         if (memory != null) {
             memory.add(userMessage);
             memory.add(aiMessage);
         }
-        
+
         return aiMessage;
     }
 
