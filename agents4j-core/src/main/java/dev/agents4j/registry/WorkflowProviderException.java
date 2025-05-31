@@ -12,6 +12,8 @@ import java.util.Map;
  */
 public class WorkflowProviderException extends Exception {
     
+    private static final long serialVersionUID = 1L;
+    
     private final String providerType;
     private final Map<String, Object> context;
     

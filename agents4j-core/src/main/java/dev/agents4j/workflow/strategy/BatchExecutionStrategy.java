@@ -194,7 +194,7 @@ public class BatchExecutionStrategy<I, O> implements WorkflowExecutionStrategy<I
         } else if (input instanceof String) {
             // Split string by lines or custom delimiter
             String delimiter = (String) context.getOrDefault("inputDelimiter", "\n");
-            return List.of(((String) input).split(delimiter));
+            return List.of((Object[]) ((String) input).split(delimiter));
         } else {
             // Treat as single item
             return List.of(input);

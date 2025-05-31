@@ -121,7 +121,7 @@ public class ParallelExecutionStrategy<I, O> implements WorkflowExecutionStrateg
             
             // Wait for all futures to complete or timeout
             CompletableFuture<Void> allFutures = CompletableFuture.allOf(
-                futures.toArray(new CompletableFuture[0])
+                futures.toArray(new CompletableFuture<?>[0])
             );
             
             try {

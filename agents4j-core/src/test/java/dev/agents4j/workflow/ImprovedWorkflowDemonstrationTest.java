@@ -178,6 +178,9 @@ class ImprovedWorkflowDemonstrationTest {
                 .addNode(errorNode)
                 .defaultEntryPoint(errorNode)
                 .outputExtractor((input, state, context) -> "Success: " + input)
+                .configuration(WorkflowExecutionConfiguration.builder()
+                        .cleanErrorMessages(true)
+                        .build())
                 .monitor(monitor)
                 .build();
 

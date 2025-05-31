@@ -1,4 +1,4 @@
-package agents4j.exception;
+package dev.agents4j.exception;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;

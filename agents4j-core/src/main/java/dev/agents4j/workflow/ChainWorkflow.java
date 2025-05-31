@@ -65,7 +65,9 @@ public class ChainWorkflow<I, O> implements AgentWorkflow<I, O> {
                     // Fallback to input if no final output (shouldn't happen in normal flow)
                     return (O) input;
                 })
-                .maxExecutionSteps(nodes.size() + 10); // Allow some buffer for error handling
+                .configuration(WorkflowExecutionConfiguration.builder()
+                    .maxExecutionSteps(nodes.size() + 10) // Allow some buffer for error handling
+                    .build());
 
         // Convert each AgentNode to StatefulAgentNode and build the chain
         AgentNodeAdapter<I> entryPoint = null;
@@ -279,12 +281,11 @@ public class ChainWorkflow<I, O> implements AgentWorkflow<I, O> {
         }
 
         /**
-         * Add multiple nodes to the chain at once.
+         * Add multiple nodes to the workflow in the order specified.
          *
          * @param nodes The nodes to add
          * @return This builder instance for method chaining
          */
-        @SafeVarargs
         public final Builder<I, O> nodes(AgentNode<?, ?>... nodes) {
             for (AgentNode<?, ?> node : nodes) {
                 node(node);

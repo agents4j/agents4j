@@ -196,7 +196,9 @@ public class StatefulWorkflowFactory {
         }
         
         public ConditionalWorkflowBuilder<I, O> maxExecutionSteps(int maxSteps) {
-            builder.maxExecutionSteps(maxSteps);
+            builder.configuration(WorkflowExecutionConfiguration.builder()
+                .maxExecutionSteps(maxSteps)
+                .build());
             return this;
         }
         
@@ -252,7 +254,9 @@ public class StatefulWorkflowFactory {
         }
         
         public StateMachineBuilder<I, O> maxExecutionSteps(int maxSteps) {
-            builder.maxExecutionSteps(maxSteps);
+            builder.configuration(WorkflowExecutionConfiguration.builder()
+                .maxExecutionSteps(maxSteps)
+                .build());
             return this;
         }
         

@@ -351,8 +351,8 @@ public class StrategyWorkflow<I, O> implements AgentWorkflow<I, O> {
     }
 
     /**
-     * Create a StrategyWorkflow with the given strategy and nodes.
-     *
+     * Creates a new StrategyWorkflow with the specified parameters.
+     * 
      * @param <I> The input type
      * @param <O> The output type
      * @param name The workflow name
@@ -360,7 +360,6 @@ public class StrategyWorkflow<I, O> implements AgentWorkflow<I, O> {
      * @param nodes The agent nodes
      * @return A new StrategyWorkflow instance
      */
-    @SafeVarargs
     public static <I, O> StrategyWorkflow<I, O> create(String name, 
                                                       WorkflowExecutionStrategy<I, O> strategy,
                                                       AgentNode<?, ?>... nodes) {

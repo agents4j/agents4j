@@ -20,6 +20,8 @@ public class WorkflowExecutionConfiguration {
     private final Executor asyncExecutor;
     private final boolean failFast;
     private final Duration nodeTimeout;
+    private final boolean cleanErrorMessages;
+    private final boolean preserveOriginalInput;
     
     private WorkflowExecutionConfiguration(Builder builder) {
         this.maxExecutionSteps = builder.maxExecutionSteps;
@@ -31,6 +33,8 @@ public class WorkflowExecutionConfiguration {
         this.asyncExecutor = builder.asyncExecutor;
         this.failFast = builder.failFast;
         this.nodeTimeout = builder.nodeTimeout;
+        this.cleanErrorMessages = builder.cleanErrorMessages;
+        this.preserveOriginalInput = builder.preserveOriginalInput;
     }
     
     // Getters
@@ -70,6 +74,14 @@ public class WorkflowExecutionConfiguration {
         return nodeTimeout;
     }
     
+    public boolean isCleanErrorMessages() {
+        return cleanErrorMessages;
+    }
+    
+    public boolean isPreserveOriginalInput() {
+        return preserveOriginalInput;
+    }
+    
     public static Builder builder() {
         return new Builder();
     }
@@ -88,6 +100,8 @@ public class WorkflowExecutionConfiguration {
         private Executor asyncExecutor = ForkJoinPool.commonPool();
         private boolean failFast = false;
         private Duration nodeTimeout = Duration.ofMinutes(5);
+        private boolean cleanErrorMessages = false;
+        private boolean preserveOriginalInput = true;
         
         public Builder maxExecutionSteps(int steps) {
             if (steps <= 0) {
@@ -137,6 +151,16 @@ public class WorkflowExecutionConfiguration {
         
         public Builder nodeTimeout(Duration timeout) {
             this.nodeTimeout = Objects.requireNonNull(timeout, "Node timeout cannot be null");
+            return this;
+        }
+        
+        public Builder cleanErrorMessages(boolean cleanErrorMessages) {
+            this.cleanErrorMessages = cleanErrorMessages;
+            return this;
+        }
+        
+        public Builder preserveOriginalInput(boolean preserveOriginalInput) {
+            this.preserveOriginalInput = preserveOriginalInput;
             return this;
         }
         
@@ -198,8 +222,8 @@ public class WorkflowExecutionConfiguration {
     @Override
     public String toString() {
         return String.format(
-            "WorkflowExecutionConfiguration{maxSteps=%d, maxTime=%s, monitoring=%s, metrics=%s, retryEnabled=%s}",
-            maxExecutionSteps, maxExecutionTime, enableMonitoring, enableMetrics, retryPolicy.isEnabled()
+            "WorkflowExecutionConfiguration{maxSteps=%d, maxTime=%s, monitoring=%s, metrics=%s, retryEnabled=%s, cleanErrors=%s, preserveInput=%s}",
+            maxExecutionSteps, maxExecutionTime, enableMonitoring, enableMetrics, retryPolicy.isEnabled(), cleanErrorMessages, preserveOriginalInput
         );
     }
 }

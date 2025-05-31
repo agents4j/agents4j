@@ -83,6 +83,12 @@ public class StatefulWorkflowImpl<I, O> implements StatefulWorkflow<I, O> {
             context = new HashMap<>();
         }
         
+        // Preserve original input in context for output extraction if configured
+        if (configuration.isPreserveOriginalInput()) {
+            context.put("original_input", input);
+        }
+        context.put("workflow_start_time", System.currentTimeMillis());
+        
         monitor.onWorkflowStarted(initialState.getWorkflowId(), name, context);
         
         try {
@@ -105,23 +111,25 @@ public class StatefulWorkflowImpl<I, O> implements StatefulWorkflow<I, O> {
     }
 
     @Override
-    public StatefulWorkflowResult<O> resume(I input, WorkflowState state, Map<String, Object> context) 
+    public StatefulWorkflowResult<O> resume(I input, WorkflowState resumeState, Map<String, Object> context) 
             throws WorkflowExecutionException {
-        
-        if (!state.getCurrentNodeId().isPresent()) {
-            throw new WorkflowExecutionException(name, "Cannot resume workflow: no current node in state");
-        }
         
         if (context == null) {
             context = new HashMap<>();
         }
         
-        monitor.onWorkflowResumed(state.getWorkflowId(), state);
+        // Preserve original input if not already set (for new resume data) and if configured
+        if (configuration.isPreserveOriginalInput() && !context.containsKey("original_input")) {
+            context.put("original_input", input);
+        }
+        context.put("workflow_resume_time", System.currentTimeMillis());
+        
+        monitor.onWorkflowResumed(resumeState.getWorkflowId(), resumeState);
         
         try {
-            return executeWorkflow(input, state, context);
+            return executeWorkflow(input, resumeState, context);
         } catch (Exception e) {
-            monitor.onWorkflowError(state.getWorkflowId(), e.getMessage(), state, e);
+            monitor.onWorkflowError(resumeState.getWorkflowId(), e.getMessage(), resumeState, e);
             throw e;
         }
     }
@@ -272,8 +280,9 @@ public class StatefulWorkflowImpl<I, O> implements StatefulWorkflow<I, O> {
             try {
                 command = currentNode.process(currentInput, currentState, context);
             } catch (Exception e) {
-                monitor.onWorkflowError(currentState.getWorkflowId(), "Node execution failed: " + e.getMessage(), currentState, e);
-                return StatefulWorkflowResult.error("Node execution failed: " + e.getMessage(), currentState);
+                String errorMessage = formatErrorMessage("Node execution failed: " + e.getMessage());
+                monitor.onWorkflowError(currentState.getWorkflowId(), errorMessage, currentState, e);
+                return StatefulWorkflowResult.error(errorMessage, currentState);
             }
             
             // Monitor node completion
@@ -285,8 +294,9 @@ public class StatefulWorkflowImpl<I, O> implements StatefulWorkflow<I, O> {
             if (result.isFailure()) {
                 WorkflowExecutionException error = result.getError().orElse(
                     new WorkflowExecutionException("Unknown execution error"));
-                monitor.onWorkflowError(currentState.getWorkflowId(), error.getMessage(), currentState, error);
-                return StatefulWorkflowResult.error(error.getMessage(), currentState);
+                String errorMessage = formatErrorMessage(error.getMessage());
+                monitor.onWorkflowError(currentState.getWorkflowId(), errorMessage, currentState, error);
+                return StatefulWorkflowResult.error(errorMessage, currentState);
             }
             
             // Update state
@@ -311,7 +321,8 @@ public class StatefulWorkflowImpl<I, O> implements StatefulWorkflow<I, O> {
                             .orElseThrow(() -> new WorkflowExecutionException(name, "GOTO result missing target node"));
                     
                     if (!nodes.containsKey(targetNodeId)) {
-                        return StatefulWorkflowResult.error("GOTO target node not found: " + targetNodeId, currentState);
+                        String errorMessage = formatErrorMessage("GOTO target node not found: " + targetNodeId);
+                        return StatefulWorkflowResult.error(errorMessage, currentState);
                     }
                     
                     currentState = currentState.withCurrentNode(targetNodeId);
@@ -322,18 +333,25 @@ public class StatefulWorkflowImpl<I, O> implements StatefulWorkflow<I, O> {
                     Optional<StatefulAgentNode<I>> nextNode = routingStrategy.findNextNode(currentNode, currentInput, currentState);
                     if (!nextNode.isPresent()) {
                         // No more nodes to execute - complete the workflow
-                        O continueOutput = outputExtractor.extractOutput(currentInput, currentState, context);
+                        // Use original input for output extraction if preserved, otherwise use current input
+                        I outputInput = configuration.isPreserveOriginalInput() && context.containsKey("original_input") 
+                            ? (I) context.get("original_input") 
+                            : currentInput;
+                        O continueOutput = outputExtractor.extractOutput(outputInput, currentState, context);
                         Duration completionTime = Duration.between(startTime, Instant.now());
                         monitor.onWorkflowCompleted(currentState.getWorkflowId(), completionTime, currentState);
                         return StatefulWorkflowResult.completed(continueOutput, currentState);
                     }
                     
                     currentState = currentState.withCurrentNode(nextNode.get().getNodeId());
-                    currentInput = result.getNextInput().orElse(currentInput);
+                    // Preserve data flow but allow nodes to transform input for processing
+                    I nextInput = result.getNextInput().orElse(currentInput);
+                    currentInput = nextInput;
                     break;
                     
                 default:
-                    return StatefulWorkflowResult.error("Unknown result type: " + result.getType(), currentState);
+                    String errorMessage = formatErrorMessage("Unknown result type: " + result.getType());
+                    return StatefulWorkflowResult.error(errorMessage, currentState);
             }
         }
         
@@ -380,6 +398,20 @@ public class StatefulWorkflowImpl<I, O> implements StatefulWorkflow<I, O> {
 
     private String generateWorkflowId() {
         return name + "-" + System.currentTimeMillis() + "-" + UUID.randomUUID().toString().substring(0, 8);
+    }
+    
+    /**
+     * Formats error messages based on configuration.
+     * If clean error messages are enabled, strips error codes.
+     */
+    private String formatErrorMessage(String message) {
+        if (configuration.isCleanErrorMessages()) {
+            // Strip error codes like "[AGT-2001] " from the beginning
+            if (message.matches("^\\[AGT-\\d+\\]\\s*.*")) {
+                return message.replaceFirst("^\\[AGT-\\d+\\]\\s*", "");
+            }
+        }
+        return message;
     }
 
     /**

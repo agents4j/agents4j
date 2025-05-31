@@ -16,6 +16,11 @@ java {
     withSourcesJar()
 }
 
+tasks.withType(JavaCompile) {
+    options.compilerArgs += ['-Xlint:all', '-Xlint:-processing']
+    options.deprecation = true
+}
+
 repositories {
     // Use Maven Central for resolving dependencies.
     mavenCentral()

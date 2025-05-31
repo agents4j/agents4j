@@ -63,7 +63,7 @@ public class AsyncWorkflowEventPublisher implements WorkflowEventPublisher {
             }, asyncExecutor))
             .toList();
 
-        return CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]));
+        return CompletableFuture.allOf(futures.toArray(new CompletableFuture<?>[0]));
     }
 
     @Override

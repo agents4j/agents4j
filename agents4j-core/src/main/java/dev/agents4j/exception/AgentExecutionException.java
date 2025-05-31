@@ -13,6 +13,8 @@ import java.util.Map;
  */
 public class AgentExecutionException extends RuntimeException {
     
+    private static final long serialVersionUID = 1L;
+    
     private final String workflowName;
     private final Map<String, Object> context;
     

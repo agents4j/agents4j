@@ -38,8 +38,22 @@ public class CompleteCommandHandler<I, O> implements CommandHandler<I, O> {
                 updatedState = state.withUpdates(command.getStateUpdates());
             }
             
+            // Add any command metadata to context
+            command.getMetadata().forEach(context::put);
+            
+            // Use original input for output extraction if available, otherwise use current input
+            I outputInput = input;
+            if (context.containsKey("original_input")) {
+                try {
+                    outputInput = (I) context.get("original_input");
+                } catch (ClassCastException e) {
+                    // Fall back to current input if original input type doesn't match
+                    outputInput = input;
+                }
+            }
+            
             // Extract the final output using the configured extractor
-            O output = outputExtractor.extractOutput(input, updatedState, context);
+            O output = outputExtractor.extractOutput(outputInput, updatedState, context);
             
             return ExecutionResult.completed(output, updatedState);
             

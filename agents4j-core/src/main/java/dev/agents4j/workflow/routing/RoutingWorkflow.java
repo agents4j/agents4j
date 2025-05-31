@@ -359,10 +359,10 @@ public class RoutingWorkflow<I, O> implements StatefulWorkflow<I, O> {
         List<StatefulAgentNode<I>> nodeList = new ArrayList<>();
         
         // Content router node
-        nodeList.add(new ContentRouterNode(ROUTER_NODE, router));
+        nodeList.add(new ContentRouterNode<>(ROUTER_NODE, router));
         
         // Route executor node
-        nodeList.add(new RouteExecutorNode(ROUTE_EXECUTOR_NODE, routes, fallbackRoute, 
+        nodeList.add(new RouteExecutorNode<>(ROUTE_EXECUTOR_NODE, routes, fallbackRoute, 
                 confidenceThreshold, enableFallbackOnLowConfidence, enableRouteAnalytics));
         
         return nodeList;
