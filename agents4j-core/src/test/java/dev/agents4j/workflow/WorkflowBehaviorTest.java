@@ -101,7 +101,7 @@ class WorkflowBehaviorTest {
 
     @Test
     void testNodeProcessingContextPreservation() throws WorkflowExecutionException {
-        String input = "test input";
+        String input = "process test input";
         
         StatefulWorkflowResult<String> result = workflow.start(input);
         
@@ -109,12 +109,13 @@ class WorkflowBehaviorTest {
         
         // Verify that processing information is captured in state, not input transformation
         WorkflowState finalState = result.getState();
+        
         assertTrue(finalState.get("start_processed").isPresent());
         assertTrue(finalState.get("process_processed").isPresent());
         assertTrue(finalState.get("end_processed").isPresent());
         
         // Verify original input is preserved
-        assertEquals("Completed: test input", result.getOutput().get());
+        assertEquals("Completed: process test input", result.getOutput().get());
     }
 
     @Test

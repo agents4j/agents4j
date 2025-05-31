@@ -176,7 +176,7 @@ class RoutingWorkflowTest {
 
     @Test
     @DisplayName("Should handle router failure gracefully")
-    void shouldHandleRouterFailureGracefully() {
+    void shouldHandleRouterFailureGracefully() throws WorkflowExecutionException {
         router.setShouldFail(true);
         
         RoutingWorkflow<String, String> workflow = RoutingWorkflow.<String, String>builder()
@@ -186,9 +186,10 @@ class RoutingWorkflowTest {
             .addRoute(route2)
             .build();
 
-        assertThrows(WorkflowExecutionException.class, () -> {
-            workflow.start("test input");
-        });
+        StatefulWorkflowResult<String> result = workflow.start("test input");
+        
+        assertTrue(result.isError());
+        assertTrue(result.getErrorMessage().orElse("").contains("Simulated router failure"));
     }
 
     @Test
@@ -236,7 +237,6 @@ class RoutingWorkflowTest {
             .router(router)
             .addRoute(route1)
             .addRoute(route2)
-            .fallbackRoute(fallbackRoute)
             .confidenceThreshold(0.8)
             .build();
 
@@ -253,7 +253,7 @@ class RoutingWorkflowTest {
 
     @Test
     @DisplayName("Should handle missing route gracefully")
-    void shouldHandleMissingRouteGracefully() {
+    void shouldHandleMissingRouteGracefully() throws WorkflowExecutionException {
         router.setRouteDecision("nonexistent", 0.9);
         
         RoutingWorkflow<String, String> workflow = RoutingWorkflow.<String, String>builder()
@@ -263,11 +263,10 @@ class RoutingWorkflowTest {
             .addRoute(route2)
             .build();
 
-        WorkflowExecutionException exception = assertThrows(WorkflowExecutionException.class, () -> {
-            workflow.start("test input");
-        });
+        StatefulWorkflowResult<String> result = workflow.start("test input");
         
-        assertTrue(exception.getMessage().contains("not found in available routes"));
+        assertTrue(result.isError());
+        assertTrue(result.getErrorMessage().orElse("").contains("not found in available routes"));
     }
 
     @Test

@@ -134,6 +134,7 @@ public class RoutingWorkflow<I, O> implements StatefulWorkflow<I, O> {
             mergedContext.put("workflow_name", name);
             mergedContext.put("workflow_type", "routing");
             mergedContext.put("router_name", router.getRouterName());
+            mergedContext.put("routes", routes);
 
             long workflowStartTime = System.currentTimeMillis();
             
@@ -153,7 +154,30 @@ public class RoutingWorkflow<I, O> implements StatefulWorkflow<I, O> {
             WorkflowCommand<I> command = routerNode.process(input, state, mergedContext);
             
             // Handle the command
-            return handleCommand(command, input, state, mergedContext);
+            StatefulWorkflowResult<O> result = handleCommand(command, input, state, mergedContext);
+            
+            // Copy routing results back to original context
+            if (mergedContext.containsKey("routing_decision")) {
+                context.put("routing_decision", mergedContext.get("routing_decision"));
+            }
+            if (mergedContext.containsKey("selected_route_id")) {
+                context.put("selected_route_id", mergedContext.get("selected_route_id"));
+            }
+            if (mergedContext.containsKey("routing_confidence")) {
+                context.put("routing_confidence", mergedContext.get("routing_confidence"));
+            }
+            // Copy workflow metadata back to original context
+            if (mergedContext.containsKey("workflow_name")) {
+                context.put("workflow_name", mergedContext.get("workflow_name"));
+            }
+            if (mergedContext.containsKey("workflow_type")) {
+                context.put("workflow_type", mergedContext.get("workflow_type"));
+            }
+            if (mergedContext.containsKey("router_name")) {
+                context.put("router_name", mergedContext.get("router_name"));
+            }
+            
+            return result;
             
         } catch (Exception e) {
             Map<String, Object> errorContext = new HashMap<>();
@@ -488,6 +512,11 @@ public class RoutingWorkflow<I, O> implements StatefulWorkflow<I, O> {
                 RoutingDecision decision = router.route(input, availableRoutes, context);
                 long routingEndTime = System.currentTimeMillis();
                 
+                // Store routing decision in context for external access
+                context.put("routing_decision", decision);
+                context.put("selected_route_id", decision.getSelectedRoute());
+                context.put("routing_confidence", decision.getConfidence());
+                
                 return WorkflowCommand.<I>continueWith()
                         .updateState("routing_decision", decision)
                         .updateState("routing_time_ms", routingEndTime - routingStartTime)
@@ -497,6 +526,7 @@ public class RoutingWorkflow<I, O> implements StatefulWorkflow<I, O> {
                         
             } catch (Exception e) {
                 return WorkflowCommand.<I>error("Failed to route input: " + e.getMessage())
+                        .updateState("execution_successful", false)
                         .build();
             }
         }

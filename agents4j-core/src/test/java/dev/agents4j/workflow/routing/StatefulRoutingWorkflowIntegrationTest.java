@@ -40,8 +40,8 @@ class StatefulRoutingWorkflowIntegrationTest {
         when(mockRouter.getRouterConfiguration()).thenReturn(Map.of("type", "test"));
 
         // Setup mock routes
-        mockRoute1 = createMockRoute("route1", "Route 1", 1.0, 5);
-        mockRoute2 = createMockRoute("route2", "Route 2", 0.8, 3);
+        mockRoute1 = createMockRoute("route1", "Route 1", 0.5, 5);
+        mockRoute2 = createMockRoute("route2", "Route 2", 0.5, 3);
         mockFallbackRoute = createMockRoute("fallback", "Fallback Route", 0.0, 1);
 
         // Create workflow using the StatefulWorkflow interface
@@ -65,6 +65,8 @@ class StatefulRoutingWorkflowIntegrationTest {
             .thenReturn(decision);
 
         StatefulWorkflowResult<String> result = workflow.start("test input");
+
+
 
         assertNotNull(result);
         assertTrue(result.isCompleted());

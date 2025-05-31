@@ -281,8 +281,15 @@ public class StatefulWorkflowImpl<I, O> implements StatefulWorkflow<I, O> {
                 command = currentNode.process(currentInput, currentState, context);
             } catch (Exception e) {
                 String errorMessage = formatErrorMessage("Node execution failed: " + e.getMessage());
-                monitor.onWorkflowError(currentState.getWorkflowId(), errorMessage, currentState, e);
-                return StatefulWorkflowResult.error(errorMessage, currentState);
+                
+                // Update state with error information
+                Map<String, Object> errorUpdates = new HashMap<>();
+                errorUpdates.put("error_node", currentNodeId);
+                errorUpdates.put("error_message", e.getMessage());
+                WorkflowState errorState = currentState.withUpdates(errorUpdates);
+                
+                monitor.onWorkflowError(errorState.getWorkflowId(), errorMessage, errorState, e);
+                return StatefulWorkflowResult.error(errorMessage, errorState);
             }
             
             // Monitor node completion
@@ -295,8 +302,15 @@ public class StatefulWorkflowImpl<I, O> implements StatefulWorkflow<I, O> {
                 WorkflowExecutionException error = result.getError().orElse(
                     new WorkflowExecutionException("Unknown execution error"));
                 String errorMessage = formatErrorMessage(error.getMessage());
-                monitor.onWorkflowError(currentState.getWorkflowId(), errorMessage, currentState, error);
-                return StatefulWorkflowResult.error(errorMessage, currentState);
+                
+                // Update state with error information
+                Map<String, Object> errorUpdates = new HashMap<>();
+                errorUpdates.put("error_node", currentNodeId);
+                errorUpdates.put("error_message", error.getMessage());
+                WorkflowState errorState = currentState.withUpdates(errorUpdates);
+                
+                monitor.onWorkflowError(errorState.getWorkflowId(), errorMessage, errorState, error);
+                return StatefulWorkflowResult.error(errorMessage, errorState);
             }
             
             // Update state
