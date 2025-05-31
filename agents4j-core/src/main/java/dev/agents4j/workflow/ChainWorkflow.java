@@ -6,6 +6,7 @@ import dev.agents4j.api.Workflow;
 import dev.agents4j.api.exception.WorkflowExecutionException;
 import dev.agents4j.api.workflow.StatefulWorkflowResult;
 import dev.agents4j.api.workflow.WorkflowRoute;
+import dev.agents4j.api.workflow.WorkflowState;
 import dev.agents4j.workflow.adapters.AgentNodeAdapter;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -152,6 +153,9 @@ public class ChainWorkflow<I, O> implements Workflow<I, O> {
             );
 
             if (result.isCompleted()) {
+                // Copy node outputs from state to context with expected naming convention
+                copyNodeOutputsToContext(result.getState(), context);
+                
                 return result
                     .getOutput()
                     .orElseThrow(() ->
@@ -300,6 +304,22 @@ public class ChainWorkflow<I, O> implements Workflow<I, O> {
     public StatefulWorkflowResult<O> executeWithState(I input)
         throws WorkflowExecutionException {
         return executeWithState(input, new HashMap<>());
+    }
+
+    /**
+     * Copy node outputs from workflow state to context with expected naming convention.
+     * This allows external code to access intermediate node results.
+     */
+    private void copyNodeOutputsToContext(WorkflowState state, Map<String, Object> context) {
+        for (int i = 0; i < nodes.size(); i++) {
+            String nodeOutputKey = "node_output_chain_node_" + i;
+            Object nodeOutput = state.get(nodeOutputKey).orElse(null);
+            if (nodeOutput != null) {
+                String nodeName = nodes.get(i).getName();
+                String contextKey = "result_" + nodeName;
+                context.put(contextKey, nodeOutput);
+            }
+        }
     }
 
     /**
