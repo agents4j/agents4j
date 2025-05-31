@@ -6,8 +6,8 @@ import java.util.concurrent.CompletableFuture;
 
 /**
  * Represents a stateful agent node that can participate in a StatefulWorkflow.
- * Unlike regular AgentNodes, StatefulAgentNodes return WorkflowCommands that
- * can influence workflow execution flow and state.
+ * StatefulAgentNodes return WorkflowCommands that can influence workflow 
+ * execution flow and state.
  *
  * @param <S> The type of the workflow state data
  */
