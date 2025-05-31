@@ -3,7 +3,6 @@ package dev.agents4j.api;
 import dev.agents4j.api.exception.WorkflowExecutionException;
 import dev.agents4j.api.workflow.StatefulWorkflowResult;
 import dev.agents4j.api.workflow.WorkflowState;
-import java.util.Map;
 
 /**
  * Core interface for synchronous workflow execution.
@@ -13,7 +12,6 @@ import java.util.Map;
  * @param <O> The output type for the workflow
  */
 public interface WorkflowExecutor<S, O> {
-    
     /**
      * Starts a new workflow execution.
      *
@@ -21,7 +19,7 @@ public interface WorkflowExecutor<S, O> {
      * @throws WorkflowExecutionException if execution fails
      */
     StatefulWorkflowResult<S, O> start() throws WorkflowExecutionException;
-    
+
     /**
      * Starts a new workflow execution with initial state data.
      *
@@ -29,8 +27,9 @@ public interface WorkflowExecutor<S, O> {
      * @return The workflow execution result
      * @throws WorkflowExecutionException if execution fails
      */
-    StatefulWorkflowResult<S, O> start(S initialStateData) throws WorkflowExecutionException;
-    
+    StatefulWorkflowResult<S, O> start(S initialStateData)
+        throws WorkflowExecutionException;
+
     /**
      * Starts a new workflow execution with initial state.
      *
@@ -38,8 +37,9 @@ public interface WorkflowExecutor<S, O> {
      * @return The workflow execution result
      * @throws WorkflowExecutionException if execution fails
      */
-    StatefulWorkflowResult<S, O> start(WorkflowState<S> initialState) throws WorkflowExecutionException;
-    
+    StatefulWorkflowResult<S, O> start(WorkflowState<S> initialState)
+        throws WorkflowExecutionException;
+
     /**
      * Resumes a suspended workflow execution.
      *
@@ -47,8 +47,9 @@ public interface WorkflowExecutor<S, O> {
      * @return The workflow execution result
      * @throws WorkflowExecutionException if execution fails
      */
-    StatefulWorkflowResult<S, O> resume(WorkflowState<S> state) throws WorkflowExecutionException;
-    
+    StatefulWorkflowResult<S, O> resume(WorkflowState<S> state)
+        throws WorkflowExecutionException;
+
     /**
      * Resumes a suspended workflow execution with updated state.
      *
@@ -56,5 +57,6 @@ public interface WorkflowExecutor<S, O> {
      * @return The workflow execution result
      * @throws WorkflowExecutionException if execution fails
      */
-    StatefulWorkflowResult<S, O> resumeWithUpdates(WorkflowState<S> state) throws WorkflowExecutionException;
+    StatefulWorkflowResult<S, O> resumeWithUpdates(WorkflowState<S> state)
+        throws WorkflowExecutionException;
 }

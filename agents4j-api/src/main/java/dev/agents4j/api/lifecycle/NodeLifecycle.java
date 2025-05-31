@@ -7,7 +7,7 @@ import java.util.Optional;
 /**
  * Interface for managing the lifecycle of workflow nodes.
  * Provides hooks for initialization, cleanup, and resource management
- * of StatefulAgentNodes throughout their operational lifetime.
+ * of WorkflowNodes throughout their operational lifetime.
  * 
  * <p>This interface enables proper resource management, dependency injection,
  * and lifecycle-aware behavior for nodes that require setup/teardown operations.</p>

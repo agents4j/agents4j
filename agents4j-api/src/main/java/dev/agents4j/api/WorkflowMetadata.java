@@ -24,7 +24,7 @@ public interface WorkflowMetadata<S> {
      *
      * @return List of all nodes
      */
-    List<StatefulAgentNode<S>> getNodes();
+    List<WorkflowNode<S>> getNodes();
     
     /**
      * Gets all routes in this workflow.
@@ -39,7 +39,7 @@ public interface WorkflowMetadata<S> {
      * @param nodeId The node ID
      * @return The node wrapped in Optional
      */
-    Optional<StatefulAgentNode<S>> getNode(String nodeId);
+    Optional<WorkflowNode<S>> getNode(String nodeId);
     
     /**
      * Gets routes from a specific node.
@@ -54,7 +54,7 @@ public interface WorkflowMetadata<S> {
      *
      * @return List of entry point nodes
      */
-    List<StatefulAgentNode<S>> getEntryPoints();
+    List<WorkflowNode<S>> getEntryPoints();
     
     /**
      * Validates the workflow configuration.

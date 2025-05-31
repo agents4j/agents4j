@@ -7,7 +7,7 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * Represents a command returned by a StatefulAgentNode that instructs the workflow
+ * Represents a command returned by a WorkflowNode that instructs the workflow
  * on how to proceed. Commands can contain state updates, routing instructions,
  * or suspension requests.
  *

@@ -14,15 +14,15 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Comprehensive verification test for the cleaned up agents4j API.
- * Verifies that only StatefulAgentNode and StatefulWorkflow remain
+ * Verifies that only WorkflowNode and StatefulWorkflow remain
  * and that all core functionality works correctly.
  */
 public class SimplifiedApiTest {
 
     @Test
-    public void testStatefulAgentNodeInterface() {
+    public void testWorkflowNodeInterface() {
         // Create a test node implementation
-        StatefulAgentNode<String> node = new TestStatefulAgentNode();
+        WorkflowNode<String> node = new TestWorkflowNode();
         
         // Test basic interface methods
         assertEquals("test-node", node.getNodeId());
@@ -39,8 +39,8 @@ public class SimplifiedApiTest {
     }
 
     @Test
-    public void testStatefulAgentNodeAsync() throws Exception {
-        StatefulAgentNode<String> node = new TestStatefulAgentNode();
+    public void testWorkflowNodeAsync() throws Exception {
+        WorkflowNode<String> node = new TestWorkflowNode();
         WorkflowState<String> state = WorkflowState.create("workflow-1", "test");
         
         CompletableFuture<WorkflowCommand<String>> future = node.processAsync(state);
@@ -203,7 +203,7 @@ public class SimplifiedApiTest {
 
     // Helper classes for testing
 
-    private static class TestStatefulAgentNode implements StatefulAgentNode<String> {
+    private static class TestWorkflowNode implements WorkflowNode<String> {
         @Override
         public WorkflowCommand<String> process(WorkflowState<String> state) {
             String data = state.getData();
@@ -220,7 +220,7 @@ public class SimplifiedApiTest {
         public String getName() { return "Test Node"; }
     }
 
-    private static class ValidationNode implements StatefulAgentNode<String> {
+    private static class ValidationNode implements WorkflowNode<String> {
         @Override
         public WorkflowCommand<String> process(WorkflowState<String> state) {
             String data = state.getData();
@@ -242,7 +242,7 @@ public class SimplifiedApiTest {
         public String getName() { return "Validation Node"; }
     }
 
-    private static class ProcessingNode implements StatefulAgentNode<String> {
+    private static class ProcessingNode implements WorkflowNode<String> {
         @Override
         public WorkflowCommand<String> process(WorkflowState<String> state) {
             String data = state.getData();
@@ -271,7 +271,7 @@ public class SimplifiedApiTest {
         public String getName() { return "Test Workflow"; }
 
         @Override
-        public java.util.List<StatefulAgentNode<String>> getNodes() { 
+        public java.util.List<WorkflowNode<String>> getNodes() { 
             return java.util.Collections.emptyList(); 
         }
 
@@ -281,7 +281,7 @@ public class SimplifiedApiTest {
         }
 
         @Override
-        public java.util.Optional<StatefulAgentNode<String>> getNode(String nodeId) { 
+        public java.util.Optional<WorkflowNode<String>> getNode(String nodeId) { 
             return java.util.Optional.empty(); 
         }
 
@@ -291,7 +291,7 @@ public class SimplifiedApiTest {
         }
 
         @Override
-        public java.util.List<StatefulAgentNode<String>> getEntryPoints() { 
+        public java.util.List<WorkflowNode<String>> getEntryPoints() { 
             return java.util.Collections.emptyList(); 
         }
 

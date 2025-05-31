@@ -2,6 +2,7 @@ package dev.agents4j.api;
 
 import dev.agents4j.api.workflow.WorkflowCommand;
 import dev.agents4j.api.workflow.WorkflowState;
+import dev.agents4j.api.WorkflowNode;
 import org.junit.jupiter.api.Test;
 
 import java.util.HashMap;
@@ -31,9 +32,9 @@ public class SimpleApiTest {
     }
 
     @Test
-    public void testStatefulAgentNode() {
+    public void testWorkflowNode() {
         // Create a simple test node
-        StatefulAgentNode<String> testNode = new StatefulAgentNode<String>() {
+        WorkflowNode<String> testNode = new WorkflowNode<String>() {
             @Override
             public WorkflowCommand<String> process(WorkflowState<String> state) {
                 String data = state.getData();

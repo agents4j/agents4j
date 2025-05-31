@@ -5,13 +5,13 @@ import dev.agents4j.api.workflow.WorkflowState;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * Represents a stateful agent node that can participate in a StatefulWorkflow.
- * StatefulAgentNodes return WorkflowCommands that can influence workflow 
+ * Represents a workflow node that can participate in a StatefulWorkflow.
+ * WorkflowNodes return WorkflowCommands that can influence workflow 
  * execution flow and state.
  *
  * @param <S> The type of the workflow state data
  */
-public interface StatefulAgentNode<S> {
+public interface WorkflowNode<S> {
     
     /**
      * Process with access to the current workflow state and return a command
