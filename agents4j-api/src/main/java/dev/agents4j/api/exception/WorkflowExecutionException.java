@@ -1,6 +1,6 @@
 package dev.agents4j.api.exception;
 
-import dev.agents4j.api.workflow.WorkflowState;
+import dev.agents4j.api.workflow.GraphWorkflowState;
 import java.util.Map;
 
 /**
@@ -8,12 +8,12 @@ import java.util.Map;
  * Enhanced to provide context about the workflow state when the error occurred.
  */
 public class WorkflowExecutionException extends AgentException {
-    
+
     private final String workflowName;
     private final String workflowId;
     private final String nodeId;
-    private final WorkflowState state;
-    
+    private final GraphWorkflowState state;
+
     public WorkflowExecutionException(String message) {
         super(ErrorCode.WORKFLOW_EXECUTION_FAILED, message);
         this.workflowName = null;
@@ -21,7 +21,7 @@ public class WorkflowExecutionException extends AgentException {
         this.nodeId = null;
         this.state = null;
     }
-    
+
     public WorkflowExecutionException(String message, Throwable cause) {
         super(ErrorCode.WORKFLOW_EXECUTION_FAILED, message, cause);
         this.workflowName = null;
@@ -29,7 +29,7 @@ public class WorkflowExecutionException extends AgentException {
         this.nodeId = null;
         this.state = null;
     }
-    
+
     public WorkflowExecutionException(String workflowName, String message) {
         super(ErrorCode.WORKFLOW_EXECUTION_FAILED, message);
         this.workflowName = workflowName;
@@ -38,8 +38,12 @@ public class WorkflowExecutionException extends AgentException {
         this.state = null;
         addContext("workflowName", workflowName);
     }
-    
-    public WorkflowExecutionException(String workflowName, String message, Throwable cause) {
+
+    public WorkflowExecutionException(
+        String workflowName,
+        String message,
+        Throwable cause
+    ) {
         super(ErrorCode.WORKFLOW_EXECUTION_FAILED, message, cause);
         this.workflowName = workflowName;
         this.workflowId = null;
@@ -47,8 +51,13 @@ public class WorkflowExecutionException extends AgentException {
         this.state = null;
         addContext("workflowName", workflowName);
     }
-    
-    public WorkflowExecutionException(String message, String workflowId, String nodeId, WorkflowState state) {
+
+    public WorkflowExecutionException(
+        String message,
+        String workflowId,
+        String nodeId,
+        GraphWorkflowState state
+    ) {
         super(ErrorCode.WORKFLOW_EXECUTION_FAILED, message);
         this.workflowName = null;
         this.workflowId = workflowId;
@@ -58,8 +67,14 @@ public class WorkflowExecutionException extends AgentException {
         if (nodeId != null) addContext("nodeId", nodeId);
         if (state != null) addContext("stateVersion", state.getVersion());
     }
-    
-    public WorkflowExecutionException(String message, String workflowId, String nodeId, WorkflowState state, Throwable cause) {
+
+    public WorkflowExecutionException(
+        String message,
+        String workflowId,
+        String nodeId,
+        GraphWorkflowState state,
+        Throwable cause
+    ) {
         super(ErrorCode.WORKFLOW_EXECUTION_FAILED, message, cause);
         this.workflowName = null;
         this.workflowId = workflowId;
@@ -69,8 +84,12 @@ public class WorkflowExecutionException extends AgentException {
         if (nodeId != null) addContext("nodeId", nodeId);
         if (state != null) addContext("stateVersion", state.getVersion());
     }
-    
-    public WorkflowExecutionException(String workflowName, String message, Map<String, Object> context) {
+
+    public WorkflowExecutionException(
+        String workflowName,
+        String message,
+        Map<String, Object> context
+    ) {
         super(ErrorCode.WORKFLOW_EXECUTION_FAILED, message, context);
         this.workflowName = workflowName;
         this.workflowId = null;
@@ -78,20 +97,20 @@ public class WorkflowExecutionException extends AgentException {
         this.state = null;
         addContext("workflowName", workflowName);
     }
-    
+
     public String getWorkflowName() {
         return workflowName;
     }
-    
-    public String getWorkflowId() { 
-        return workflowId; 
+
+    public String getWorkflowId() {
+        return workflowId;
     }
-    
-    public String getNodeId() { 
-        return nodeId; 
+
+    public String getNodeId() {
+        return nodeId;
     }
-    
-    public WorkflowState getState() { 
-        return state; 
+
+    public GraphWorkflowState getState() {
+        return state;
     }
 }

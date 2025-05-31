@@ -13,33 +13,50 @@ import java.util.function.Predicate;
  * @param <S> The type of the workflow state data
  */
 public class WorkflowRoute<S> {
-    
+
     private final String id;
     private final String fromNodeId;
     private final String toNodeId;
-    private final Predicate<WorkflowState<S>> condition;
+    private final Predicate<GraphWorkflowState<S>> condition;
     private final int priority;
     private final String description;
     private final Map<String, Object> metadata;
     private final boolean isDefault;
-    
-    private WorkflowRoute(String id, String fromNodeId, String toNodeId,
-                         Predicate<WorkflowState<S>> condition, int priority,
-                         String description, Map<String, Object> metadata, boolean isDefault) {
+
+    private WorkflowRoute(
+        String id,
+        String fromNodeId,
+        String toNodeId,
+        Predicate<GraphWorkflowState<S>> condition,
+        int priority,
+        String description,
+        Map<String, Object> metadata,
+        boolean isDefault
+    ) {
         this.id = Objects.requireNonNull(id, "Route ID cannot be null");
-        this.fromNodeId = Objects.requireNonNull(fromNodeId, "From node ID cannot be null");
-        this.toNodeId = Objects.requireNonNull(toNodeId, "To node ID cannot be null");
+        this.fromNodeId = Objects.requireNonNull(
+            fromNodeId,
+            "From node ID cannot be null"
+        );
+        this.toNodeId = Objects.requireNonNull(
+            toNodeId,
+            "To node ID cannot be null"
+        );
         this.condition = condition;
         this.priority = priority;
         this.description = description != null ? description : "";
-        this.metadata = Collections.unmodifiableMap(metadata != null ? metadata : Collections.emptyMap());
+        this.metadata = Collections.unmodifiableMap(
+            metadata != null ? metadata : Collections.emptyMap()
+        );
         this.isDefault = isDefault;
-        
+
         if (fromNodeId.equals(toNodeId)) {
-            throw new IllegalArgumentException("Route cannot connect a node to itself");
+            throw new IllegalArgumentException(
+                "Route cannot connect a node to itself"
+            );
         }
     }
-    
+
     /**
      * Gets the route ID.
      *
@@ -48,7 +65,7 @@ public class WorkflowRoute<S> {
     public String getId() {
         return id;
     }
-    
+
     /**
      * Gets the source node ID.
      *
@@ -57,7 +74,7 @@ public class WorkflowRoute<S> {
     public String getFromNodeId() {
         return fromNodeId;
     }
-    
+
     /**
      * Gets the destination node ID.
      *
@@ -66,16 +83,16 @@ public class WorkflowRoute<S> {
     public String getToNodeId() {
         return toNodeId;
     }
-    
+
     /**
      * Gets the route condition.
      *
      * @return The condition predicate, or null if unconditional
      */
-    public Predicate<WorkflowState<S>> getCondition() {
+    public Predicate<GraphWorkflowState<S>> getCondition() {
         return condition;
     }
-    
+
     /**
      * Gets the route priority.
      *
@@ -84,7 +101,7 @@ public class WorkflowRoute<S> {
     public int getPriority() {
         return priority;
     }
-    
+
     /**
      * Gets the route description.
      *
@@ -93,7 +110,7 @@ public class WorkflowRoute<S> {
     public String getDescription() {
         return description;
     }
-    
+
     /**
      * Gets the route metadata.
      *
@@ -102,7 +119,7 @@ public class WorkflowRoute<S> {
     public Map<String, Object> getMetadata() {
         return metadata;
     }
-    
+
     /**
      * Checks if this is a default route.
      *
@@ -111,14 +128,14 @@ public class WorkflowRoute<S> {
     public boolean isDefault() {
         return isDefault;
     }
-    
+
     /**
      * Tests if this route's condition is satisfied.
      *
      * @param state The current workflow state
      * @return true if the route condition is satisfied or no condition exists
      */
-    public boolean matches(WorkflowState<S> state) {
+    public boolean matches(GraphWorkflowState<S> state) {
         if (condition == null) {
             return true; // Unconditional route
         }
@@ -129,7 +146,7 @@ public class WorkflowRoute<S> {
             return false;
         }
     }
-    
+
     /**
      * Creates a new route builder.
      *
@@ -139,7 +156,7 @@ public class WorkflowRoute<S> {
     public static <S> Builder<S> builder() {
         return new Builder<>();
     }
-    
+
     /**
      * Creates a simple unconditional route.
      *
@@ -149,14 +166,18 @@ public class WorkflowRoute<S> {
      * @param <S> The state type
      * @return A new WorkflowRoute
      */
-    public static <S> WorkflowRoute<S> simple(String id, String fromNodeId, String toNodeId) {
+    public static <S> WorkflowRoute<S> simple(
+        String id,
+        String fromNodeId,
+        String toNodeId
+    ) {
         return WorkflowRoute.<S>builder()
-                .id(id)
-                .from(fromNodeId)
-                .to(toNodeId)
-                .build();
+            .id(id)
+            .from(fromNodeId)
+            .to(toNodeId)
+            .build();
     }
-    
+
     /**
      * Creates a conditional route.
      *
@@ -167,31 +188,36 @@ public class WorkflowRoute<S> {
      * @param <S> The state type
      * @return A new WorkflowRoute
      */
-    public static <S> WorkflowRoute<S> conditional(String id, String fromNodeId, String toNodeId,
-                                                   Predicate<WorkflowState<S>> condition) {
+    public static <S> WorkflowRoute<S> conditional(
+        String id,
+        String fromNodeId,
+        String toNodeId,
+        Predicate<GraphWorkflowState<S>> condition
+    ) {
         return WorkflowRoute.<S>builder()
-                .id(id)
-                .from(fromNodeId)
-                .to(toNodeId)
-                .condition(condition)
-                .build();
+            .id(id)
+            .from(fromNodeId)
+            .to(toNodeId)
+            .condition(condition)
+            .build();
     }
-    
+
     /**
      * Builder for creating WorkflowRoute instances.
      *
      * @param <S> The state type
      */
     public static class Builder<S> {
+
         private String id;
         private String fromNodeId;
         private String toNodeId;
-        private Predicate<WorkflowState<S>> condition;
+        private Predicate<GraphWorkflowState<S>> condition;
         private int priority = 0;
         private String description;
         private final Map<String, Object> metadata = new HashMap<>();
         private boolean isDefault = false;
-        
+
         /**
          * Sets the route ID.
          *
@@ -202,7 +228,7 @@ public class WorkflowRoute<S> {
             this.id = id;
             return this;
         }
-        
+
         /**
          * Sets the source node ID.
          *
@@ -213,7 +239,7 @@ public class WorkflowRoute<S> {
             this.fromNodeId = nodeId;
             return this;
         }
-        
+
         /**
          * Sets the destination node ID.
          *
@@ -224,18 +250,20 @@ public class WorkflowRoute<S> {
             this.toNodeId = nodeId;
             return this;
         }
-        
+
         /**
          * Sets the route condition.
          *
          * @param condition The condition predicate
          * @return This builder
          */
-        public Builder<S> condition(Predicate<WorkflowState<S>> condition) {
+        public Builder<S> condition(
+            Predicate<GraphWorkflowState<S>> condition
+        ) {
             this.condition = condition;
             return this;
         }
-        
+
         /**
          * Sets the route priority.
          *
@@ -246,7 +274,7 @@ public class WorkflowRoute<S> {
             this.priority = priority;
             return this;
         }
-        
+
         /**
          * Sets the route description.
          *
@@ -257,7 +285,7 @@ public class WorkflowRoute<S> {
             this.description = description;
             return this;
         }
-        
+
         /**
          * Adds metadata.
          *
@@ -269,7 +297,7 @@ public class WorkflowRoute<S> {
             this.metadata.put(key, value);
             return this;
         }
-        
+
         /**
          * Marks this route as a default route.
          *
@@ -279,7 +307,7 @@ public class WorkflowRoute<S> {
             this.isDefault = true;
             return this;
         }
-        
+
         /**
          * Builds the WorkflowRoute.
          *
@@ -295,11 +323,20 @@ public class WorkflowRoute<S> {
             if (toNodeId == null) {
                 throw new IllegalStateException("To node ID must be set");
             }
-            
-            return new WorkflowRoute<>(id, fromNodeId, toNodeId, condition, priority, description, metadata, isDefault);
+
+            return new WorkflowRoute<>(
+                id,
+                fromNodeId,
+                toNodeId,
+                condition,
+                priority,
+                description,
+                metadata,
+                isDefault
+            );
         }
     }
-    
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -307,15 +344,21 @@ public class WorkflowRoute<S> {
         WorkflowRoute<?> that = (WorkflowRoute<?>) o;
         return Objects.equals(id, that.id);
     }
-    
+
     @Override
     public int hashCode() {
         return Objects.hash(id);
     }
-    
+
     @Override
     public String toString() {
-        return String.format("WorkflowRoute{id='%s', from='%s', to='%s', priority=%d, default=%s}",
-                id, fromNodeId, toNodeId, priority, isDefault);
+        return String.format(
+            "WorkflowRoute{id='%s', from='%s', to='%s', priority=%d, default=%s}",
+            id,
+            fromNodeId,
+            toNodeId,
+            priority,
+            isDefault
+        );
     }
 }
