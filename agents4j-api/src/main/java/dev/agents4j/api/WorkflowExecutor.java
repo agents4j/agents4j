@@ -9,61 +9,52 @@ import java.util.Map;
  * Core interface for synchronous workflow execution.
  * Follows the Interface Segregation Principle by focusing only on execution concerns.
  *
- * @param <I> The input type for the workflow
+ * @param <S> The type of the workflow state data
  * @param <O> The output type for the workflow
  */
-public interface WorkflowExecutor<I, O> {
+public interface WorkflowExecutor<S, O> {
     
     /**
-     * Starts a new workflow execution with the given input.
+     * Starts a new workflow execution.
      *
-     * @param input The initial input
      * @return The workflow execution result
      * @throws WorkflowExecutionException if execution fails
      */
-    StatefulWorkflowResult<O> start(I input) throws WorkflowExecutionException;
+    StatefulWorkflowResult<S, O> start() throws WorkflowExecutionException;
     
     /**
-     * Starts a new workflow execution with input and context.
+     * Starts a new workflow execution with initial state data.
      *
-     * @param input The initial input
-     * @param context Additional context
+     * @param initialStateData The initial state data
      * @return The workflow execution result
      * @throws WorkflowExecutionException if execution fails
      */
-    StatefulWorkflowResult<O> start(I input, Map<String, Object> context) throws WorkflowExecutionException;
+    StatefulWorkflowResult<S, O> start(S initialStateData) throws WorkflowExecutionException;
     
     /**
      * Starts a new workflow execution with initial state.
      *
-     * @param input The initial input
      * @param initialState The initial workflow state
-     * @param context Additional context
      * @return The workflow execution result
      * @throws WorkflowExecutionException if execution fails
      */
-    StatefulWorkflowResult<O> start(I input, WorkflowState initialState, Map<String, Object> context) 
-            throws WorkflowExecutionException;
+    StatefulWorkflowResult<S, O> start(WorkflowState<S> initialState) throws WorkflowExecutionException;
     
     /**
      * Resumes a suspended workflow execution.
      *
-     * @param input The input for resumption
      * @param state The saved workflow state
      * @return The workflow execution result
      * @throws WorkflowExecutionException if execution fails
      */
-    StatefulWorkflowResult<O> resume(I input, WorkflowState state) throws WorkflowExecutionException;
+    StatefulWorkflowResult<S, O> resume(WorkflowState<S> state) throws WorkflowExecutionException;
     
     /**
-     * Resumes a suspended workflow execution with context.
+     * Resumes a suspended workflow execution with updated state.
      *
-     * @param input The input for resumption
-     * @param state The saved workflow state
-     * @param context Additional context
+     * @param state The saved workflow state with any updates
      * @return The workflow execution result
      * @throws WorkflowExecutionException if execution fails
      */
-    StatefulWorkflowResult<O> resume(I input, WorkflowState state, Map<String, Object> context) 
-            throws WorkflowExecutionException;
+    StatefulWorkflowResult<S, O> resumeWithUpdates(WorkflowState<S> state) throws WorkflowExecutionException;
 }

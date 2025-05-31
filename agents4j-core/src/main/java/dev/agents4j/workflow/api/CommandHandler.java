@@ -8,10 +8,10 @@ import java.util.Map;
  * Strategy interface for handling different workflow commands.
  * Follows Open/Closed Principle - open for extension, closed for modification.
  *
- * @param <I> The input type
+ * @param <S> The state type
  * @param <O> The output type
  */
-public interface CommandHandler<I, O> {
+public interface CommandHandler<S, O> {
     
     /**
      * Checks if this handler can handle the given command type.
@@ -26,12 +26,10 @@ public interface CommandHandler<I, O> {
      *
      * @param command The workflow command to handle
      * @param state The current workflow state
-     * @param context Additional context information
      * @return The execution result containing the outcome of processing the command
      */
-    ExecutionResult<I, O> handle(WorkflowCommand<I> command, 
-                                WorkflowState state, 
-                                Map<String, Object> context);
+    ExecutionResult<S, O> handle(WorkflowCommand<S> command, 
+                                WorkflowState<S> state);
     
     /**
      * Gets the priority of this handler. Higher numbers indicate higher priority.

@@ -11,21 +11,25 @@ import java.util.Optional;
 /**
  * Represents the state of a stateful workflow. The state is serializable
  * and can be persisted for workflow suspension and resumption.
+ *
+ * @param <S> The type of the state data
  */
-public class WorkflowState implements Serializable {
+public class WorkflowState<S> implements Serializable {
     
     private static final long serialVersionUID = 1L;
     
     private final String workflowId;
-    private final Map<String, Object> data;
+    private final S data;
+    private final Map<String, Object> context;
     private final String currentNodeId;
     private final Instant lastModified;
     private final long version;
     
-    public WorkflowState(String workflowId, Map<String, Object> data, String currentNodeId,
+    public WorkflowState(String workflowId, S data, Map<String, Object> context, String currentNodeId,
                         Instant lastModified, long version) {
         this.workflowId = Objects.requireNonNull(workflowId, "Workflow ID cannot be null");
-        this.data = Collections.unmodifiableMap(data != null ? new HashMap<>(data) : Collections.emptyMap());
+        this.data = data;
+        this.context = Collections.unmodifiableMap(context != null ? new HashMap<>(context) : Collections.emptyMap());
         this.currentNodeId = currentNodeId;
         this.lastModified = lastModified != null ? lastModified : Instant.now();
         this.version = version;
@@ -35,10 +39,11 @@ public class WorkflowState implements Serializable {
      * Creates a new workflow state with the given workflow ID.
      *
      * @param workflowId The workflow ID
+     * @param <S> The type of the state data
      * @return A new WorkflowState instance
      */
-    public static WorkflowState create(String workflowId) {
-        return new WorkflowState(workflowId, Collections.emptyMap(), null, Instant.now(), 1L);
+    public static <S> WorkflowState<S> create(String workflowId) {
+        return new WorkflowState<>(workflowId, null, Collections.emptyMap(), null, Instant.now(), 1L);
     }
     
     /**
@@ -46,10 +51,11 @@ public class WorkflowState implements Serializable {
      *
      * @param workflowId The workflow ID
      * @param initialData Initial state data
+     * @param <S> The type of the state data
      * @return A new WorkflowState instance
      */
-    public static WorkflowState create(String workflowId, Map<String, Object> initialData) {
-        return new WorkflowState(workflowId, initialData, null, Instant.now(), 1L);
+    public static <S> WorkflowState<S> create(String workflowId, S initialData) {
+        return new WorkflowState<>(workflowId, initialData, Collections.emptyMap(), null, Instant.now(), 1L);
     }
     
     /**
@@ -64,35 +70,44 @@ public class WorkflowState implements Serializable {
     /**
      * Gets the state data.
      *
-     * @return Unmodifiable map of state data
+     * @return The state data
      */
-    public Map<String, Object> getData() {
+    public S getData() {
         return data;
     }
     
     /**
-     * Gets a specific state value.
+     * Gets the context data.
      *
-     * @param key The state key
-     * @param <T> The expected type
-     * @return The state value wrapped in Optional
+     * @return Unmodifiable map of context data
      */
-    @SuppressWarnings("unchecked")
-    public <T> Optional<T> get(String key) {
-        return Optional.ofNullable((T) data.get(key));
+    public Map<String, Object> getContext() {
+        return context;
     }
     
     /**
-     * Gets a specific state value with a default.
+     * Gets a specific context value.
      *
-     * @param key The state key
-     * @param defaultValue The default value
+     * @param key The context key
      * @param <T> The expected type
-     * @return The state value or default
+     * @return The context value wrapped in Optional
      */
     @SuppressWarnings("unchecked")
-    public <T> T get(String key, T defaultValue) {
-        return (T) data.getOrDefault(key, defaultValue);
+    public <T> Optional<T> getContextValue(String key) {
+        return Optional.ofNullable((T) context.get(key));
+    }
+    
+    /**
+     * Gets a specific context value with a default.
+     *
+     * @param key The context key
+     * @param defaultValue The default value
+     * @param <T> The expected type
+     * @return The context value or default
+     */
+    @SuppressWarnings("unchecked")
+    public <T> T getContextValue(String key, T defaultValue) {
+        return (T) context.getOrDefault(key, defaultValue);
     }
     
     /**
@@ -123,15 +138,25 @@ public class WorkflowState implements Serializable {
     }
     
     /**
-     * Creates a new state with updates applied.
+     * Creates a new state with updated data.
      *
-     * @param updates The updates to apply
-     * @return A new WorkflowState with updates applied
+     * @param newData The new state data
+     * @return A new WorkflowState with updated data
      */
-    public WorkflowState withUpdates(Map<String, Object> updates) {
-        Map<String, Object> newData = new HashMap<>(this.data);
-        newData.putAll(updates);
-        return new WorkflowState(workflowId, newData, currentNodeId, Instant.now(), version + 1);
+    public WorkflowState<S> withData(S newData) {
+        return new WorkflowState<>(workflowId, newData, context, currentNodeId, Instant.now(), version + 1);
+    }
+    
+    /**
+     * Creates a new state with context updates applied.
+     *
+     * @param contextUpdates The context updates to apply
+     * @return A new WorkflowState with updated context
+     */
+    public WorkflowState<S> withContextUpdates(Map<String, Object> contextUpdates) {
+        Map<String, Object> newContext = new HashMap<>(this.context);
+        newContext.putAll(contextUpdates);
+        return new WorkflowState<>(workflowId, data, newContext, currentNodeId, Instant.now(), version + 1);
     }
     
     /**
@@ -140,42 +165,46 @@ public class WorkflowState implements Serializable {
      * @param nodeId The new current node ID
      * @return A new WorkflowState with updated current node
      */
-    public WorkflowState withCurrentNode(String nodeId) {
-        return new WorkflowState(workflowId, data, nodeId, Instant.now(), version + 1);
+    public WorkflowState<S> withCurrentNode(String nodeId) {
+        return new WorkflowState<>(workflowId, data, context, nodeId, Instant.now(), version + 1);
     }
     
     /**
-     * Creates a new state with both updates and current node ID.
+     * Creates a new state with data, context updates and current node ID.
      *
-     * @param updates The updates to apply
+     * @param newData The new state data
+     * @param contextUpdates The context updates to apply
      * @param nodeId The new current node ID
-     * @return A new WorkflowState with updates and current node
+     * @return A new WorkflowState with all updates applied
      */
-    public WorkflowState withUpdatesAndCurrentNode(Map<String, Object> updates, String nodeId) {
-        Map<String, Object> newData = new HashMap<>(this.data);
-        newData.putAll(updates);
-        return new WorkflowState(workflowId, newData, nodeId, Instant.now(), version + 1);
+    public WorkflowState<S> withDataContextAndCurrentNode(S newData, Map<String, Object> contextUpdates, String nodeId) {
+        Map<String, Object> newContext = new HashMap<>(this.context);
+        if (contextUpdates != null) {
+            newContext.putAll(contextUpdates);
+        }
+        return new WorkflowState<>(workflowId, newData, newContext, nodeId, Instant.now(), version + 1);
     }
     
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        WorkflowState that = (WorkflowState) o;
+        WorkflowState<?> that = (WorkflowState<?>) o;
         return version == that.version &&
                 Objects.equals(workflowId, that.workflowId) &&
                 Objects.equals(data, that.data) &&
+                Objects.equals(context, that.context) &&
                 Objects.equals(currentNodeId, that.currentNodeId);
     }
     
     @Override
     public int hashCode() {
-        return Objects.hash(workflowId, data, currentNodeId, version);
+        return Objects.hash(workflowId, data, context, currentNodeId, version);
     }
     
     @Override
     public String toString() {
-        return String.format("WorkflowState{id='%s', currentNode='%s', version=%d, dataSize=%d}",
-                workflowId, currentNodeId, version, data.size());
+        return String.format("WorkflowState{id='%s', currentNode='%s', version=%d, contextSize=%d}",
+                workflowId, currentNodeId, version, context.size());
     }
 }

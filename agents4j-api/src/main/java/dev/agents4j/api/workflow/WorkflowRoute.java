@@ -4,27 +4,27 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
-import java.util.function.BiPredicate;
+import java.util.function.Predicate;
 
 /**
  * Represents a route (edge) in a stateful workflow graph that connects two nodes.
- * Routes can be conditional based on the current workflow state and input.
+ * Routes can be conditional based on the current workflow state.
  *
- * @param <I> The input type for the workflow
+ * @param <S> The type of the workflow state data
  */
-public class WorkflowRoute<I> {
+public class WorkflowRoute<S> {
     
     private final String id;
     private final String fromNodeId;
     private final String toNodeId;
-    private final BiPredicate<I, WorkflowState> condition;
+    private final Predicate<WorkflowState<S>> condition;
     private final int priority;
     private final String description;
     private final Map<String, Object> metadata;
     private final boolean isDefault;
     
     private WorkflowRoute(String id, String fromNodeId, String toNodeId,
-                         BiPredicate<I, WorkflowState> condition, int priority,
+                         Predicate<WorkflowState<S>> condition, int priority,
                          String description, Map<String, Object> metadata, boolean isDefault) {
         this.id = Objects.requireNonNull(id, "Route ID cannot be null");
         this.fromNodeId = Objects.requireNonNull(fromNodeId, "From node ID cannot be null");
@@ -72,7 +72,7 @@ public class WorkflowRoute<I> {
      *
      * @return The condition predicate, or null if unconditional
      */
-    public BiPredicate<I, WorkflowState> getCondition() {
+    public Predicate<WorkflowState<S>> getCondition() {
         return condition;
     }
     
@@ -115,16 +115,15 @@ public class WorkflowRoute<I> {
     /**
      * Tests if this route's condition is satisfied.
      *
-     * @param input The current input
      * @param state The current workflow state
      * @return true if the route condition is satisfied or no condition exists
      */
-    public boolean matches(I input, WorkflowState state) {
+    public boolean matches(WorkflowState<S> state) {
         if (condition == null) {
             return true; // Unconditional route
         }
         try {
-            return condition.test(input, state);
+            return condition.test(state);
         } catch (Exception e) {
             // If condition evaluation fails, route doesn't match
             return false;
@@ -134,10 +133,10 @@ public class WorkflowRoute<I> {
     /**
      * Creates a new route builder.
      *
-     * @param <I> The input type
+     * @param <S> The state type
      * @return A new Builder instance
      */
-    public static <I> Builder<I> builder() {
+    public static <S> Builder<S> builder() {
         return new Builder<>();
     }
     
@@ -147,11 +146,11 @@ public class WorkflowRoute<I> {
      * @param id The route ID
      * @param fromNodeId The source node ID
      * @param toNodeId The destination node ID
-     * @param <I> The input type
+     * @param <S> The state type
      * @return A new WorkflowRoute
      */
-    public static <I> WorkflowRoute<I> simple(String id, String fromNodeId, String toNodeId) {
-        return WorkflowRoute.<I>builder()
+    public static <S> WorkflowRoute<S> simple(String id, String fromNodeId, String toNodeId) {
+        return WorkflowRoute.<S>builder()
                 .id(id)
                 .from(fromNodeId)
                 .to(toNodeId)
@@ -165,12 +164,12 @@ public class WorkflowRoute<I> {
      * @param fromNodeId The source node ID
      * @param toNodeId The destination node ID
      * @param condition The route condition
-     * @param <I> The input type
+     * @param <S> The state type
      * @return A new WorkflowRoute
      */
-    public static <I> WorkflowRoute<I> conditional(String id, String fromNodeId, String toNodeId,
-                                                   BiPredicate<I, WorkflowState> condition) {
-        return WorkflowRoute.<I>builder()
+    public static <S> WorkflowRoute<S> conditional(String id, String fromNodeId, String toNodeId,
+                                                   Predicate<WorkflowState<S>> condition) {
+        return WorkflowRoute.<S>builder()
                 .id(id)
                 .from(fromNodeId)
                 .to(toNodeId)
@@ -181,13 +180,13 @@ public class WorkflowRoute<I> {
     /**
      * Builder for creating WorkflowRoute instances.
      *
-     * @param <I> The input type
+     * @param <S> The state type
      */
-    public static class Builder<I> {
+    public static class Builder<S> {
         private String id;
         private String fromNodeId;
         private String toNodeId;
-        private BiPredicate<I, WorkflowState> condition;
+        private Predicate<WorkflowState<S>> condition;
         private int priority = 0;
         private String description;
         private final Map<String, Object> metadata = new HashMap<>();
@@ -199,7 +198,7 @@ public class WorkflowRoute<I> {
          * @param id The route ID
          * @return This builder
          */
-        public Builder<I> id(String id) {
+        public Builder<S> id(String id) {
             this.id = id;
             return this;
         }
@@ -210,7 +209,7 @@ public class WorkflowRoute<I> {
          * @param nodeId The source node ID
          * @return This builder
          */
-        public Builder<I> from(String nodeId) {
+        public Builder<S> from(String nodeId) {
             this.fromNodeId = nodeId;
             return this;
         }
@@ -221,7 +220,7 @@ public class WorkflowRoute<I> {
          * @param nodeId The destination node ID
          * @return This builder
          */
-        public Builder<I> to(String nodeId) {
+        public Builder<S> to(String nodeId) {
             this.toNodeId = nodeId;
             return this;
         }
@@ -232,7 +231,7 @@ public class WorkflowRoute<I> {
          * @param condition The condition predicate
          * @return This builder
          */
-        public Builder<I> condition(BiPredicate<I, WorkflowState> condition) {
+        public Builder<S> condition(Predicate<WorkflowState<S>> condition) {
             this.condition = condition;
             return this;
         }
@@ -243,7 +242,7 @@ public class WorkflowRoute<I> {
          * @param priority The priority
          * @return This builder
          */
-        public Builder<I> priority(int priority) {
+        public Builder<S> priority(int priority) {
             this.priority = priority;
             return this;
         }
@@ -254,7 +253,7 @@ public class WorkflowRoute<I> {
          * @param description The description
          * @return This builder
          */
-        public Builder<I> description(String description) {
+        public Builder<S> description(String description) {
             this.description = description;
             return this;
         }
@@ -266,7 +265,7 @@ public class WorkflowRoute<I> {
          * @param value The metadata value
          * @return This builder
          */
-        public Builder<I> addMetadata(String key, Object value) {
+        public Builder<S> addMetadata(String key, Object value) {
             this.metadata.put(key, value);
             return this;
         }
@@ -276,7 +275,7 @@ public class WorkflowRoute<I> {
          *
          * @return This builder
          */
-        public Builder<I> asDefault() {
+        public Builder<S> asDefault() {
             this.isDefault = true;
             return this;
         }
@@ -286,7 +285,7 @@ public class WorkflowRoute<I> {
          *
          * @return A new WorkflowRoute instance
          */
-        public WorkflowRoute<I> build() {
+        public WorkflowRoute<S> build() {
             if (id == null) {
                 throw new IllegalStateException("Route ID must be set");
             }

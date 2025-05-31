@@ -8,9 +8,9 @@ import java.util.Optional;
  * Interface for workflow metadata and introspection.
  * Separated from execution concerns following ISP.
  *
- * @param <I> The input type for the workflow
+ * @param <S> The type of the workflow state data
  */
-public interface WorkflowMetadata<I> {
+public interface WorkflowMetadata<S> {
     
     /**
      * Gets the workflow name.
@@ -24,14 +24,14 @@ public interface WorkflowMetadata<I> {
      *
      * @return List of all nodes
      */
-    List<StatefulAgentNode<I>> getNodes();
+    List<StatefulAgentNode<S>> getNodes();
     
     /**
      * Gets all routes in this workflow.
      *
      * @return List of all routes
      */
-    List<WorkflowRoute<I>> getRoutes();
+    List<WorkflowRoute<S>> getRoutes();
     
     /**
      * Gets a node by its ID.
@@ -39,7 +39,7 @@ public interface WorkflowMetadata<I> {
      * @param nodeId The node ID
      * @return The node wrapped in Optional
      */
-    Optional<StatefulAgentNode<I>> getNode(String nodeId);
+    Optional<StatefulAgentNode<S>> getNode(String nodeId);
     
     /**
      * Gets routes from a specific node.
@@ -47,14 +47,14 @@ public interface WorkflowMetadata<I> {
      * @param fromNodeId The source node ID
      * @return List of routes from the node
      */
-    List<WorkflowRoute<I>> getRoutesFrom(String fromNodeId);
+    List<WorkflowRoute<S>> getRoutesFrom(String fromNodeId);
     
     /**
      * Gets the entry point nodes for this workflow.
      *
      * @return List of entry point nodes
      */
-    List<StatefulAgentNode<I>> getEntryPoints();
+    List<StatefulAgentNode<S>> getEntryPoints();
     
     /**
      * Validates the workflow configuration.

@@ -2,7 +2,6 @@ package dev.agents4j.api;
 
 import dev.agents4j.api.workflow.WorkflowCommand;
 import dev.agents4j.api.workflow.WorkflowState;
-import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -10,31 +9,27 @@ import java.util.concurrent.CompletableFuture;
  * Unlike regular AgentNodes, StatefulAgentNodes return WorkflowCommands that
  * can influence workflow execution flow and state.
  *
- * @param <I> The input type for this node
+ * @param <S> The type of the workflow state data
  */
-public interface StatefulAgentNode<I> {
+public interface StatefulAgentNode<S> {
     
     /**
-     * Process the input with access to the current workflow state and return a command
+     * Process with access to the current workflow state and return a command
      * that instructs the workflow on how to proceed.
      *
-     * @param input The input to process
-     * @param state The current workflow state
-     * @param context Additional context information
+     * @param state The current workflow state containing data and context
      * @return A WorkflowCommand indicating how the workflow should proceed
      */
-    WorkflowCommand<I> process(I input, WorkflowState state, Map<String, Object> context);
+    WorkflowCommand<S> process(WorkflowState<S> state);
     
     /**
-     * Process the input asynchronously.
+     * Process asynchronously.
      *
-     * @param input The input to process
-     * @param state The current workflow state
-     * @param context Additional context information
+     * @param state The current workflow state containing data and context
      * @return A CompletableFuture containing the WorkflowCommand
      */
-    default CompletableFuture<WorkflowCommand<I>> processAsync(I input, WorkflowState state, Map<String, Object> context) {
-        return CompletableFuture.supplyAsync(() -> process(input, state, context));
+    default CompletableFuture<WorkflowCommand<S>> processAsync(WorkflowState<S> state) {
+        return CompletableFuture.supplyAsync(() -> process(state));
     }
     
     /**

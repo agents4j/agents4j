@@ -11,10 +11,10 @@ import java.util.Optional;
  * Represents the result of a workflow execution step.
  * Provides better error handling and result composition.
  *
- * @param <I> The input type
+ * @param <S> The state type
  * @param <O> The output type
  */
-public class ExecutionResult<I, O> {
+public class ExecutionResult<S, O> {
     
     public enum ResultType {
         COMPLETED,
@@ -26,40 +26,40 @@ public class ExecutionResult<I, O> {
     
     private final ResultType type;
     private final O output;
-    private final WorkflowState state;
-    private final I nextInput;
+    private final WorkflowState<S> state;
+    private final S nextStateData;
     private final String targetNodeId;
     private final WorkflowExecutionException error;
     
-    private ExecutionResult(ResultType type, O output, WorkflowState state, 
-                           I nextInput, String targetNodeId, WorkflowExecutionException error) {
+    private ExecutionResult(ResultType type, O output, WorkflowState<S> state, 
+                           S nextStateData, String targetNodeId, WorkflowExecutionException error) {
         this.type = Objects.requireNonNull(type);
         this.output = output;
         this.state = state;
-        this.nextInput = nextInput;
+        this.nextStateData = nextStateData;
         this.targetNodeId = targetNodeId;
         this.error = error;
     }
     
     // Factory methods
-    public static <I, O> ExecutionResult<I, O> completed(O output, WorkflowState state) {
+    public static <S, O> ExecutionResult<S, O> completed(O output, WorkflowState<S> state) {
         return new ExecutionResult<>(ResultType.COMPLETED, output, state, null, null, null);
     }
     
-    public static <I, O> ExecutionResult<I, O> suspended(WorkflowState state) {
+    public static <S, O> ExecutionResult<S, O> suspended(WorkflowState<S> state) {
         return new ExecutionResult<>(ResultType.SUSPENDED, null, state, null, null, null);
     }
     
-    public static <I, O> ExecutionResult<I, O> continueWith(WorkflowState state, I nextInput) {
-        return new ExecutionResult<>(ResultType.CONTINUE, null, state, nextInput, null, null);
+    public static <S, O> ExecutionResult<S, O> continueWith(WorkflowState<S> state, S nextStateData) {
+        return new ExecutionResult<>(ResultType.CONTINUE, null, state, nextStateData, null, null);
     }
     
-    public static <I, O> ExecutionResult<I, O> goTo(String targetNodeId, WorkflowState state, I nextInput) {
-        return new ExecutionResult<>(ResultType.GOTO, null, state, nextInput, targetNodeId, null);
+    public static <S, O> ExecutionResult<S, O> goTo(String targetNodeId, WorkflowState<S> state, S nextStateData) {
+        return new ExecutionResult<>(ResultType.GOTO, null, state, nextStateData, targetNodeId, null);
     }
     
-    public static <I, O> ExecutionResult<I, O> failure(WorkflowExecutionException error) {
-        return new ExecutionResult<>(ResultType.ERROR, null, null, null, null, error);
+    public static <S, O> ExecutionResult<S, O> failure(WorkflowExecutionException error) {
+        return new ExecutionResult<>(ResultType.ERROR, null, null, null, null, null);
     }
     
     // Getters
@@ -71,12 +71,12 @@ public class ExecutionResult<I, O> {
         return Optional.ofNullable(output); 
     }
     
-    public WorkflowState getState() { 
+    public WorkflowState<S> getState() { 
         return state; 
     }
     
-    public Optional<I> getNextInput() { 
-        return Optional.ofNullable(nextInput); 
+    public Optional<S> getNextStateData() { 
+        return Optional.ofNullable(nextStateData); 
     }
     
     public Optional<String> getTargetNodeId() { 
@@ -101,7 +101,7 @@ public class ExecutionResult<I, O> {
      * @return A StatefulWorkflowResult representation of this execution result
      * @throws IllegalStateException if the result type cannot be converted
      */
-    public StatefulWorkflowResult<O> toWorkflowResult() {
+    public StatefulWorkflowResult<S, O> toWorkflowResult() {
         switch (type) {
             case COMPLETED:
                 return StatefulWorkflowResult.completed(output, state);
@@ -128,13 +128,13 @@ public class ExecutionResult<I, O> {
         return type == that.type &&
                 Objects.equals(output, that.output) &&
                 Objects.equals(state, that.state) &&
-                Objects.equals(nextInput, that.nextInput) &&
+                Objects.equals(nextStateData, that.nextStateData) &&
                 Objects.equals(targetNodeId, that.targetNodeId) &&
                 Objects.equals(error, that.error);
     }
     
     @Override
     public int hashCode() {
-        return Objects.hash(type, output, state, nextInput, targetNodeId, error);
+        return Objects.hash(type, output, state, nextStateData, targetNodeId, error);
     }
 }

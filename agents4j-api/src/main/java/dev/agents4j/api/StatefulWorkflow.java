@@ -18,12 +18,12 @@ import java.util.concurrent.CompletableFuture;
  * - AsyncWorkflowExecutor: asynchronous execution operations  
  * - WorkflowMetadata: workflow introspection and metadata
  *
- * @param <I> The input type for the workflow
+ * @param <S> The type of the workflow state data
  * @param <O> The output type for the workflow
  */
-public interface StatefulWorkflow<I, O> extends WorkflowExecutor<I, O>, 
-                                                 AsyncWorkflowExecutor<I, O>, 
-                                                 WorkflowMetadata<I> {
+public interface StatefulWorkflow<S, O> extends WorkflowExecutor<S, O>, 
+                                                 AsyncWorkflowExecutor<S, O>, 
+                                                 WorkflowMetadata<S> {
     // This interface now composes the smaller, focused interfaces
     // providing backward compatibility while following ISP
 }

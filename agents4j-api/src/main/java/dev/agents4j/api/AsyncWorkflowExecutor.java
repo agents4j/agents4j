@@ -9,44 +9,39 @@ import java.util.concurrent.CompletableFuture;
  * Interface for asynchronous workflow execution.
  * Separated from synchronous execution following ISP.
  *
- * @param <I> The input type for the workflow
+ * @param <S> The type of the workflow state data
  * @param <O> The output type for the workflow
  */
-public interface AsyncWorkflowExecutor<I, O> {
+public interface AsyncWorkflowExecutor<S, O> {
     
     /**
      * Starts workflow execution asynchronously.
      *
-     * @param input The initial input
      * @return CompletableFuture with the workflow result
      */
-    CompletableFuture<StatefulWorkflowResult<O>> startAsync(I input);
+    CompletableFuture<StatefulWorkflowResult<S, O>> startAsync();
     
     /**
-     * Starts workflow execution asynchronously with context.
+     * Starts workflow execution asynchronously with initial state data.
      *
-     * @param input The initial input
-     * @param context Additional context
+     * @param initialStateData The initial state data
      * @return CompletableFuture with the workflow result
      */
-    CompletableFuture<StatefulWorkflowResult<O>> startAsync(I input, Map<String, Object> context);
+    CompletableFuture<StatefulWorkflowResult<S, O>> startAsync(S initialStateData);
     
     /**
      * Resumes workflow execution asynchronously.
      *
-     * @param input The input for resumption
      * @param state The saved workflow state
      * @return CompletableFuture with the workflow result
      */
-    CompletableFuture<StatefulWorkflowResult<O>> resumeAsync(I input, WorkflowState state);
+    CompletableFuture<StatefulWorkflowResult<S, O>> resumeAsync(WorkflowState<S> state);
     
     /**
-     * Resumes workflow execution asynchronously with context.
+     * Resumes workflow execution asynchronously with updated state.
      *
-     * @param input The input for resumption
-     * @param state The saved workflow state
-     * @param context Additional context
+     * @param state The saved workflow state with any updates
      * @return CompletableFuture with the workflow result
      */
-    CompletableFuture<StatefulWorkflowResult<O>> resumeAsync(I input, WorkflowState state, Map<String, Object> context);
+    CompletableFuture<StatefulWorkflowResult<S, O>> resumeAsyncWithUpdates(WorkflowState<S> state);
 }

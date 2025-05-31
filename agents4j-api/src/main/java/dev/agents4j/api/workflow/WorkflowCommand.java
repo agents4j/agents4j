@@ -11,9 +11,9 @@ import java.util.Optional;
  * on how to proceed. Commands can contain state updates, routing instructions,
  * or suspension requests.
  *
- * @param <I> The input type for the workflow
+ * @param <S> The type of the workflow state data
  */
-public class WorkflowCommand<I> {
+public class WorkflowCommand<S> {
     
     public enum CommandType {
         CONTINUE,    // Continue to next node(s) based on routes
@@ -26,17 +26,17 @@ public class WorkflowCommand<I> {
     private final CommandType type;
     private final Map<String, Object> stateUpdates;
     private final String targetNodeId;
-    private final I nextInput;
+    private final S nextStateData;
     private final String errorMessage;
     private final Map<String, Object> metadata;
     
     private WorkflowCommand(CommandType type, Map<String, Object> stateUpdates, 
-                           String targetNodeId, I nextInput, String errorMessage,
+                           String targetNodeId, S nextStateData, String errorMessage,
                            Map<String, Object> metadata) {
         this.type = Objects.requireNonNull(type, "Command type cannot be null");
         this.stateUpdates = Collections.unmodifiableMap(stateUpdates != null ? stateUpdates : Collections.emptyMap());
         this.targetNodeId = targetNodeId;
-        this.nextInput = nextInput;
+        this.nextStateData = nextStateData;
         this.errorMessage = errorMessage;
         this.metadata = Collections.unmodifiableMap(metadata != null ? metadata : Collections.emptyMap());
     }
@@ -69,12 +69,12 @@ public class WorkflowCommand<I> {
     }
     
     /**
-     * Gets the next input for the workflow.
+     * Gets the next state data for the workflow.
      *
-     * @return The next input, or empty if not provided
+     * @return The next state data, or empty if not provided
      */
-    public Optional<I> getNextInput() {
-        return Optional.ofNullable(nextInput);
+    public Optional<S> getNextStateData() {
+        return Optional.ofNullable(nextStateData);
     }
     
     /**
@@ -98,103 +98,103 @@ public class WorkflowCommand<I> {
     /**
      * Creates a CONTINUE command with optional state updates.
      *
-     * @param <I> The input type
+     * @param <S> The state type
      * @return A new command builder
      */
-    public static <I> Builder<I> continueWith() {
-        return new Builder<I>().type(CommandType.CONTINUE);
+    public static <S> Builder<S> continueWith() {
+        return new Builder<S>().type(CommandType.CONTINUE);
     }
     
     /**
      * Creates a GOTO command to jump to a specific node.
      *
      * @param nodeId The target node ID
-     * @param <I> The input type
+     * @param <S> The state type
      * @return A new command builder
      */
-    public static <I> Builder<I> goTo(String nodeId) {
-        return new Builder<I>().type(CommandType.GOTO).targetNode(nodeId);
+    public static <S> Builder<S> goTo(String nodeId) {
+        return new Builder<S>().type(CommandType.GOTO).targetNode(nodeId);
     }
     
     /**
      * Creates a SUSPEND command to pause workflow execution.
      *
-     * @param <I> The input type
+     * @param <S> The state type
      * @return A new command builder
      */
-    public static <I> Builder<I> suspend() {
-        return new Builder<I>().type(CommandType.SUSPEND);
+    public static <S> Builder<S> suspend() {
+        return new Builder<S>().type(CommandType.SUSPEND);
     }
     
     /**
      * Creates a COMPLETE command to finish workflow execution.
      *
-     * @param <I> The input type
+     * @param <S> The state type
      * @return A new command builder
      */
-    public static <I> Builder<I> complete() {
-        return new Builder<I>().type(CommandType.COMPLETE);
+    public static <S> Builder<S> complete() {
+        return new Builder<S>().type(CommandType.COMPLETE);
     }
     
     /**
      * Creates an ERROR command to indicate an error occurred.
      *
      * @param errorMessage The error message
-     * @param <I> The input type
+     * @param <S> The state type
      * @return A new command builder
      */
-    public static <I> Builder<I> error(String errorMessage) {
-        return new Builder<I>().type(CommandType.ERROR).errorMessage(errorMessage);
+    public static <S> Builder<S> error(String errorMessage) {
+        return new Builder<S>().type(CommandType.ERROR).errorMessage(errorMessage);
     }
     
     /**
      * Builder for creating WorkflowCommand instances.
      *
-     * @param <I> The input type
+     * @param <S> The state type
      */
-    public static class Builder<I> {
+    public static class Builder<S> {
         private CommandType type;
         private final Map<String, Object> stateUpdates = new HashMap<>();
         private String targetNodeId;
-        private I nextInput;
+        private S nextStateData;
         private String errorMessage;
         private final Map<String, Object> metadata = new HashMap<>();
         
-        private Builder<I> type(CommandType type) {
+        private Builder<S> type(CommandType type) {
             this.type = type;
             return this;
         }
         
-        private Builder<I> targetNode(String nodeId) {
+        private Builder<S> targetNode(String nodeId) {
             this.targetNodeId = nodeId;
             return this;
         }
         
-        private Builder<I> errorMessage(String message) {
+        private Builder<S> errorMessage(String message) {
             this.errorMessage = message;
             return this;
         }
         
         /**
-         * Adds a state update.
+         * Adds a context update.
          *
-         * @param key The state key
-         * @param value The state value
+         * @param key The context key
+         * @param value The context value
          * @return This builder
          */
-        public Builder<I> updateState(String key, Object value) {
+        public Builder<S> updateState(String key, Object value) {
             this.stateUpdates.put(key, value);
             return this;
         }
         
         /**
-         * Sets the next input for the workflow.
+         * Sets the next state data for the workflow.
          *
-         * @param input The next input
+         * @param stateData The next state data
          * @return This builder
          */
-        public Builder<I> withInput(I input) {
-            this.nextInput = input;
+        public Builder<S> withStateData(S stateData) {
+            this.nextStateData = stateData;
             return this;
         }
         
@@ -205,7 +205,7 @@ public class WorkflowCommand<I> {
          * @param value The metadata value
          * @return This builder
          */
-        public Builder<I> addMetadata(String key, Object value) {
+        public Builder<S> addMetadata(String key, Object value) {
             this.metadata.put(key, value);
             return this;
         }
@@ -215,8 +215,8 @@ public class WorkflowCommand<I> {
          *
          * @return A new WorkflowCommand instance
          */
-        public WorkflowCommand<I> build() {
-            return new WorkflowCommand<>(type, stateUpdates, targetNodeId, nextInput, errorMessage, metadata);
+        public WorkflowCommand<S> build() {
+            return new WorkflowCommand<>(type, stateUpdates, targetNodeId, nextStateData, errorMessage, metadata);
         }
     }
     

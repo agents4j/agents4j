@@ -10,9 +10,9 @@ import java.util.Objects;
  * Abstract base class for StatefulAgentNode implementations.
  * Provides common functionality and utility methods for building stateful nodes.
  *
- * @param <I> The input type for this node
+ * @param <S> The type of the workflow state data
  */
-public abstract class AbstractStatefulAgentNode<I> implements StatefulAgentNode<I> {
+public abstract class AbstractStatefulAgentNode<S> implements StatefulAgentNode<S> {
     
     private final String nodeId;
     private final String name;
@@ -55,40 +55,36 @@ public abstract class AbstractStatefulAgentNode<I> implements StatefulAgentNode<
     }
     
     /**
-     * Template method for processing input. Subclasses should implement doProcess
+     * Template method for processing. Subclasses should implement doProcess
      * instead of overriding this method directly.
      */
     @Override
-    public final WorkflowCommand<I> process(I input, WorkflowState state, Map<String, Object> context) {
+    public final WorkflowCommand<S> process(WorkflowState<S> state) {
         try {
-            return doProcess(input, state, context);
+            return doProcess(state);
         } catch (Exception e) {
-            return handleError(e, input, state, context);
+            return handleError(e, state);
         }
     }
     
     /**
      * Abstract method that subclasses must implement to define their processing logic.
      *
-     * @param input The input to process
-     * @param state The current workflow state
-     * @param context Additional context information
+     * @param state The current workflow state containing data and context
      * @return A WorkflowCommand indicating how the workflow should proceed
      */
-    protected abstract WorkflowCommand<I> doProcess(I input, WorkflowState state, Map<String, Object> context);
+    protected abstract WorkflowCommand<S> doProcess(WorkflowState<S> state);
     
     /**
      * Handles errors that occur during processing. Can be overridden by subclasses
      * to provide custom error handling.
      *
      * @param error The exception that occurred
-     * @param input The input being processed
      * @param state The current workflow state
-     * @param context The execution context
      * @return A WorkflowCommand representing the error
      */
-    protected WorkflowCommand<I> handleError(Exception error, I input, WorkflowState state, Map<String, Object> context) {
-        return WorkflowCommand.<I>error("Error in node " + nodeId + ": " + error.getMessage()).build();
+    protected WorkflowCommand<S> handleError(Exception error, WorkflowState<S> state) {
+        return WorkflowCommand.<S>error("Error in node " + nodeId + ": " + error.getMessage()).build();
     }
     
     /**
@@ -96,7 +92,7 @@ public abstract class AbstractStatefulAgentNode<I> implements StatefulAgentNode<
      *
      * @return A continue command builder
      */
-    protected WorkflowCommand.Builder<I> continueWith() {
+    protected WorkflowCommand.Builder<S> continueWith() {
         return WorkflowCommand.continueWith();
     }
     
@@ -106,7 +102,7 @@ public abstract class AbstractStatefulAgentNode<I> implements StatefulAgentNode<
      * @param targetNodeId The target node ID
      * @return A goto command builder
      */
-    protected WorkflowCommand.Builder<I> goTo(String targetNodeId) {
+    protected WorkflowCommand.Builder<S> goTo(String targetNodeId) {
         return WorkflowCommand.goTo(targetNodeId);
     }
     
@@ -115,7 +111,7 @@ public abstract class AbstractStatefulAgentNode<I> implements StatefulAgentNode<
      *
      * @return A suspend command builder
      */
-    protected WorkflowCommand.Builder<I> suspend() {
+    protected WorkflowCommand.Builder<S> suspend() {
         return WorkflowCommand.suspend();
     }
     
@@ -124,55 +120,55 @@ public abstract class AbstractStatefulAgentNode<I> implements StatefulAgentNode<
      *
      * @return A complete command builder
      */
-    protected WorkflowCommand.Builder<I> complete() {
+    protected WorkflowCommand.Builder<S> complete() {
         return WorkflowCommand.complete();
     }
     
     /**
-     * Utility method to check if a state key exists and has a specific value.
+     * Utility method to check if a context key exists and has a specific value.
      *
      * @param state The workflow state
-     * @param key The state key
+     * @param key The context key
      * @param expectedValue The expected value
-     * @return true if the state has the key with the expected value
+     * @return true if the context has the key with the expected value
      */
-    protected boolean stateEquals(WorkflowState state, String key, Object expectedValue) {
-        return Objects.equals(state.get(key).orElse(null), expectedValue);
+    protected boolean contextEquals(WorkflowState<S> state, String key, Object expectedValue) {
+        return Objects.equals(state.getContextValue(key).orElse(null), expectedValue);
     }
     
     /**
-     * Utility method to check if a state key exists.
+     * Utility method to check if a context key exists.
      *
      * @param state The workflow state
-     * @param key The state key
-     * @return true if the state contains the key
+     * @param key The context key
+     * @return true if the context contains the key
      */
-    protected boolean stateContains(WorkflowState state, String key) {
-        return state.get(key).isPresent();
+    protected boolean contextContains(WorkflowState<S> state, String key) {
+        return state.getContextValue(key).isPresent();
     }
     
     /**
-     * Utility method to get a state value with a default.
+     * Utility method to get a context value with a default.
      *
      * @param state The workflow state
-     * @param key The state key
+     * @param key The context key
      * @param defaultValue The default value
      * @param <T> The value type
-     * @return The state value or default
+     * @return The context value or default
      */
-    protected <T> T getStateValue(WorkflowState state, String key, T defaultValue) {
-        return state.get(key, defaultValue);
+    protected <T> T getContextValue(WorkflowState<S> state, String key, T defaultValue) {
+        return state.getContextValue(key, defaultValue);
     }
     
     /**
-     * Utility method to increment a counter in the state.
+     * Utility method to increment a counter in the context.
      *
      * @param state The workflow state
      * @param counterKey The counter key
      * @return The new counter value
      */
-    protected int incrementCounter(WorkflowState state, String counterKey) {
-        int currentValue = getStateValue(state, counterKey, 0);
+    protected int incrementCounter(WorkflowState<S> state, String counterKey) {
+        int currentValue = getContextValue(state, counterKey, 0);
         return currentValue + 1;
     }
     

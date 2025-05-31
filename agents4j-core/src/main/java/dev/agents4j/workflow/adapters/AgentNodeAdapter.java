@@ -11,14 +11,14 @@ import java.util.Objects;
  * Adapter that wraps a regular AgentNode to work as a StatefulAgentNode.
  * This allows traditional AgentNodes to be used in StatefulWorkflows.
  */
-public class AgentNodeAdapter<I> implements StatefulAgentNode<I> {
+public class AgentNodeAdapter<S> implements StatefulAgentNode<S> {
     
-    private final AgentNode<I, ?> wrappedNode;
+    private final AgentNode<?, ?> wrappedNode;
     private final String nodeId;
     private final boolean isEntryPoint;
     private final boolean isLastNode;
     
-    public AgentNodeAdapter(AgentNode<I, ?> wrappedNode, String nodeId, 
+    public AgentNodeAdapter(AgentNode<?, ?> wrappedNode, String nodeId, 
                            boolean isEntryPoint, boolean isLastNode) {
         this.wrappedNode = Objects.requireNonNull(wrappedNode, "Wrapped node cannot be null");
         this.nodeId = Objects.requireNonNull(nodeId, "Node ID cannot be null");
@@ -27,37 +27,40 @@ public class AgentNodeAdapter<I> implements StatefulAgentNode<I> {
     }
     
     @Override
-    public WorkflowCommand<I> process(I input, WorkflowState state, Map<String, Object> context) {
+    public WorkflowCommand<S> process(WorkflowState<S> state) {
         try {
-            // Execute the wrapped AgentNode
-            Object output = wrappedNode.process(input, context);
+            // Get input from context or state
+            Object input = state.getContextValue("current_input").orElse(state.getData());
             
-            // Store the output in state for debugging and tracking
+            // Execute the wrapped AgentNode
+            @SuppressWarnings("unchecked")
+            Object output = wrappedNode.process(input, state.getContext());
+            
+            // Store the output in context for debugging and tracking
             String outputKey = "node_output_" + nodeId;
             
             if (isLastNode) {
                 // Final node - complete the workflow with the output
-                return WorkflowCommand.<I>complete()
+                return WorkflowCommand.<S>complete()
                         .updateState(outputKey, output)
                         .updateState("final_output", output)
                         .addMetadata("completed_at", System.currentTimeMillis())
                         .build();
             } else {
                 // Intermediate node - continue to next node
-                // In a chain workflow, output becomes the input to the next node
-                @SuppressWarnings("unchecked")
-                I nextInput = (I) output;
+                // Store output as next input in context
+                Integer currentStep = state.getContextValue("current_step", 0);
                 
-                return WorkflowCommand.<I>continueWith()
+                return WorkflowCommand.<S>continueWith()
                         .updateState(outputKey, output)
-                        .updateState("current_step", state.get("current_step", 0) + 1)
-                        .withInput(nextInput)
+                        .updateState("current_input", output)
+                        .updateState("current_step", currentStep + 1)
                         .addMetadata("processed_at", System.currentTimeMillis())
                         .build();
             }
         } catch (Exception e) {
             // Handle errors gracefully
-            return WorkflowCommand.<I>error("Error in node " + nodeId + ": " + e.getMessage())
+            return WorkflowCommand.<S>error("Error in node " + nodeId + ": " + e.getMessage())
                     .updateState("error_node", nodeId)
                     .updateState("error_message", e.getMessage())
                     .updateState("error_class", e.getClass().getSimpleName())
@@ -92,7 +95,7 @@ public class AgentNodeAdapter<I> implements StatefulAgentNode<I> {
      *
      * @return The original AgentNode
      */
-    public AgentNode<I, ?> getWrappedNode() {
+    public AgentNode<?, ?> getWrappedNode() {
         return wrappedNode;
     }
     

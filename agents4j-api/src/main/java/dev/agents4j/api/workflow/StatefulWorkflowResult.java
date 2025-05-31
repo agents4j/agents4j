@@ -9,9 +9,10 @@ import java.util.Optional;
  * Represents the result of a stateful workflow execution.
  * Contains the output (if completed), the current state, and execution status.
  *
+ * @param <S> The type of the workflow state data
  * @param <O> The output type of the workflow
  */
-public class StatefulWorkflowResult<O> {
+public class StatefulWorkflowResult<S, O> {
     
     public enum Status {
         COMPLETED,   // Workflow completed successfully
@@ -21,11 +22,11 @@ public class StatefulWorkflowResult<O> {
     
     private final Status status;
     private final O output;
-    private final WorkflowState state;
+    private final WorkflowState<S> state;
     private final String errorMessage;
     private final Map<String, Object> metadata;
     
-    private StatefulWorkflowResult(Status status, O output, WorkflowState state, 
+    private StatefulWorkflowResult(Status status, O output, WorkflowState<S> state, 
                                   String errorMessage, Map<String, Object> metadata) {
         this.status = Objects.requireNonNull(status, "Status cannot be null");
         this.output = output;
@@ -57,7 +58,7 @@ public class StatefulWorkflowResult<O> {
      *
      * @return The workflow state
      */
-    public WorkflowState getState() {
+    public WorkflowState<S> getState() {
         return state;
     }
     
@@ -111,10 +112,11 @@ public class StatefulWorkflowResult<O> {
      *
      * @param output The workflow output
      * @param state The final state
+     * @param <S> The state type
      * @param <O> The output type
      * @return A completed result
      */
-    public static <O> StatefulWorkflowResult<O> completed(O output, WorkflowState state) {
+    public static <S, O> StatefulWorkflowResult<S, O> completed(O output, WorkflowState<S> state) {
         return new StatefulWorkflowResult<>(Status.COMPLETED, output, state, null, null);
     }
     
@@ -122,10 +124,11 @@ public class StatefulWorkflowResult<O> {
      * Creates a suspended result.
      *
      * @param state The current state
+     * @param <S> The state type
      * @param <O> The output type
      * @return A suspended result
      */
-    public static <O> StatefulWorkflowResult<O> suspended(WorkflowState state) {
+    public static <S, O> StatefulWorkflowResult<S, O> suspended(WorkflowState<S> state) {
         return new StatefulWorkflowResult<>(Status.SUSPENDED, null, state, null, null);
     }
     
@@ -134,10 +137,11 @@ public class StatefulWorkflowResult<O> {
      *
      * @param errorMessage The error message
      * @param state The current state
+     * @param <S> The state type
      * @param <O> The output type
      * @return An error result
      */
-    public static <O> StatefulWorkflowResult<O> error(String errorMessage, WorkflowState state) {
+    public static <S, O> StatefulWorkflowResult<S, O> error(String errorMessage, WorkflowState<S> state) {
         return new StatefulWorkflowResult<>(Status.ERROR, null, state, errorMessage, null);
     }
     
@@ -149,10 +153,11 @@ public class StatefulWorkflowResult<O> {
      * @param state The state
      * @param errorMessage The error message (can be null)
      * @param metadata The metadata
+     * @param <S> The state type
      * @param <O> The output type
      * @return A result with metadata
      */
-    public static <O> StatefulWorkflowResult<O> withMetadata(Status status, O output, WorkflowState state,
+    public static <S, O> StatefulWorkflowResult<S, O> withMetadata(Status status, O output, WorkflowState<S> state,
                                                            String errorMessage, Map<String, Object> metadata) {
         return new StatefulWorkflowResult<>(status, output, state, errorMessage, metadata);
     }
