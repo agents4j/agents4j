@@ -1,4 +1,4 @@
-package dev.agents4j.workflow;
+package dev.agents4j.langchain4j.workflow;
 
 import dev.agents4j.api.AgentWorkflow;
 import dev.langchain4j.memory.ChatMemory;

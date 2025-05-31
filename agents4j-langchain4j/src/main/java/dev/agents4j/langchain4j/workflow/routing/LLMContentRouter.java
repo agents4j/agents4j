@@ -1,4 +1,4 @@
-package dev.agents4j.workflow.routing;
+package dev.agents4j.langchain4j.workflow.routing;
 
 import dev.agents4j.api.exception.WorkflowExecutionException;
 import dev.agents4j.api.routing.ContentRouter;

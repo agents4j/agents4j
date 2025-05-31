@@ -1,7 +1,7 @@
 /*
  * Agents4J Library - A framework for AI Agent Workflows using LangChain4J
  */
-package dev.agents4j.workflow;
+package dev.agents4j.langchain4j.workflow;
 
 import dev.agents4j.api.StatefulWorkflow;
 import dev.agents4j.api.StatefulAgentNode;

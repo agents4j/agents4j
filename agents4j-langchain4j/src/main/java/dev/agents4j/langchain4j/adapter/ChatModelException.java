@@ -1,7 +1,7 @@
 /*
  * Agents4J Library - A framework for AI Agent Workflows using LangChain4J
  */
-package dev.agents4j.adapter;
+package dev.agents4j.langchain4j.adapter;
 
 import java.util.Collections;
 import java.util.HashMap;

@@ -1,12 +1,12 @@
 /*
  * Agents4J Library - A framework for AI Agent Workflows using LangChain4J
  */
-package dev.agents4j.facade;
+package dev.agents4j.langchain4j.facade;
 
 import dev.agents4j.api.exception.WorkflowExecutionException;
 import dev.agents4j.api.workflow.StatefulWorkflowResult;
 import dev.agents4j.exception.AgentExecutionException;
-import dev.agents4j.workflow.OrchestratorWorkersWorkflow;
+import dev.agents4j.langchain4j.workflow.OrchestratorWorkersWorkflow;
 import dev.langchain4j.model.chat.ChatModel;
 
 import java.util.List;

@@ -118,8 +118,9 @@ public class StringLangChain4JAgentNode
     }
 
     @Override
-    protected String convertToOutput(
+    protected String createOutput(
         AiMessage aiMessage,
+        String originalInput,
         Map<String, Object> context
     ) {
         return aiMessage.text();

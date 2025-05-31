@@ -1,15 +1,17 @@
-package dev.agents4j.workflow;
+package dev.agents4j.langchain4j.workflow;
 
 import dev.agents4j.api.AgentNode;
 import dev.agents4j.api.routing.ContentRouter;
 import dev.agents4j.api.routing.Route;
 import dev.agents4j.api.strategy.WorkflowExecutionStrategy;
-import dev.agents4j.impl.StringLangChain4JAgentNode;
-import dev.agents4j.workflow.routing.LLMContentRouter;
+import dev.agents4j.langchain4j.impl.StringLangChain4JAgentNode;
+import dev.agents4j.langchain4j.workflow.routing.LLMContentRouter;
 import dev.agents4j.workflow.routing.RoutingWorkflow;
 import dev.agents4j.workflow.routing.RoutingWorkflowFactory;
 import dev.agents4j.workflow.routing.RuleBasedContentRouter;
 import dev.agents4j.workflow.strategy.StrategyFactory;
+import dev.agents4j.workflow.ChainWorkflow;
+import dev.agents4j.workflow.StrategyWorkflow;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import java.util.ArrayList;
@@ -149,11 +151,11 @@ public class AgentWorkflowFactory {
      * @param model The ChatModel to use for all parallel operations
      * @return A new ParallelizationWorkflow instance
      */
-    public static ParallelizationWorkflow createParallelizationWorkflow(
+    public static dev.agents4j.langchain4j.workflow.ParallelizationWorkflow createParallelizationWorkflow(
         String name,
         ChatModel model
     ) {
-        return ParallelizationWorkflow.builder()
+        return dev.agents4j.langchain4j.workflow.ParallelizationWorkflow.builder()
             .name(name)
             .chatModel(model)
             .build();
@@ -165,7 +167,7 @@ public class AgentWorkflowFactory {
      * @param model The ChatModel to use for all parallel operations
      * @return A new ParallelizationWorkflow instance
      */
-    public static ParallelizationWorkflow createParallelizationWorkflow(
+    public static dev.agents4j.langchain4j.workflow.ParallelizationWorkflow createParallelizationWorkflow(
         ChatModel model
     ) {
         return createParallelizationWorkflow(
@@ -361,15 +363,15 @@ public class AgentWorkflowFactory {
      * @param workerConfigs Map of worker configurations
      * @return A new OrchestratorWorkersWorkflow instance
      */
-    public static OrchestratorWorkersWorkflow createOrchestratorWorkersWorkflow(
+    public static dev.agents4j.langchain4j.workflow.OrchestratorWorkersWorkflow createOrchestratorWorkersWorkflow(
         String name,
         ChatModel model,
-        Map<String, OrchestratorWorkersWorkflow.WorkerConfig> workerConfigs
+        Map<String, dev.agents4j.langchain4j.workflow.OrchestratorWorkersWorkflow.WorkerConfig> workerConfigs
     ) {
-        OrchestratorWorkersWorkflow.Builder builder =
-            OrchestratorWorkersWorkflow.builder().name(name).chatModel(model);
+        dev.agents4j.langchain4j.workflow.OrchestratorWorkersWorkflow.Builder builder =
+            dev.agents4j.langchain4j.workflow.OrchestratorWorkersWorkflow.builder().name(name).chatModel(model);
 
-        for (OrchestratorWorkersWorkflow.WorkerConfig config : workerConfigs.values()) {
+        for (dev.agents4j.langchain4j.workflow.OrchestratorWorkersWorkflow.WorkerConfig config : workerConfigs.values()) {
             builder.addWorker(config);
         }
 
@@ -383,11 +385,11 @@ public class AgentWorkflowFactory {
      * @param model The ChatModel to use
      * @return A new OrchestratorWorkersWorkflow instance with common worker types
      */
-    public static OrchestratorWorkersWorkflow createStandardOrchestratorWorkersWorkflow(
+    public static dev.agents4j.langchain4j.workflow.OrchestratorWorkersWorkflow createStandardOrchestratorWorkersWorkflow(
         String name,
         ChatModel model
     ) {
-        return OrchestratorWorkersWorkflow.builder()
+        return dev.agents4j.langchain4j.workflow.OrchestratorWorkersWorkflow.builder()
             .name(name)
             .chatModel(model)
             .addWorker(

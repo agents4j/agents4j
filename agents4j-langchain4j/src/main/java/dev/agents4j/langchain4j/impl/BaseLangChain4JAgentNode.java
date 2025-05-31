@@ -124,7 +124,7 @@ public abstract class BaseLangChain4JAgentNode<I, O>
         messages.add(userMessage);
         
         // Get AI response
-        AiMessage aiMessage = model.generate(messages).content();
+        AiMessage aiMessage = model.generate(messages);
         
         // Store messages in memory if available
         if (memory != null) {
