@@ -3,26 +3,38 @@
  */
 package dev.agents4j.langchain4j.workflow;
 
-import dev.agents4j.api.StatefulWorkflow;
-import dev.agents4j.api.StatefulAgentNode;
-import dev.agents4j.api.exception.WorkflowExecutionException;
-import dev.agents4j.api.workflow.StatefulWorkflowResult;
-import dev.agents4j.api.workflow.WorkflowState;
-import dev.agents4j.api.workflow.WorkflowRoute;
-import dev.agents4j.api.workflow.WorkflowCommand;
-import dev.langchain4j.model.chat.ChatModel;
+import dev.agents4j.api.GraphWorkflow;
+import dev.agents4j.api.context.ContextKey;
+import dev.agents4j.api.context.WorkflowContext;
+import dev.agents4j.api.graph.EdgeId;
+import dev.agents4j.api.graph.GraphCommand;
+import dev.agents4j.api.graph.GraphCommandComplete;
+import dev.agents4j.api.graph.GraphCommandTraverse;
+import dev.agents4j.api.graph.GraphEdge;
+import dev.agents4j.api.graph.GraphWorkflowNode;
+import dev.agents4j.api.graph.GraphWorkflowState;
+import dev.agents4j.api.graph.NodeId;
+import dev.agents4j.api.graph.WorkflowId;
+import dev.agents4j.api.result.WorkflowResult;
+import dev.agents4j.api.result.error.ExecutionError;
+import dev.agents4j.api.result.error.WorkflowError;
+import dev.agents4j.api.validation.ValidationResult;
+import dev.agents4j.workflow.GraphWorkflowImpl;
+
+import dev.agents4j.workflow.output.OutputExtractor;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.chat.ChatModel;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
+
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -74,15 +86,16 @@ import java.util.stream.IntStream;
  * @see <a href="https://docs.langchain4j.dev/">LangChain4J Documentation</a>
  * @see <a href="https://www.anthropic.com/research/building-effective-agents">Building Effective Agents</a>
  */
-public class ParallelizationWorkflow implements StatefulWorkflow<ParallelizationWorkflow.ParallelInput, List<String>> {
+public class ParallelizationWorkflow implements GraphWorkflow<ParallelizationWorkflow.ParallelInput, List<String>> {
 
-    private static final String PARALLEL_PROCESSOR_NODE = "parallel-processor";
-    private static final String AGGREGATOR_NODE = "aggregator";
+    private static final NodeId PARALLEL_PROCESSOR_NODE = NodeId.of("parallel-processor");
+    private static final NodeId AGGREGATOR_NODE = NodeId.of("aggregator");
     
-    private final String name;
-    private final ChatModel chatModel;
-    private final List<StatefulAgentNode<ParallelInput>> nodes;
-    private final List<WorkflowRoute<ParallelInput>> routes;
+    // Context keys
+    private static final ContextKey<Object> RESULTS_KEY = ContextKey.of("results", Object.class);
+    private static final ContextKey<Integer> PROCESSED_COUNT_KEY = ContextKey.of("processedCount", Integer.class);
+    
+    private final GraphWorkflowImpl<ParallelInput, List<String>> workflow;
 
     /**
      * Creates a new ParallelizationWorkflow with the specified name and chat model.
@@ -91,476 +104,87 @@ public class ParallelizationWorkflow implements StatefulWorkflow<Parallelization
      * @param chatModel The ChatModel to use for processing
      */
     public ParallelizationWorkflow(String name, ChatModel chatModel) {
-        this.name = Objects.requireNonNull(name, "Workflow name cannot be null");
-        this.chatModel = Objects.requireNonNull(chatModel, "ChatModel cannot be null");
-        this.nodes = createNodes();
-        this.routes = createRoutes();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public String getName() {
-        return name;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public StatefulWorkflowResult<List<String>> start(ParallelInput input) throws WorkflowExecutionException {
-        return start(input, new HashMap<>());
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public StatefulWorkflowResult<List<String>> start(ParallelInput input, Map<String, Object> context) 
-            throws WorkflowExecutionException {
-        WorkflowState initialState = WorkflowState.create(name + "-" + System.currentTimeMillis());
-        return start(input, initialState, context);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public StatefulWorkflowResult<List<String>> start(ParallelInput input, WorkflowState initialState, 
-            Map<String, Object> context) throws WorkflowExecutionException {
-        try {
-            // Store execution context
-            context.put("workflow_name", name);
-            context.put("num_inputs", input.getInputs().size());
-            context.put("num_workers", input.getNumWorkers());
-            
-            long startTime = System.currentTimeMillis();
-            
-            // Initialize state with input data
-            Map<String, Object> stateData = new HashMap<>();
-            stateData.put("prompt", input.getPrompt());
-            stateData.put("inputs", input.getInputs());
-            stateData.put("numWorkers", input.getNumWorkers());
-            stateData.put("startTime", startTime);
-            
-            WorkflowState state = initialState.withUpdatesAndCurrentNode(stateData, PARALLEL_PROCESSOR_NODE);
-            
-            // Execute parallel processing
-            StatefulAgentNode<ParallelInput> processorNode = getNode(PARALLEL_PROCESSOR_NODE)
-                    .orElseThrow(() -> new WorkflowExecutionException(name, "Parallel processor node not found"));
-            
-            WorkflowCommand<ParallelInput> command = processorNode.process(input, state, context);
-            
-            // Handle the command
-            return handleCommand(command, input, state, context);
-            
-        } catch (Exception e) {
-            Map<String, Object> errorContext = new HashMap<>();
-            errorContext.put("inputCount", input.getInputs().size());
-            errorContext.put("numWorkers", input.getNumWorkers());
-            throw new WorkflowExecutionException(name, "Parallelization workflow execution failed", e);
-        }
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public StatefulWorkflowResult<List<String>> resume(ParallelInput input, WorkflowState state) 
-            throws WorkflowExecutionException {
-        return resume(input, state, new HashMap<>());
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public StatefulWorkflowResult<List<String>> resume(ParallelInput input, WorkflowState state, 
-            Map<String, Object> context) throws WorkflowExecutionException {
-        try {
-            String currentNodeId = state.getCurrentNodeId()
-                    .orElseThrow(() -> new WorkflowExecutionException(name, "Cannot resume: no current node in state"));
-            
-            StatefulAgentNode<ParallelInput> currentNode = getNode(currentNodeId)
-                    .orElseThrow(() -> new WorkflowExecutionException(name, "Current node not found: " + currentNodeId));
-            
-            WorkflowCommand<ParallelInput> command = currentNode.process(input, state, context);
-            
-            return handleCommand(command, input, state, context);
-            
-        } catch (Exception e) {
-            throw new WorkflowExecutionException(name, "Failed to resume workflow", e);
-        }
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public CompletableFuture<StatefulWorkflowResult<List<String>>> startAsync(ParallelInput input) {
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                return start(input);
-            } catch (WorkflowExecutionException e) {
-                throw new RuntimeException(e);
-            }
-        });
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public CompletableFuture<StatefulWorkflowResult<List<String>>> startAsync(ParallelInput input, 
-            Map<String, Object> context) {
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                return start(input, context);
-            } catch (WorkflowExecutionException e) {
-                throw new RuntimeException(e);
-            }
-        });
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public CompletableFuture<StatefulWorkflowResult<List<String>>> resumeAsync(ParallelInput input, 
-            WorkflowState state) {
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                return resume(input, state);
-            } catch (WorkflowExecutionException e) {
-                throw new RuntimeException(e);
-            }
-        });
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public CompletableFuture<StatefulWorkflowResult<List<String>>> resumeAsync(ParallelInput input, 
-            WorkflowState state, Map<String, Object> context) {
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                return resume(input, state, context);
-            } catch (WorkflowExecutionException e) {
-                throw new RuntimeException(e);
-            }
-        });
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public List<StatefulAgentNode<ParallelInput>> getNodes() {
-        return Collections.unmodifiableList(nodes);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public List<WorkflowRoute<ParallelInput>> getRoutes() {
-        return Collections.unmodifiableList(routes);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public Optional<StatefulAgentNode<ParallelInput>> getNode(String nodeId) {
-        return nodes.stream()
-                .filter(node -> node.getNodeId().equals(nodeId))
-                .findFirst();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public List<WorkflowRoute<ParallelInput>> getRoutesFrom(String fromNodeId) {
-        return routes.stream()
-                .filter(route -> route.getFromNodeId().equals(fromNodeId))
-                .collect(Collectors.toList());
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public List<StatefulAgentNode<ParallelInput>> getEntryPoints() {
-        return nodes.stream()
-                .filter(StatefulAgentNode::canBeEntryPoint)
-                .collect(Collectors.toList());
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void validate() throws IllegalStateException {
-        if (nodes.isEmpty()) {
-            throw new IllegalStateException("Workflow must have at least one node");
-        }
+        Objects.requireNonNull(name, "Workflow name cannot be null");
+        Objects.requireNonNull(chatModel, "ChatModel cannot be null");
         
-        if (getEntryPoints().isEmpty()) {
-            throw new IllegalStateException("Workflow must have at least one entry point");
-        }
-        
-        // Validate all routes reference existing nodes
-        for (WorkflowRoute<ParallelInput> route : routes) {
-            if (getNode(route.getFromNodeId()).isEmpty()) {
-                throw new IllegalStateException("Route references non-existent from node: " + route.getFromNodeId());
-            }
-            if (getNode(route.getToNodeId()).isEmpty()) {
-                throw new IllegalStateException("Route references non-existent to node: " + route.getToNodeId());
-            }
-        }
+        this.workflow = createWorkflow(name, chatModel);
     }
-
-    private List<StatefulAgentNode<ParallelInput>> createNodes() {
-        List<StatefulAgentNode<ParallelInput>> nodeList = new ArrayList<>();
+    
+    private GraphWorkflowImpl<ParallelInput, List<String>> createWorkflow(String name, ChatModel chatModel) {
+        // Create processor node
+        GraphWorkflowNode<ParallelInput> processorNode = new ParallelProcessorNode(PARALLEL_PROCESSOR_NODE, chatModel);
         
-        // Parallel processor node
-        nodeList.add(new ParallelProcessorNode(PARALLEL_PROCESSOR_NODE, chatModel));
+        // Create aggregator node
+        GraphWorkflowNode<ParallelInput> aggregatorNode = new AggregatorNode(AGGREGATOR_NODE);
         
-        // Aggregator node
-        nodeList.add(new AggregatorNode(AGGREGATOR_NODE));
+        // Create output extractor
+        OutputExtractor<ParallelInput, List<String>> outputExtractor = new ParallelOutputExtractor();
         
-        return nodeList;
+        // Build workflow
+        return GraphWorkflowImpl.<ParallelInput, List<String>>builder()
+            .name(name)
+            .addNode(processorNode)
+            .addNode(aggregatorNode)
+            .addEdge(PARALLEL_PROCESSOR_NODE, AGGREGATOR_NODE)
+            .defaultEntryPoint(PARALLEL_PROCESSOR_NODE)
+            .outputExtractor(outputExtractor)
+            .build();
     }
-
-    private List<WorkflowRoute<ParallelInput>> createRoutes() {
-        List<WorkflowRoute<ParallelInput>> routeList = new ArrayList<>();
-        
-        // Route from processor to aggregator
-        routeList.add(WorkflowRoute.<ParallelInput>builder()
-                .id("processor-to-aggregator")
-                .from(PARALLEL_PROCESSOR_NODE)
-                .to(AGGREGATOR_NODE)
-                .description("Route from parallel processor to aggregator")
-                .build());
-        
-        return routeList;
-    }
-
-    private StatefulWorkflowResult<List<String>> handleCommand(WorkflowCommand<ParallelInput> command, 
-            ParallelInput input, WorkflowState state, Map<String, Object> context) {
-        
-        // Apply state updates
-        WorkflowState newState = state.withUpdates(command.getStateUpdates());
-        
-        switch (command.getType()) {
-            case COMPLETE:
-                @SuppressWarnings("unchecked")
-                List<String> results = (List<String>) newState.get("results").orElse(Collections.emptyList());
-                
-                // Add execution metadata
-                long endTime = System.currentTimeMillis();
-                long startTime = newState.get("startTime", 0L);
-                context.put("execution_time", endTime - startTime);
-                context.put("results", results);
-                
-                Map<String, Object> metadata = new HashMap<>();
-                metadata.put("execution_time", endTime - startTime);
-                metadata.put("num_results", results.size());
-                
-                return StatefulWorkflowResult.withMetadata(
-                        StatefulWorkflowResult.Status.COMPLETED, 
-                        results, 
-                        newState, 
-                        null, 
-                        metadata);
-                
-            case CONTINUE:
-                // Find next node via routes
-                String currentNodeId = newState.getCurrentNodeId().orElse("");
-                List<WorkflowRoute<ParallelInput>> availableRoutes = getRoutesFrom(currentNodeId);
-                
-                if (availableRoutes.isEmpty()) {
-                    return StatefulWorkflowResult.error("No routes available from node: " + currentNodeId, newState);
-                }
-                
-                // Take the first matching route
-                WorkflowRoute<ParallelInput> route = availableRoutes.get(0);
-                String nextNodeId = route.getToNodeId();
-                
-                StatefulAgentNode<ParallelInput> nextNode = getNode(nextNodeId)
-                        .orElseThrow(() -> new RuntimeException("Next node not found: " + nextNodeId));
-                
-                WorkflowState nextState = newState.withCurrentNode(nextNodeId);
-                ParallelInput nextInput = command.getNextInput().orElse(input);
-                
-                WorkflowCommand<ParallelInput> nextCommand = nextNode.process(nextInput, nextState, context);
-                return handleCommand(nextCommand, nextInput, nextState, context);
-                
-            case GOTO:
-                String targetNodeId = command.getTargetNodeId()
-                        .orElseThrow(() -> new RuntimeException("GOTO command missing target node"));
-                
-                StatefulAgentNode<ParallelInput> targetNode = getNode(targetNodeId)
-                        .orElseThrow(() -> new RuntimeException("Target node not found: " + targetNodeId));
-                
-                WorkflowState gotoState = newState.withCurrentNode(targetNodeId);
-                ParallelInput gotoInput = command.getNextInput().orElse(input);
-                
-                WorkflowCommand<ParallelInput> gotoCommand = targetNode.process(gotoInput, gotoState, context);
-                return handleCommand(gotoCommand, gotoInput, gotoState, context);
-                
-            case SUSPEND:
-                return StatefulWorkflowResult.suspended(newState);
-                
-            case ERROR:
-                String errorMessage = command.getErrorMessage().orElse("Unknown error occurred");
-                return StatefulWorkflowResult.error(errorMessage, newState);
-                
-            default:
-                return StatefulWorkflowResult.error("Unknown command type: " + command.getType(), newState);
-        }
-    }
-
-
-
+    
     /**
-     * Input container for ParallelizationWorkflow that encapsulates the prompt,
-     * list of inputs to process, and the number of worker threads.
-     */
-    public static class ParallelInput {
-        private final String prompt;
-        private final List<String> inputs;
-        private final int numWorkers;
-
-        /**
-         * Creates a new ParallelInput instance.
-         *
-         * @param prompt The prompt template to use
-         * @param inputs The list of inputs to process
-         * @param numWorkers The number of worker threads
-         */
-        public ParallelInput(String prompt, List<String> inputs, int numWorkers) {
-            this.prompt = Objects.requireNonNull(prompt, "Prompt cannot be null");
-            this.inputs = Objects.requireNonNull(inputs, "Inputs cannot be null");
-            this.numWorkers = numWorkers;
-
-            if (inputs.isEmpty()) {
-                throw new IllegalArgumentException("Inputs list cannot be empty");
-            }
-            if (numWorkers <= 0) {
-                throw new IllegalArgumentException("Number of workers must be greater than 0");
-            }
-        }
-
-        /**
-         * Gets the prompt template.
-         *
-         * @return The prompt template
-         */
-        public String getPrompt() {
-            return prompt;
-        }
-
-        /**
-         * Gets the list of inputs to process.
-         *
-         * @return The list of inputs
-         */
-        public List<String> getInputs() {
-            return inputs;
-        }
-
-        /**
-         * Gets the number of worker threads.
-         *
-         * @return The number of worker threads
-         */
-        public int getNumWorkers() {
-            return numWorkers;
-        }
-    }
-
-    /**
-     * Processes multiple inputs concurrently using a fixed thread pool and the same prompt template.
-     * This method maintains the order of results corresponding to the input order.
+     * Creates a new ParallelizationWorkflow with batched inputs.
      *
-     * @param prompt   The prompt template to use for each input. The input will be appended to this prompt.
-     *                 Must not be null. Example: "Translate the following text to French:"
-     * @param inputs   List of input strings to process. Each input will be processed independently
-     *                 in parallel. Must not be null or empty. Example: ["Hello", "World", "Good morning"]
-     * @param nWorkers The number of concurrent worker threads to use. This controls the maximum
-     *                 number of simultaneous LLM API calls. Must be greater than 0. Consider API
-     *                 rate limits when setting this value.
-     * @return List of processed results in the same order as the inputs. Each result contains
-     *         the LLM's response for the corresponding input.
-     * @throws IllegalArgumentException if prompt is null, inputs is null/empty, or nWorkers &lt;= 0
-     * @throws RuntimeException if processing fails for any input, with the cause containing
-     *         the specific error details
+     * @param prompt The prompt template to use for each input
+     * @param inputs The list of inputs to process in parallel
+     * @param numWorkers The number of parallel workers to use
+     * @param chatModel The ChatModel to use
+     * @return A WorkflowResult containing the processed outputs
      */
-    public List<String> parallel(String prompt, List<String> inputs, int nWorkers) {
-        if (prompt == null) {
-            throw new IllegalArgumentException("Prompt cannot be null");
-        }
-        if (inputs == null || inputs.isEmpty()) {
+    public static WorkflowResult<List<String>, WorkflowError> parallel(
+            String prompt,
+            List<String> inputs,
+            int numWorkers,
+            ChatModel chatModel) {
+        
+        Objects.requireNonNull(prompt, "Prompt cannot be null");
+        Objects.requireNonNull(inputs, "Inputs cannot be null");
+        Objects.requireNonNull(chatModel, "ChatModel cannot be null");
+        
+        if (inputs.isEmpty()) {
             throw new IllegalArgumentException("Inputs list cannot be empty");
         }
-        if (nWorkers <= 0) {
-            throw new IllegalArgumentException("Number of workers must be greater than 0");
+        
+        if (numWorkers <= 0) {
+            numWorkers = Math.min(inputs.size(), Runtime.getRuntime().availableProcessors());
         }
-
-        ExecutorService executor = Executors.newFixedThreadPool(nWorkers);
-        try {
-            List<CompletableFuture<String>> futures = inputs.stream()
-                    .map(input -> CompletableFuture.supplyAsync(() -> {
-                        try {
-                            List<ChatMessage> messages = new ArrayList<>();
-                            messages.add(SystemMessage.from(prompt));
-                            messages.add(UserMessage.from("Input: " + input));
-                            
-                            AiMessage response = chatModel.chat(messages).aiMessage();
-                            return response.text();
-                        } catch (Exception e) {
-                            throw new RuntimeException("Failed to process input: " + input, e);
-                        }
-                    }, executor))
-                    .collect(Collectors.toList());
-
-            // Wait for all tasks to complete
-            CompletableFuture<Void> allFutures = CompletableFuture.allOf(
-                    futures.toArray(new CompletableFuture[0]));
-            allFutures.join();
-
-            return futures.stream()
-                    .map(CompletableFuture::join)
-                    .collect(Collectors.toList());
-
-        } finally {
-            executor.shutdown();
-        }
+        
+        ParallelInput input = new ParallelInput(prompt, inputs, numWorkers);
+        ParallelizationWorkflow workflow = new ParallelizationWorkflow(
+                "ParallelizationWorkflow-" + System.currentTimeMillis(),
+                chatModel);
+                
+        return workflow.start(input);
     }
 
     /**
-     * Node that performs parallel processing of inputs.
+     * A GraphWorkflowNode implementation that processes inputs in parallel.
      */
-    private static class ParallelProcessorNode implements StatefulAgentNode<ParallelInput> {
-        private final String nodeId;
+    private static class ParallelProcessorNode implements GraphWorkflowNode<ParallelInput> {
+        private final NodeId nodeId;
         private final ChatModel chatModel;
 
-        public ParallelProcessorNode(String nodeId, ChatModel chatModel) {
+        public ParallelProcessorNode(NodeId nodeId, ChatModel chatModel) {
             this.nodeId = nodeId;
             this.chatModel = chatModel;
         }
 
         @Override
-        public WorkflowCommand<ParallelInput> process(ParallelInput input, WorkflowState state, Map<String, Object> context) {
+        public WorkflowResult<GraphCommand<ParallelInput>, WorkflowError> process(GraphWorkflowState<ParallelInput> state) {
             try {
-                String prompt = state.get("prompt", input.getPrompt());
-                @SuppressWarnings("unchecked")
-                List<String> inputs = (List<String>) state.get("inputs").orElse(input.getInputs());
-                int numWorkers = state.get("numWorkers", input.getNumWorkers());
+                ParallelInput input = state.data();
+                String prompt = input.getPrompt();
+                List<String> inputs = input.getInputs();
+                int numWorkers = input.getNumWorkers();
 
                 // Process in parallel
                 ExecutorService executor = Executors.newFixedThreadPool(numWorkers);
@@ -588,23 +212,34 @@ public class ParallelizationWorkflow implements StatefulWorkflow<Parallelization
                     List<String> results = futures.stream()
                             .map(CompletableFuture::join)
                             .collect(Collectors.toList());
-
-                    return WorkflowCommand.<ParallelInput>continueWith()
-                            .updateState("results", results)
-                            .updateState("processedCount", results.size())
-                            .build();
+                            
+                    // Create a new context with the results
+                    WorkflowContext updatedContext = WorkflowContext.empty()
+                            .with(RESULTS_KEY, results)
+                            .with(PROCESSED_COUNT_KEY, results.size());
+                            
+                    // Navigate to the aggregator node
+                    return WorkflowResult.success(GraphCommandTraverse.toWithContext(
+                            AGGREGATOR_NODE, 
+                            updatedContext));
 
                 } finally {
                     executor.shutdown();
                 }
             } catch (Exception e) {
-                return WorkflowCommand.<ParallelInput>error("Failed to process inputs in parallel: " + e.getMessage())
-                        .build();
+                return WorkflowResult.failure(
+                        ExecutionError.withCause(
+                            "parallel-processing-error",
+                            "Failed to process inputs in parallel: " + e.getMessage(),
+                            nodeId.value(),
+                            e
+                        )
+                );
             }
         }
 
         @Override
-        public String getNodeId() {
+        public NodeId getNodeId() {
             return nodeId;
         }
 
@@ -612,48 +247,151 @@ public class ParallelizationWorkflow implements StatefulWorkflow<Parallelization
         public String getName() {
             return "Parallel Processor";
         }
-
+        
         @Override
-        public boolean canBeEntryPoint() {
+        public String getDescription() {
+            return "Processes multiple inputs in parallel using LLM";
+        }
+        
+        @Override
+        public boolean isEntryPoint() {
             return true;
         }
     }
 
     /**
-     * Node that aggregates parallel processing results.
+     * A GraphWorkflowNode implementation that aggregates parallel processing results.
      */
-    private static class AggregatorNode implements StatefulAgentNode<ParallelInput> {
-        private final String nodeId;
+    private static class AggregatorNode implements GraphWorkflowNode<ParallelInput> {
+        private final NodeId nodeId;
 
-        public AggregatorNode(String nodeId) {
+        public AggregatorNode(NodeId nodeId) {
             this.nodeId = nodeId;
         }
 
         @Override
-        public WorkflowCommand<ParallelInput> process(ParallelInput input, WorkflowState state, Map<String, Object> context) {
-            @SuppressWarnings("unchecked")
-            List<String> results = (List<String>) state.get("results").orElse(Collections.emptyList());
-            
-            // Results are already processed, just complete the workflow
-            return WorkflowCommand.<ParallelInput>complete()
-                    .updateState("finalResults", results)
-                    .updateState("completed", true)
-                    .build();
+        public WorkflowResult<GraphCommand<ParallelInput>, WorkflowError> process(GraphWorkflowState<ParallelInput> state) {
+            try {
+                WorkflowContext context = state.context();
+                // Get the results from the context
+                @SuppressWarnings("unchecked")
+                List<String> results = (List<String>) context.get(RESULTS_KEY)
+                        .orElse(Collections.emptyList());
+                        
+                // Complete the workflow with the results
+                return WorkflowResult.success(GraphCommandComplete.withResult(results));
+                
+            } catch (Exception e) {
+                return WorkflowResult.failure(
+                        ExecutionError.withCause(
+                            "aggregation-error", 
+                            "Failed to aggregate results: " + e.getMessage(),
+                            nodeId.value(),
+                            e
+                        )
+                );
+            }
         }
 
         @Override
-        public String getNodeId() {
+        public NodeId getNodeId() {
             return nodeId;
         }
 
         @Override
         public String getName() {
-            return "Result Aggregator";
+            return "Results Aggregator";
+        }
+        
+        @Override
+        public String getDescription() {
+            return "Aggregates the results from parallel processing";
+        }
+    }
+    
+    /**
+     * Output extractor for the parallelization workflow.
+     */
+    private static class ParallelOutputExtractor implements OutputExtractor<ParallelInput, List<String>> {
+        @Override
+        public List<String> extract(GraphWorkflowState<ParallelInput> state) {
+            // Get the results from the context
+            @SuppressWarnings("unchecked")
+            List<String> results = (List<String>) state.context().get(RESULTS_KEY)
+                    .orElse(Collections.emptyList());
+            return results;
         }
     }
 
     /**
-     * Builder for creating ParallelizationWorkflow instances.
+     * Input for parallel processing.
+     */
+    public static class ParallelInput {
+        private final String prompt;
+        private final List<String> inputs;
+        private final int numWorkers;
+
+        /**
+         * Creates a new ParallelInput.
+         *
+         * @param prompt The prompt template to use for each input
+         * @param inputs The list of inputs to process in parallel
+         * @param numWorkers The number of parallel workers to use
+         */
+        public ParallelInput(String prompt, List<String> inputs, int numWorkers) {
+            this.prompt = Objects.requireNonNull(prompt, "Prompt cannot be null");
+            this.inputs = Objects.requireNonNull(inputs, "Inputs cannot be null");
+            
+            if (inputs.isEmpty()) {
+                throw new IllegalArgumentException("Inputs list cannot be empty");
+            }
+            
+            if (numWorkers <= 0) {
+                this.numWorkers = Math.min(inputs.size(), Runtime.getRuntime().availableProcessors());
+            } else {
+                this.numWorkers = numWorkers;
+            }
+        }
+
+        /**
+         * Gets the prompt template.
+         *
+         * @return The prompt template
+         */
+        public String getPrompt() {
+            return prompt;
+        }
+
+        /**
+         * Gets the list of inputs.
+         *
+         * @return The list of inputs
+         */
+        public List<String> getInputs() {
+            return inputs;
+        }
+
+        /**
+         * Gets the number of worker threads.
+         *
+         * @return The number of worker threads
+         */
+        public int getNumWorkers() {
+            return numWorkers;
+        }
+    }
+
+    /**
+     * Creates a new ParallelizationWorkflow builder.
+     *
+     * @return A new builder instance
+     */
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    /**
+     * Builder for ParallelizationWorkflow.
      */
     public static class Builder {
         private String name;
@@ -698,12 +436,89 @@ public class ParallelizationWorkflow implements StatefulWorkflow<Parallelization
         }
     }
 
-    /**
-     * Creates a new Builder for constructing ParallelizationWorkflow instances.
-     *
-     * @return A new Builder instance
-     */
-    public static Builder builder() {
-        return new Builder();
+    // GraphWorkflow interface implementations
+    
+    @Override
+    public WorkflowResult<List<String>, WorkflowError> start(ParallelInput input) {
+        return workflow.start(input);
+    }
+
+    @Override
+    public WorkflowResult<List<String>, WorkflowError> start(ParallelInput input, WorkflowContext context) {
+        return workflow.start(input, context);
+    }
+    
+    @Override
+    public WorkflowResult<List<String>, WorkflowError> start(
+        WorkflowId workflowId,
+        ParallelInput input,
+        WorkflowContext context
+    ) {
+        return workflow.start(workflowId, input, context);
+    }
+
+    @Override
+    public WorkflowResult<List<String>, WorkflowError> resume(GraphWorkflowState<ParallelInput> state) {
+        return workflow.resume(state);
+    }
+
+    @Override
+    public WorkflowResult<List<String>, WorkflowError> resume(GraphWorkflowState<ParallelInput> state, WorkflowContext contextUpdates) {
+        return workflow.resume(state, contextUpdates);
+    }
+
+    @Override
+    public CompletableFuture<WorkflowResult<List<String>, WorkflowError>> startAsync(ParallelInput input) {
+        return workflow.startAsync(input);
+    }
+
+    @Override
+    public CompletableFuture<WorkflowResult<List<String>, WorkflowError>> startAsync(ParallelInput input, WorkflowContext context) {
+        return workflow.startAsync(input, context);
+    }
+
+    @Override
+    public CompletableFuture<WorkflowResult<List<String>, WorkflowError>> resumeAsync(GraphWorkflowState<ParallelInput> state) {
+        return workflow.resumeAsync(state);
+    }
+
+    @Override
+    public CompletableFuture<WorkflowResult<List<String>, WorkflowError>> resumeAsync(GraphWorkflowState<ParallelInput> state, WorkflowContext contextUpdates) {
+        return workflow.resumeAsync(state, contextUpdates);
+    }
+
+    @Override
+    public String getName() {
+        return workflow.getName();
+    }
+
+    @Override
+    public Map<NodeId, GraphWorkflowNode<ParallelInput>> getNodes() {
+        return workflow.getNodes();
+    }
+
+    @Override
+    public Map<EdgeId, GraphEdge> getEdges() {
+        return workflow.getEdges();
+    }
+
+    @Override
+    public GraphWorkflowNode<ParallelInput> getNode(NodeId nodeId) {
+        return workflow.getNode(nodeId);
+    }
+    
+    @Override
+    public Set<GraphEdge> getEdgesFrom(NodeId nodeId) {
+        return workflow.getEdgesFrom(nodeId);
+    }
+    
+    @Override
+    public Set<NodeId> getEntryPoints() {
+        return workflow.getEntryPoints();
+    }
+
+    @Override
+    public ValidationResult validate() {
+        return workflow.validate();
     }
 }

@@ -8,7 +8,6 @@ import dev.agents4j.api.graph.GraphEdge;
 import dev.agents4j.api.graph.GraphWorkflowNode;
 import dev.agents4j.api.graph.GraphWorkflowState;
 import dev.agents4j.api.graph.NodeId;
-import dev.agents4j.api.graph.WorkflowId;
 import dev.agents4j.api.result.WorkflowResult;
 import dev.agents4j.api.result.error.SystemError;
 import dev.agents4j.api.result.error.WorkflowError;
@@ -23,7 +22,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.function.Function;
 
 /**
  * Executor for graph workflows.
