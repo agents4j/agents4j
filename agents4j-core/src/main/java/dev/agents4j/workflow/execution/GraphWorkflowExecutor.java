@@ -238,22 +238,54 @@ public class GraphWorkflowExecutor<I, O> {
             GraphCommand<I> command = commandResult.getOrThrow();
             if (command instanceof GraphCommandComplete) {
                 // Workflow is complete
+                GraphCommandComplete<I> completeCommand = (GraphCommandComplete<I>) command;
+                
+                // Apply any context updates if present
+                GraphWorkflowState<I> updatedState = currentState;
+                if (completeCommand.getContextUpdates().isPresent()) {
+                    updatedState = updatedState.withContext(completeCommand.getContextUpdates().get());
+                }
+                
+                // Apply any data updates if present
+                if (completeCommand.getStateData().isPresent()) {
+                    updatedState = updatedState.withData(completeCommand.getStateData().get());
+                }
+                
                 monitor.onWorkflowCompleted(
-                    currentState.workflowId(),
-                    currentState
+                    updatedState.workflowId(),
+                    updatedState
                 );
-                O output = outputExtractor.extract(currentState);
-                return WorkflowResult.success(output);
+                
+                O output = outputExtractor.extract(updatedState);
+                return WorkflowResult.success(output, updatedState.context());
             } else if (command instanceof GraphCommandSuspend) {
                 // Workflow is suspended
+                GraphCommandSuspend<I> suspendCommand = (GraphCommandSuspend<I>) command;
+                
+                // Apply any context updates if present
+                GraphWorkflowState<I> updatedState = currentState;
+                if (suspendCommand.getContextUpdates().isPresent()) {
+                    updatedState = updatedState.withContext(suspendCommand.getContextUpdates().get());
+                }
+                
+                // Apply any data updates if present
+                if (suspendCommand.getStateData().isPresent()) {
+                    updatedState = updatedState.withData(suspendCommand.getStateData().get());
+                }
+                
                 monitor.onWorkflowSuspended(
-                    currentState.workflowId(),
-                    currentState
+                    updatedState.workflowId(),
+                    updatedState
                 );
+                
+                // Use the suspension ID and reason from the command if available
+                String suspensionId = suspendCommand.suspensionId();
+                String reason = suspendCommand.reason();
+                
                 return WorkflowResult.suspended(
-                    UUID.randomUUID().toString(),
-                    currentState,
-                    "Suspended"
+                    suspensionId,
+                    updatedState,
+                    reason
                 );
             } else if (command instanceof GraphCommandTraverse) {
                 // Transition to another node
@@ -279,17 +311,22 @@ public class GraphWorkflowExecutor<I, O> {
                             Instant.now()
                         );
 
-                    // Combine edge context with command context updates
+                    // Combine edge context with command context updates if present
                     WorkflowContext combinedUpdates = command
                         .getContextUpdates()
-                        .get()
-                        .merge(edgeContext);
+                        .map(ctx -> ctx.merge(edgeContext))
+                        .orElse(edgeContext);
 
                     // Create new state with edge traversal
-                    nextState = currentState
-                        .withData(command.getStateData().get())
-                        .withContext(combinedUpdates)
-                        .traverseEdge(edgeId, targetNodeId);
+                    GraphWorkflowState<I> stateWithUpdates = currentState.withContext(combinedUpdates);
+                    
+                    // Apply data updates if present
+                    stateWithUpdates = command.getStateData()
+                        .map(stateWithUpdates::withData)
+                        .orElse(stateWithUpdates);
+                        
+                    // Traverse the edge
+                    nextState = stateWithUpdates.traverseEdge(edgeId, targetNodeId);
 
                     // Monitor the transition
                     monitor.onNodeTransition(
@@ -301,10 +338,21 @@ public class GraphWorkflowExecutor<I, O> {
                     );
                 } else {
                     // No explicit edge, just move to the node
-                    nextState = currentState
-                        .withData(command.getStateData().get())
-                        .withContext(command.getContextUpdates().get())
-                        .moveToNode(targetNodeId);
+                    // Start with current state
+                    GraphWorkflowState<I> stateWithUpdates = currentState;
+                    
+                    // Apply context updates if present
+                    stateWithUpdates = command.getContextUpdates()
+                        .map(stateWithUpdates::withContext)
+                        .orElse(stateWithUpdates);
+                    
+                    // Apply data updates if present
+                    stateWithUpdates = command.getStateData()
+                        .map(stateWithUpdates::withData)
+                        .orElse(stateWithUpdates);
+                    
+                    // Move to the target node
+                    nextState = stateWithUpdates.moveToNode(targetNodeId);
 
                     // Log a warning about missing edge
                     monitor.onWarning(
