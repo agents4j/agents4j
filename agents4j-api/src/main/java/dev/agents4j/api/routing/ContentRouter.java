@@ -1,8 +1,8 @@
 package dev.agents4j.api.routing;
 
 import dev.agents4j.api.context.WorkflowContext;
+import dev.agents4j.api.graph.*;
 import dev.agents4j.api.graph.EdgeCondition;
-import dev.agents4j.api.graph.GraphCommand;
 import dev.agents4j.api.graph.GraphWorkflowNode;
 import dev.agents4j.api.graph.GraphWorkflowNode;
 import dev.agents4j.api.graph.GraphWorkflowState;
@@ -157,13 +157,13 @@ public interface ContentRouter<T> extends GraphWorkflowNode<T> {
     ) {
         var fallbackNode = getRoutingStrategy().getFallbackNode();
         if (fallbackNode.isPresent()) {
-            return GraphCommand.Traverse.toWithReason(
+            return GraphCommandTraverse.toWithReason(
                 fallbackNode.get(),
                 "Routing failed: " + reason + ". Using fallback route."
             );
         }
 
-        return GraphCommand.Suspend.withId(
+        return GraphCommandSuspend.withId(
             "routing-failure",
             "Content routing failed: " + reason + ". Manual review required."
         );
@@ -313,7 +313,7 @@ public interface ContentRouter<T> extends GraphWorkflowNode<T> {
                 );
             }
 
-            var traverseCommand = GraphCommand.Traverse.toWithUpdates(
+            var traverseCommand = GraphCommandTraverse.toWithUpdates(
                 targetNode,
                 updatedContext,
                 content

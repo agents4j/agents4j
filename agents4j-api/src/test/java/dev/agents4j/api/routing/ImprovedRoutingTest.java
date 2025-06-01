@@ -4,15 +4,12 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import dev.agents4j.api.context.ContextKey;
 import dev.agents4j.api.context.WorkflowContext;
+import dev.agents4j.api.graph.*;
 import dev.agents4j.api.graph.EdgeCondition;
-import dev.agents4j.api.graph.GraphCommand;
 import dev.agents4j.api.graph.GraphWorkflowState;
 import dev.agents4j.api.graph.NodeId;
 import dev.agents4j.api.graph.WorkflowId;
-import dev.agents4j.api.result.WorkflowResult;
-import dev.agents4j.api.result.error.WorkflowError;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -296,9 +293,9 @@ class ImprovedRoutingTest {
 
         assertTrue(result.isSuccess());
         var command = result.getValue().get();
-        assertInstanceOf(GraphCommand.Traverse.class, command);
+        assertInstanceOf(GraphCommandTraverse.class, command);
 
-        var traverseCommand = (GraphCommand.Traverse<String>) command;
+        var traverseCommand = (GraphCommandTraverse<String>) command;
         assertEquals(
             NodeId.of("technical-support"),
             traverseCommand.targetNode()
@@ -340,11 +337,11 @@ class ImprovedRoutingTest {
 
         // Should either route to fallback or suspend for manual review
         assertTrue(
-            command instanceof GraphCommand.Traverse ||
-            command instanceof GraphCommand.Suspend
+            command instanceof GraphCommandTraverse ||
+            command instanceof GraphCommandSuspend
         );
 
-        if (command instanceof GraphCommand.Suspend<String> suspendCommand) {
+        if (command instanceof GraphCommandSuspend<String> suspendCommand) {
             assertTrue(suspendCommand.reason().contains("Confidence"));
         }
     }

@@ -83,12 +83,12 @@ class GraphWorkflowApiTest {
     void shouldCreateTraverseCommand() {
         var targetNode = NodeId.of("target");
 
-        var simpleCommand = GraphCommand.Traverse.to(targetNode);
+        var simpleCommand = GraphCommandTraverse.to(targetNode);
         assertEquals(targetNode, simpleCommand.targetNode());
         assertFalse(simpleCommand.getContextUpdates().isPresent());
         assertFalse(simpleCommand.getStateData().isPresent());
 
-        var contextCommand = GraphCommand.Traverse.toWithContext(
+        var contextCommand = GraphCommandTraverse.toWithContext(
             targetNode,
             testContext
         );
@@ -99,10 +99,7 @@ class GraphWorkflowApiTest {
             contextCommand.getContextUpdates().get().get(USER_ID).orElse("")
         );
 
-        var dataCommand = GraphCommand.Traverse.toWithData(
-            targetNode,
-            testData
-        );
+        var dataCommand = GraphCommandTraverse.toWithData(targetNode, testData);
         assertEquals(targetNode, dataCommand.targetNode());
         assertTrue(dataCommand.getStateData().isPresent());
         assertEquals(testData, dataCommand.getStateData().get());
@@ -112,13 +109,13 @@ class GraphWorkflowApiTest {
     @DisplayName("Should create GraphCommand.Complete correctly")
     void shouldCreateCompleteCommand() {
         var result = "workflow-result";
-        var command = GraphCommand.Complete.withResult(result);
+        var command = GraphCommandComplete.withResult(result);
 
         assertEquals(result, command.result());
         assertFalse(command.getContextUpdates().isPresent());
         assertFalse(command.getStateData().isPresent());
 
-        var commandWithContext = GraphCommand.Complete.withResultAndContext(
+        var commandWithContext = GraphCommandComplete.withResultAndContext(
             result,
             testContext
         );
@@ -132,7 +129,7 @@ class GraphWorkflowApiTest {
         var suspensionId = "pending-approval";
         var reason = "Waiting for manual approval";
 
-        var command = GraphCommand.Suspend.withId(suspensionId, reason);
+        var command = GraphCommandSuspend.withId(suspensionId, reason);
 
         assertEquals(suspensionId, command.suspensionId());
         assertEquals(reason, command.reason());
@@ -148,11 +145,11 @@ class GraphWorkflowApiTest {
         var node2 = NodeId.of("branch2");
         var branches = Set.of(node1, node2);
 
-        var command = GraphCommand.Fork.parallel(branches);
+        var command = GraphCommandFork.parallel(branches);
 
         assertEquals(branches, command.targetNodes());
         assertEquals(
-            GraphCommand.Fork.ForkStrategy.PARALLEL,
+            GraphCommandFork.ForkStrategy.PARALLEL,
             command.strategy()
         );
         assertFalse(command.getContextUpdates().isPresent());
@@ -164,11 +161,11 @@ class GraphWorkflowApiTest {
     void shouldCreateJoinCommand() {
         var joinNode = NodeId.of("join-point");
 
-        var command = GraphCommand.Join.waitAll(joinNode);
+        var command = GraphCommandJoin.waitAll(joinNode);
 
         assertEquals(joinNode, command.joinNode());
         assertEquals(
-            GraphCommand.Join.JoinStrategy.WAIT_ALL,
+            GraphCommandJoin.JoinStrategy.WAIT_ALL,
             command.strategy()
         );
         assertFalse(command.timeout().isPresent());
@@ -290,27 +287,27 @@ class GraphWorkflowApiTest {
         assertThrows(IllegalArgumentException.class, () -> EdgeId.of(""));
 
         assertThrows(NullPointerException.class, () ->
-            GraphCommand.Traverse.to(null)
+            GraphCommandTraverse.to(null)
         );
 
         assertThrows(NullPointerException.class, () ->
-            GraphCommand.Suspend.withId(null, "reason")
+            GraphCommandSuspend.withId(null, "reason")
         );
 
         assertThrows(NullPointerException.class, () ->
-            GraphCommand.Suspend.withId("id", null)
+            GraphCommandSuspend.withId("id", null)
         );
 
         assertThrows(NullPointerException.class, () ->
-            GraphCommand.Fork.parallel(null)
+            GraphCommandFork.parallel(null)
         );
 
         assertThrows(IllegalArgumentException.class, () ->
-            GraphCommand.Fork.parallel(Set.of())
+            GraphCommandFork.parallel(Set.of())
         );
 
         assertThrows(NullPointerException.class, () ->
-            GraphCommand.Join.waitAll(null)
+            GraphCommandJoin.waitAll(null)
         );
     }
 
@@ -349,7 +346,7 @@ class GraphWorkflowApiTest {
                 GraphWorkflowState<String> state
             ) {
                 var targetNode = NodeId.of("next-node");
-                var command = GraphCommand.Traverse.<String>to(targetNode);
+                var command = GraphCommandTraverse.<String>to(targetNode);
                 return WorkflowResult.success(command);
             }
 

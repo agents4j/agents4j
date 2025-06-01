@@ -1,6 +1,7 @@
 package dev.agents4j.workflow.execution;
 
 import dev.agents4j.api.context.WorkflowContext;
+import dev.agents4j.api.graph.*;
 import dev.agents4j.api.graph.EdgeId;
 import dev.agents4j.api.graph.GraphCommand;
 import dev.agents4j.api.graph.GraphEdge;
@@ -21,6 +22,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.function.Function;
 
 /**
@@ -236,7 +238,7 @@ public class GraphWorkflowExecutor<I, O> {
 
             // Process the command from the node
             GraphCommand<I> command = commandResult.getOrThrow();
-            if (command.isComplete()) {
+            if (command instanceof GraphCommandComplete) {
                 // Workflow is complete
                 monitor.onWorkflowCompleted(
                     currentState.workflowId(),
@@ -244,19 +246,21 @@ public class GraphWorkflowExecutor<I, O> {
                 );
                 O output = outputExtractor.extract(currentState);
                 return WorkflowResult.success(output);
-            } else if (command.isSuspend()) {
+            } else if (command instanceof GraphCommandSuspend) {
                 // Workflow is suspended
                 monitor.onWorkflowSuspended(
                     currentState.workflowId(),
                     currentState
                 );
                 return WorkflowResult.suspended(
-                    outputExtractor.extract(currentState),
-                    currentState
+                    UUID.randomUUID().toString(),
+                    currentState,
+                    "Suspended"
                 );
-            } else if (command.hasNextNode()) {
+            } else if (command instanceof GraphCommandTraverse) {
                 // Transition to another node
-                NodeId targetNodeId = command.getNextNode();
+                NodeId targetNodeId =
+                    ((GraphCommandTraverse) command).targetNode();
 
                 // Find edge between current node and target node
                 Optional<GraphEdge> edge = findEdgeBetween(
@@ -280,11 +284,12 @@ public class GraphWorkflowExecutor<I, O> {
                     // Combine edge context with command context updates
                     WorkflowContext combinedUpdates = command
                         .getContextUpdates()
+                        .get()
                         .merge(edgeContext);
 
                     // Create new state with edge traversal
                     nextState = currentState
-                        .withData(command.getUpdatedState())
+                        .withData(command.getStateData().get())
                         .withContext(combinedUpdates)
                         .traverseEdge(edgeId, targetNodeId);
 
@@ -299,8 +304,8 @@ public class GraphWorkflowExecutor<I, O> {
                 } else {
                     // No explicit edge, just move to the node
                     nextState = currentState
-                        .withData(command.getUpdatedState())
-                        .withContext(command.getContextUpdates())
+                        .withData(command.getStateData().get())
+                        .withContext(command.getContextUpdates().get())
                         .moveToNode(targetNodeId);
 
                     // Log a warning about missing edge
