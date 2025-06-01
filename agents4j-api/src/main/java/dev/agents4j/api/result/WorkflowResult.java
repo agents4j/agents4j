@@ -39,7 +39,7 @@ public sealed interface WorkflowResult<T, E extends WorkflowError>
      * @param <T> The type of the success value
      * @param <E> The type of the error
      */
-    record Failure<T, E extends WorkflowError>(E error)
+    record Failure<T, E extends WorkflowError>(E error, T value)
         implements WorkflowResult<T, E> {
         public Failure {
             Objects.requireNonNull(error, "Error cannot be null");
@@ -88,7 +88,14 @@ public sealed interface WorkflowResult<T, E extends WorkflowError>
      * @return A Failure result
      */
     static <T, E extends WorkflowError> WorkflowResult<T, E> failure(E error) {
-        return new Failure<>(error);
+        return new Failure<>(error, null);
+    }
+
+    static <T, E extends WorkflowError> WorkflowResult<T, E> failure(
+        E error,
+        T value
+    ) {
+        return new Failure<>(error, value);
     }
 
     /**

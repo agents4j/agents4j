@@ -6,266 +6,315 @@ This module contains the core API interfaces and contracts for the Agents4J fram
 
 The `agents4j-api` module is the foundation of the Agents4J framework, containing:
 
-- **Core Interfaces**: Fundamental contracts for agents, workflows, and execution
-- **Exception Hierarchy**: Structured error handling with context and error codes
-- **Configuration APIs**: Type-safe configuration management
-- **Validation Framework**: Extensible validation system
-- **Workflow Abstractions**: Stateful and stateless workflow definitions
+- **Core Interfaces**: Fundamental contracts for workflows, graph execution, and state management
+- **Graph-based Workflow**: Flexible directed graph workflow execution model
+- **Stateful Workflows**: Support for persisting and resuming workflow state
+- **Result Types**: Comprehensive result representations with success/failure/suspended states
+- **Context Management**: Type-safe workflow context with isolation and propagation
+- **Observability**: Metrics, tracing, and logging abstractions
+- **Validation Framework**: Extensible validation system for configurations and workflows
+- **Routing Capabilities**: Content-based routing for intelligent workflow paths
 
 ## Key Components
 
-### Core Interfaces
+### Core Workflow Interfaces
 
-#### `AgentNode<I, O>`
-The fundamental interface for processing units in workflows.
+#### `GraphWorkflow<S, O>`
+The primary interface for graph-based workflow execution.
 
 ```java
-public interface AgentNode<I, O> {
-    O process(I input, Map<String, Object> context);
-    CompletableFuture<O> processAsync(I input, Map<String, Object> context);
+public interface GraphWorkflow<S, O> {
+    WorkflowResult<O, WorkflowError> start(S input);
+    WorkflowResult<O, WorkflowError> resume(GraphWorkflowState<S> state);
+    CompletableFuture<WorkflowResult<O, WorkflowError>> startAsync(S input);
+    Map<NodeId, GraphWorkflowNode<S>> getNodes();
+    Map<EdgeId, GraphEdge> getEdges();
+    Set<NodeId> getEntryPoints();
+    ValidationResult validate();
+}
+```
+
+#### `StatefulWorkflow<S, O>`
+Modern interface for workflows with persistent state and lifecycle management.
+
+```java
+public interface StatefulWorkflow<S, O> {
+    String getWorkflowId();
     String getName();
+    WorkflowResult<WorkflowExecution<S, O>, WorkflowError> start();
+    WorkflowResult<WorkflowExecution<S, O>, WorkflowError> start(S initialState, WorkflowContext context);
+    CompletableFuture<WorkflowResult<WorkflowExecution<S, O>, WorkflowError>> startAsync(S initialState);
+    CompletableFuture<WorkflowResult<WorkflowExecution<S, O>, WorkflowError>> resumeAsync(String executionId);
+    ValidationResult validate();
 }
 ```
 
-#### `AgentWorkflow<I, O>`
-Base interface for all workflow types.
+#### `GraphWorkflowNode<S>`
+The core processing unit for graph-based workflows.
 
 ```java
-public interface AgentWorkflow<I, O> {
-    O execute(I input);
-    CompletableFuture<O> executeAsync(I input);
-    WorkflowMetadata getMetadata();
+public interface GraphWorkflowNode<S> {
+    WorkflowResult<GraphCommand<S>, WorkflowError> process(GraphWorkflowState<S> state);
+    NodeId getId();
+    String getName();
+    NodeType getType();
+    ValidationResult validate();
 }
 ```
 
-#### `StatefulWorkflow<I, O>`
-Extended workflow interface supporting stateful execution.
+### Graph Navigation
+
+#### `GraphCommand<S>`
+Commands for graph navigation and state management.
 
 ```java
-public interface StatefulWorkflow<I, O> extends AgentWorkflow<I, O> {
-    StatefulWorkflowResult<O> start(I input);
-    StatefulWorkflowResult<O> resume(String workflowId, Map<String, Object> context);
-    void suspend(String workflowId);
+public sealed interface GraphCommand<S>
+    permits Traverse, Fork, Join, Suspend, Complete, Error {
+    
+    record Traverse(NodeId targetNodeId, WorkflowContext contextUpdates) implements GraphCommand<S> {}
+    
+    record Fork(Set<NodeId> targetNodeIds, WorkflowContext contextUpdates) implements GraphCommand<S> {}
+    
+    record Join(WorkflowContext contextUpdates) implements GraphCommand<S> {}
+    
+    record Suspend(Duration timeout, WorkflowContext contextUpdates) implements GraphCommand<S> {}
+    
+    record Complete(S result, WorkflowContext contextUpdates) implements GraphCommand<S> {}
+    
+    record Error(WorkflowError error) implements GraphCommand<S> {}
 }
 ```
 
+### Result Types
 
-
-### Exception Hierarchy
-
-#### `AgentException`
-Base class for all framework exceptions with structured error information.
+#### `WorkflowResult<T, E>`
+Comprehensive result type for workflow operations.
 
 ```java
-public abstract class AgentException extends Exception {
-    public ErrorCode getErrorCode();
-    public Map<String, Object> getContext();
-    public AgentException addContext(String key, Object value);
+public sealed interface WorkflowResult<T, E extends WorkflowError>
+    permits Success, Failure, Suspended {
+    
+    record Success<T, E extends WorkflowError>(T value, Map<String, Object> metadata) 
+        implements WorkflowResult<T, E> {}
+    
+    record Failure<T, E extends WorkflowError>(E error, Map<String, Object> metadata) 
+        implements WorkflowResult<T, E> {}
+    
+    record Suspended<T, E extends WorkflowError>(String suspensionId, Duration timeout, 
+        Map<String, Object> metadata) implements WorkflowResult<T, E> {}
 }
 ```
 
-#### `WorkflowExecutionException`
-Specialized exception for workflow execution failures.
+### Content Routing
+
+#### `ContentRouter<T>`
+Interface for intelligent content-based routing.
 
 ```java
-public class WorkflowExecutionException extends AgentException {
-    public String getWorkflowName();
-    public String getWorkflowId();
-    public String getNodeId();
-    public WorkflowState getState();
+public interface ContentRouter<T> extends GraphWorkflowNode<T> {
+    RoutingDecision route(T content, Set<NodeId> availableRoutes, WorkflowContext context);
+    Map<String, Object> getRoutingMetadata();
 }
 ```
 
-#### `ValidationException`
-Exception for validation failures with detailed error information.
+#### `RoutingDecision`
+Result of content analysis and routing logic.
 
 ```java
-public class ValidationException extends AgentException {
-    public List<String> getValidationErrors();
+public record RoutingDecision(
+    NodeId selectedRoute,
+    double confidence,
+    String reasoning,
+    Map<NodeId, Double> alternativeRoutes,
+    Map<String, Object> metadata
+) {}
+```
+
+### Context Management
+
+#### `WorkflowContext`
+Type-safe context for sharing data between workflow nodes.
+
+```java
+public interface WorkflowContext {
+    <T> Optional<T> get(String key, Class<T> type);
+    <T> T getOrDefault(String key, T defaultValue, Class<T> type);
+    boolean contains(String key);
+    Set<String> keys();
+    WorkflowContext with(String key, Object value);
+    WorkflowContext withAll(Map<String, Object> values);
+    WorkflowContext without(String key);
+    
+    static WorkflowContext empty() { /* ... */ }
+    static WorkflowContext of(String key, Object value) { /* ... */ }
+    static WorkflowContext fromMap(Map<String, Object> map) { /* ... */ }
 }
 ```
 
-### Error Codes
+### Validation System
 
-Standardized error codes for consistent error handling:
-
-- **Input Validation**: `INVALID_INPUT`, `MISSING_REQUIRED_PARAMETER`, `INVALID_CONFIGURATION`
-- **Workflow Execution**: `WORKFLOW_EXECUTION_FAILED`, `WORKFLOW_TIMEOUT`, `WORKFLOW_INTERRUPTED`
-- **Agent Processing**: `AGENT_PROCESSING_FAILED`, `AGENT_INITIALIZATION_FAILED`, `AGENT_NOT_FOUND`
-- **Provider Integration**: `PROVIDER_ERROR`, `PROVIDER_RATE_LIMIT`, `PROVIDER_AUTHENTICATION_FAILED`
-- **System Errors**: `INTERNAL_ERROR`, `RESOURCE_EXHAUSTED`, `CONFIGURATION_ERROR`
-
-### Configuration Management
-
-#### `WorkflowConfiguration`
-Type-safe configuration with validation support.
+#### `ValidationProvider<T>`
+Core interface for validating objects.
 
 ```java
-WorkflowConfiguration config = WorkflowConfiguration.builder()
-    .withProperty("timeout", Duration.ofMinutes(5))
-    .withProperty("retryCount", 3)
-    .withValidator(myValidator)
-    .build();
-
-Optional<Duration> timeout = config.getProperty("timeout", Duration.class);
-```
-
-### Validation Framework
-
-#### `Validator<T>`
-Generic validation interface for extensible validation logic.
-
-```java
-public interface Validator<T> {
-    ValidationResult validate(T target);
+public interface ValidationProvider<T> {
+    ValidationResult validate(T object);
+    ValidationProvider<T> withRule(ValidationRule<T> rule);
+    Set<ValidationRule<T>> getRules();
 }
 ```
 
 #### `ValidationResult`
-Rich validation result with errors and warnings.
+Comprehensive validation result with errors and warnings.
 
 ```java
-ValidationResult result = ValidationResult.success()
-    .combine(otherResult);
-
-if (!result.isValid()) {
-    List<String> errors = result.getErrors();
-    // Handle validation errors
+public record ValidationResult(
+    boolean valid,
+    List<ValidationError> errors,
+    List<ValidationWarning> warnings,
+    Map<String, Object> metadata
+) {
+    public ValidationResult combine(ValidationResult other) { /* ... */ }
+    public static ValidationResult success() { /* ... */ }
+    public static ValidationResult failure(String errorMessage) { /* ... */ }
+    public static ValidationResult withWarning(String warning) { /* ... */ }
 }
 ```
 
-### Workflow State Management
+### Observability
 
-#### `WorkflowState`
-Immutable state representation for stateful workflows.
+#### `MetricsCollector`
+Interface for collecting workflow execution metrics.
 
 ```java
-public class WorkflowState {
-    public String getWorkflowId();
-    public Map<String, Object> getData();
-    public String getCurrentNodeId();
-    public long getVersion();
-    public Instant getLastModified();
+public interface MetricsCollector {
+    void recordWorkflowStart(String workflowId, String workflowName);
+    void recordWorkflowCompletion(String workflowId, String workflowName, Duration duration);
+    void recordNodeExecution(String workflowId, String nodeId, String nodeName, Duration duration);
+    void recordError(String workflowId, String nodeId, String errorCode);
+    <T> T timed(String metric, TimedOperation<T> operation) throws Exception;
 }
 ```
 
-#### `StatefulWorkflowResult<O>`
-Result container for stateful workflow execution.
+#### `WorkflowTracer`
+Interface for distributed tracing of workflow execution.
 
 ```java
-public class StatefulWorkflowResult<O> {
-    public enum Status { COMPLETED, SUSPENDED, ERROR }
-    
-    public Status getStatus();
-    public Optional<O> getResult();
-    public Optional<WorkflowState> getState();
-    public Optional<Throwable> getError();
-}
-```
-
-### Routing and Strategy
-
-#### `WorkflowRoute<I>`
-Defines routing paths within workflows.
-
-```java
-public interface WorkflowRoute<I> {
-    String getId();
-    String getDescription();
-    List<AgentNode<I, ?>> getNodes();
-    Map<String, Object> getMetadata();
-}
-```
-
-#### `WorkflowExecutionStrategy<I, O>`
-Strategy pattern for different execution approaches.
-
-```java
-public interface WorkflowExecutionStrategy<I, O> {
-    O execute(I input, List<AgentNode<I, ?>> nodes, Map<String, Object> context);
-    CompletableFuture<O> executeAsync(I input, List<AgentNode<I, ?>> nodes, Map<String, Object> context);
+public interface WorkflowTracer {
+    Span startWorkflowSpan(String workflowId, String workflowName);
+    Span startNodeSpan(String workflowId, String nodeId, String nodeName, Span parentSpan);
+    void endSpan(Span span);
+    void addEvent(Span span, String eventName, Map<String, Object> attributes);
+    void setError(Span span, Throwable error);
 }
 ```
 
 ## Design Principles
 
-### 1. Interface Segregation
-Interfaces are focused and cohesive, avoiding unnecessary dependencies.
+### 1. Type Safety
+Full generic support throughout the API for compile-time safety.
 
-### 2. Generic Type Safety
-Full generic support ensures type safety across the framework.
+### 2. Immutability
+State objects and results are immutable to ensure thread safety.
 
-### 3. Immutability
-State objects are immutable where possible to ensure thread safety.
+### 3. Functional Style
+Emphasis on immutable transformations over side effects.
 
-### 4. Extensibility
-Interfaces support extension through composition and strategy patterns.
+### 4. Clear Semantics
+Methods and interfaces have clear, consistent semantics.
 
-### 5. Error Handling
-Structured exception hierarchy with context and error codes for better debugging.
+### 5. Extensibility
+Designed for extension through composition and sealed interfaces.
 
-### 6. Async Support
-Built-in support for asynchronous execution patterns.
+### 6. Async First
+Built-in asynchronous execution support throughout.
 
-## Usage Patterns
+## Usage Examples
 
-### Basic Agent Implementation
+### Creating a Simple Graph Workflow
 
 ```java
-public class MyAgent implements AgentNode<String, String> {
+// Define workflow nodes
+GraphWorkflowNode<String> startNode = new SimpleNode("start", input -> {
+    // Process input and return navigation command
+    return GraphCommand.traverse("process", "Processed input: " + input);
+});
+
+GraphWorkflowNode<String> processNode = new SimpleNode("process", input -> {
+    // Final processing step
+    return GraphCommand.complete("Final result: " + input);
+});
+
+// Build the workflow
+GraphWorkflow<String, String> workflow = GraphWorkflowBuilder.create("MyWorkflow")
+    .withNode(startNode)
+    .withNode(processNode)
+    .withEdge(startNode.getId(), processNode.getId())
+    .withEntryPoint(startNode.getId())
+    .build();
+
+// Execute the workflow
+WorkflowResult<String, WorkflowError> result = workflow.start("Hello World");
+
+// Handle the result
+if (result instanceof WorkflowResult.Success<String, WorkflowError> success) {
+    System.out.println(success.value());
+} else if (result instanceof WorkflowResult.Failure<String, WorkflowError> failure) {
+    System.err.println("Error: " + failure.error().getMessage());
+}
+```
+
+### Implementing a Content Router
+
+```java
+public class MyContentRouter implements ContentRouter<Document> {
     @Override
-    public String process(String input, Map<String, Object> context) {
-        // Process input and return result
-        return "Processed: " + input;
+    public RoutingDecision route(Document content, Set<NodeId> availableRoutes, WorkflowContext context) {
+        // Analyze content and determine best route
+        String contentType = determineContentType(content);
+        
+        // Map content type to route node
+        NodeId selectedRoute = mapToRoute(contentType, availableRoutes);
+        
+        // Return decision with confidence and reasoning
+        return new RoutingDecision(
+            selectedRoute,
+            0.85,
+            "Content appears to be " + contentType,
+            calculateAlternatives(content, availableRoutes),
+            Map.of("contentType", contentType)
+        );
+    }
+    
+    @Override
+    public NodeId getId() {
+        return NodeId.of("content-router");
     }
     
     @Override
     public String getName() {
-        return "MyAgent";
+        return "Content Type Router";
     }
-}
-```
-
-### Custom Validation
-
-```java
-public class MyValidator implements Validator<MyConfiguration> {
-    @Override
-    public ValidationResult validate(MyConfiguration config) {
-        if (config.getTimeout().isNegative()) {
-            return ValidationResult.failure("Timeout cannot be negative");
-        }
-        return ValidationResult.success();
-    }
-}
-```
-
-### Exception Handling
-
-```java
-try {
-    result = workflow.execute(input);
-} catch (WorkflowExecutionException e) {
-    logger.error("Workflow {} failed at node {}: {}", 
-        e.getWorkflowName(), e.getNodeId(), e.getMessage());
     
-    // Access additional context
-    Map<String, Object> context = e.getContext();
+    @Override
+    public NodeType getType() {
+        return NodeType.ROUTER;
+    }
 }
 ```
 
 ## Dependencies
 
-- **Java 17+**: Required for modern language features
+- **Java 17+**: Required for sealed classes and records
 - **No External Dependencies**: Pure API module with no third-party dependencies
 
 ## Integration
 
-This module is designed to be extended by:
+This API module is designed to be implemented by:
 
-- `agents4j-core`: Core implementations
-- `agents4j-langchain4j`: LangChain4J integrations (includes LangChain4J-specific interfaces)
-- Custom implementation modules
+- `agents4j-core`: Core implementations of all API interfaces
+- `agents4j-langchain4j`: LangChain4J-specific extensions and implementations
+- Custom implementation modules for specialized use cases
 
 ## Versioning
 
