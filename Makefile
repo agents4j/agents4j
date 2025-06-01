@@ -27,6 +27,12 @@ FINAL_VERSION := $(shell echo $(SNAPSHOT_VERSION) | sed 's/-SNAPSHOT//')
 NEXT_VERSION := $(shell echo $(FINAL_VERSION) | awk -F. '{$$NF = $$NF + 1;} 1' | sed 's/ /./g')-SNAPSHOT
 GIT_COMMIT := $(shell git rev-parse --short HEAD)
 
+
+.PHONY: run
+run:
+	@echo "Running agents4j quarkus integration app..."
+	./gradlew quarkus-integration:quarkusDev
+
 .PHONY: test
 test:
 	@echo "Running all tests..."

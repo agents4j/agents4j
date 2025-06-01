@@ -10,3 +10,5 @@ dev.properties
 .classpath
 .project
 .settings
+
+local.mk
