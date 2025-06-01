@@ -1,5 +1,7 @@
 package dev.agents4j.api.routing;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 import dev.agents4j.api.context.ContextKey;
 import dev.agents4j.api.context.WorkflowContext;
 import dev.agents4j.api.graph.EdgeCondition;
@@ -7,16 +9,13 @@ import dev.agents4j.api.graph.GraphCommand;
 import dev.agents4j.api.graph.GraphWorkflowState;
 import dev.agents4j.api.graph.NodeId;
 import dev.agents4j.api.graph.WorkflowId;
-import dev.agents4j.api.result.WorkflowError;
 import dev.agents4j.api.result.WorkflowResult;
-
+import dev.agents4j.api.result.error.WorkflowError;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import static org.junit.jupiter.api.Assertions.*;
-
-import java.util.Set;
-import java.util.concurrent.CompletableFuture;
 
 /**
  * Comprehensive tests for the improved routing interfaces that integrate
@@ -24,9 +23,16 @@ import java.util.concurrent.CompletableFuture;
  */
 class ImprovedRoutingTest {
 
-    private static final ContextKey<Double> CONFIDENCE_KEY = ContextKey.of("routing.confidence", Double.class);
-    private static final ContextKey<String> URGENCY_KEY = ContextKey.stringKey("urgency");
-    private static final ContextKey<String> CATEGORY_KEY = ContextKey.stringKey("category");
+    private static final ContextKey<Double> CONFIDENCE_KEY = ContextKey.of(
+        "routing.confidence",
+        Double.class
+    );
+    private static final ContextKey<String> URGENCY_KEY = ContextKey.stringKey(
+        "urgency"
+    );
+    private static final ContextKey<String> CATEGORY_KEY = ContextKey.stringKey(
+        "category"
+    );
 
     private WorkflowId workflowId;
     private WorkflowContext testContext;
@@ -38,7 +44,7 @@ class ImprovedRoutingTest {
         testContext = WorkflowContext.empty()
             .with(URGENCY_KEY, "high")
             .with(CATEGORY_KEY, "technical");
-        
+
         availableRoutes = Set.of(
             NodeId.of("technical-support"),
             NodeId.of("billing-support"),
@@ -62,11 +68,14 @@ class ImprovedRoutingTest {
         assertEquals(targetRoute, decision.getSelectedRoute());
         assertEquals("technical-support", decision.getSelectedRouteId());
         assertEquals(0.85, decision.getConfidence());
-        assertEquals("High technical content detected", decision.getReasoning());
+        assertEquals(
+            "High technical content detected",
+            decision.getReasoning()
+        );
         assertTrue(decision.meetsThreshold(0.8));
         assertFalse(decision.meetsThreshold(0.9));
         assertEquals(150, decision.getProcessingTimeMs());
-        
+
         var contextUpdates = decision.getContextUpdates();
         assertEquals(0.85, contextUpdates.get(CONFIDENCE_KEY).orElse(0.0));
     }
@@ -74,7 +83,10 @@ class ImprovedRoutingTest {
     @Test
     @DisplayName("Should create RoutingDecision with edge conditions")
     void shouldCreateRoutingDecisionWithEdgeConditions() {
-        var condition = EdgeCondition.whenContextGreaterThan(CONFIDENCE_KEY, 0.7);
+        var condition = EdgeCondition.whenContextGreaterThan(
+            CONFIDENCE_KEY,
+            0.7
+        );
         var decision = RoutingDecision.builder()
             .selectedRoute("technical-support")
             .confidence(0.85)
@@ -85,7 +97,10 @@ class ImprovedRoutingTest {
         assertTrue(decision.getEdgeCondition().isPresent());
         assertEquals(condition, decision.getEdgeCondition().get());
         assertTrue(decision.hasFallbackRoutes());
-        assertEquals(NodeId.of("general-inquiry"), decision.getPrimaryFallbackRoute().get());
+        assertEquals(
+            NodeId.of("general-inquiry"),
+            decision.getPrimaryFallbackRoute().get()
+        );
     }
 
     @Test
@@ -109,7 +124,9 @@ class ImprovedRoutingTest {
         assertEquals(1.0, highConfidence.getScore());
         assertEquals(nodeId, highConfidence.getRouteNodeId());
 
-        var mediumConfidence = RouteCandidate.mediumConfidence("general-inquiry");
+        var mediumConfidence = RouteCandidate.mediumConfidence(
+            "general-inquiry"
+        );
         assertEquals(0.5, mediumConfidence.getScore());
         assertEquals("general-inquiry", mediumConfidence.getRouteId());
 
@@ -127,7 +144,10 @@ class ImprovedRoutingTest {
             availableRoutes
         );
 
-        assertEquals("Customer support routing based on content analysis", strategy.getDescription());
+        assertEquals(
+            "Customer support routing based on content analysis",
+            strategy.getDescription()
+        );
         assertTrue(strategy.supportsContentType(String.class));
         assertFalse(strategy.supportsContentType(Integer.class));
         assertEquals(availableRoutes, strategy.getDefaultRoutes());
@@ -152,12 +172,15 @@ class ImprovedRoutingTest {
             0.75
         );
 
-        assertEquals("Advanced routing with fallback", strategy.getDescription());
+        assertEquals(
+            "Advanced routing with fallback",
+            strategy.getDescription()
+        );
         assertTrue(strategy.supportsContentType(String.class));
         assertEquals(availableRoutes, strategy.getDefaultRoutes());
         assertEquals(fallbackNode, strategy.getFallbackNode().get());
         assertEquals(0.75, strategy.getMinimumConfidence());
-        
+
         var criteria = strategy.getRoutingCriteria();
         assertEquals(0.75, criteria.get("confidence_threshold"));
         assertEquals(true, criteria.get("fallback_enabled"));
@@ -215,7 +238,12 @@ class ImprovedRoutingTest {
     @DisplayName("Should implement ContentRouter interface")
     void shouldImplementContentRouterInterface() {
         var router = new TestContentRouter();
-        var state = GraphWorkflowState.create(workflowId, "test message", NodeId.of("start"), testContext);
+        var state = GraphWorkflowState.create(
+            workflowId,
+            "test message",
+            NodeId.of("start"),
+            testContext
+        );
 
         assertEquals("test-content-router", router.getRouterName());
         assertEquals("Test Content Router", router.getName());
@@ -223,7 +251,9 @@ class ImprovedRoutingTest {
         assertEquals(NodeId.of("test-content-router"), router.getNodeId());
 
         // Test routing capability validation
-        assertTrue(router.canRoute("test message", availableRoutes, testContext));
+        assertTrue(
+            router.canRoute("test message", availableRoutes, testContext)
+        );
         assertFalse(router.canRoute(null, availableRoutes, testContext));
         assertFalse(router.canRoute("test", Set.of(), testContext));
 
@@ -231,10 +261,17 @@ class ImprovedRoutingTest {
         assertEquals(0.7, router.getMinimumConfidenceThreshold());
 
         // Test processing time estimation
-        assertEquals(100, router.estimateProcessingTime("test", availableRoutes));
+        assertEquals(
+            100,
+            router.estimateProcessingTime("test", availableRoutes)
+        );
 
         // Test routing performance
-        var performance = router.getRoutingPerformance("test", availableRoutes, testContext);
+        var performance = router.getRoutingPerformance(
+            "test",
+            availableRoutes,
+            testContext
+        );
         assertEquals("test-content-router", performance.getRouterName());
         assertEquals("String", performance.getContentType());
         assertEquals(3, performance.getRouteCount());
@@ -244,8 +281,16 @@ class ImprovedRoutingTest {
     @DisplayName("Should process workflow with routing integration")
     void shouldProcessWorkflowWithRoutingIntegration() {
         var router = new TestContentRouter();
-        var context = testContext.with(TestContentRouter.ROUTES_KEY, (Object) Set.of("technical-support", "billing-support"));
-        var state = GraphWorkflowState.create(workflowId, "technical issue with billing", NodeId.of("router"), context);
+        var context = testContext.with(
+            TestContentRouter.ROUTES_KEY,
+            (Object) Set.of("technical-support", "billing-support")
+        );
+        var state = GraphWorkflowState.create(
+            workflowId,
+            "technical issue with billing",
+            NodeId.of("router"),
+            context
+        );
 
         var result = router.process(state);
 
@@ -254,28 +299,50 @@ class ImprovedRoutingTest {
         assertInstanceOf(GraphCommand.Traverse.class, command);
 
         var traverseCommand = (GraphCommand.Traverse<String>) command;
-        assertEquals(NodeId.of("technical-support"), traverseCommand.targetNode());
+        assertEquals(
+            NodeId.of("technical-support"),
+            traverseCommand.targetNode()
+        );
         assertTrue(traverseCommand.getContextUpdates().isPresent());
 
         var updatedContext = traverseCommand.getContextUpdates().get();
-        assertTrue(updatedContext.get(router.getRoutingStrategy().getConfidenceContextKey()).isPresent());
-        assertTrue(updatedContext.get(router.getRoutingStrategy().getReasoningContextKey()).isPresent());
+        assertTrue(
+            updatedContext
+                .get(router.getRoutingStrategy().getConfidenceContextKey())
+                .isPresent()
+        );
+        assertTrue(
+            updatedContext
+                .get(router.getRoutingStrategy().getReasoningContextKey())
+                .isPresent()
+        );
     }
 
     @Test
     @DisplayName("Should handle routing failures with fallback")
     void shouldHandleRoutingFailuresWithFallback() {
         var router = new TestContentRouter();
-        var context = testContext.with(TestContentRouter.ROUTES_KEY, (Object) Set.of("unknown-route"));
-        var state = GraphWorkflowState.create(workflowId, "unclear message", NodeId.of("router"), context);
+        var context = testContext.with(
+            TestContentRouter.ROUTES_KEY,
+            (Object) Set.of("unknown-route")
+        );
+        var state = GraphWorkflowState.create(
+            workflowId,
+            "unclear message",
+            NodeId.of("router"),
+            context
+        );
 
         var result = router.process(state);
 
         assertTrue(result.isSuccess());
         var command = result.getValue().get();
-        
+
         // Should either route to fallback or suspend for manual review
-        assertTrue(command instanceof GraphCommand.Traverse || command instanceof GraphCommand.Suspend);
+        assertTrue(
+            command instanceof GraphCommand.Traverse ||
+            command instanceof GraphCommand.Suspend
+        );
 
         if (command instanceof GraphCommand.Suspend<String> suspendCommand) {
             assertTrue(suspendCommand.reason().contains("Confidence"));
@@ -287,27 +354,47 @@ class ImprovedRoutingTest {
     void shouldSupportAsynchronousRouting() throws Exception {
         var router = new TestContentRouter();
 
-        var future = router.analyzeContentAsync("technical issue with billing", availableRoutes, testContext);
+        var future = router.analyzeContentAsync(
+            "technical issue with billing",
+            availableRoutes,
+            testContext
+        );
         assertNotNull(future);
 
         var decision = future.get();
         assertNotNull(decision);
-        assertEquals(NodeId.of("technical-support"), decision.getSelectedRoute());
+        assertEquals(
+            NodeId.of("technical-support"),
+            decision.getSelectedRoute()
+        );
         assertTrue(decision.getConfidence() > 0);
     }
 
     @Test
     @DisplayName("Should validate routing decisions")
     void shouldValidateRoutingDecisions() {
-        var strategy = RoutingStrategy.basic("Test strategy", String.class, availableRoutes);
+        var strategy = RoutingStrategy.basic(
+            "Test strategy",
+            String.class,
+            availableRoutes
+        );
 
-        var validDecision = RoutingDecision.simple(NodeId.of("technical-support"), 0.8);
+        var validDecision = RoutingDecision.simple(
+            NodeId.of("technical-support"),
+            0.8
+        );
         assertTrue(strategy.validateRoutingDecision(validDecision));
 
-        var lowConfidenceDecision = RoutingDecision.simple(NodeId.of("technical-support"), 0.3);
+        var lowConfidenceDecision = RoutingDecision.simple(
+            NodeId.of("technical-support"),
+            0.3
+        );
         assertFalse(strategy.validateRoutingDecision(lowConfidenceDecision));
 
-        var invalidRouteDecision = RoutingDecision.simple(NodeId.of("unknown-route"), 0.9);
+        var invalidRouteDecision = RoutingDecision.simple(
+            NodeId.of("unknown-route"),
+            0.9
+        );
         assertFalse(strategy.validateRoutingDecision(invalidRouteDecision));
     }
 
@@ -315,19 +402,30 @@ class ImprovedRoutingTest {
      * Test implementation of ContentRouter for testing purposes.
      */
     private static class TestContentRouter implements ContentRouter<String> {
-        
-        public static final ContextKey<Object> ROUTES_KEY = ContextKey.of("available.routes", Object.class);
-        
+
+        public static final ContextKey<Object> ROUTES_KEY = ContextKey.of(
+            "available.routes",
+            Object.class
+        );
+
         private final RoutingStrategy strategy = RoutingStrategy.withFallback(
             "Test routing strategy",
             String.class,
-            Set.of(NodeId.of("technical-support"), NodeId.of("billing-support"), NodeId.of("general-inquiry")),
+            Set.of(
+                NodeId.of("technical-support"),
+                NodeId.of("billing-support"),
+                NodeId.of("general-inquiry")
+            ),
             NodeId.of("general-inquiry"),
             0.7
         );
 
         @Override
-        public RoutingDecision analyzeContent(String content, Set<NodeId> availableRoutes, WorkflowContext context) {
+        public RoutingDecision analyzeContent(
+            String content,
+            Set<NodeId> availableRoutes,
+            WorkflowContext context
+        ) {
             // Simple routing logic for testing
             if (content.toLowerCase().contains("technical")) {
                 return RoutingDecision.builder()
@@ -384,7 +482,10 @@ class ImprovedRoutingTest {
         }
 
         @Override
-        public long estimateProcessingTime(String content, Set<NodeId> availableRoutes) {
+        public long estimateProcessingTime(
+            String content,
+            Set<NodeId> availableRoutes
+        ) {
             return 100; // Simple fixed estimate for testing
         }
     }

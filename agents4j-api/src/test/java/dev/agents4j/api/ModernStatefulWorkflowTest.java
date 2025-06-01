@@ -4,8 +4,8 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import dev.agents4j.api.context.ContextKey;
 import dev.agents4j.api.context.WorkflowContext;
-import dev.agents4j.api.result.WorkflowError;
 import dev.agents4j.api.result.WorkflowResult;
+import dev.agents4j.api.result.error.WorkflowError;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;

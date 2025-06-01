@@ -154,6 +154,10 @@ public record GraphEdge(
         return new GraphEdge(edgeId, fromNode, toNode, newCondition, metadata);
     }
 
+    public boolean hasCondition() {
+        return condition != null;
+    }
+
     @Override
     public String toString() {
         return String.format(

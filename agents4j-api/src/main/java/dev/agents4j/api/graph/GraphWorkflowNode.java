@@ -1,7 +1,7 @@
 package dev.agents4j.api.graph;
 
-import dev.agents4j.api.result.WorkflowError;
 import dev.agents4j.api.result.WorkflowResult;
+import dev.agents4j.api.result.error.WorkflowError;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.Map;
