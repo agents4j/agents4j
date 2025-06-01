@@ -1,5 +1,6 @@
 package dev.agents4j.api.result;
 
+import dev.agents4j.api.context.WorkflowContext;
 import dev.agents4j.api.result.error.WorkflowError;
 import java.util.Objects;
 import java.util.Optional;
@@ -26,10 +27,11 @@ public sealed interface WorkflowResult<T, E extends WorkflowError>
      * @param <T> The type of the success value
      * @param <E> The type of the error
      */
-    record Success<T, E extends WorkflowError>(T value)
+    record Success<T, E extends WorkflowError>(T value, WorkflowContext finalContext)
         implements WorkflowResult<T, E> {
         public Success {
             Objects.requireNonNull(value, "Success value cannot be null");
+            Objects.requireNonNull(finalContext, "Final context cannot be null");
         }
     }
 
@@ -39,10 +41,11 @@ public sealed interface WorkflowResult<T, E extends WorkflowError>
      * @param <T> The type of the success value
      * @param <E> The type of the error
      */
-    record Failure<T, E extends WorkflowError>(E error, T value)
+    record Failure<T, E extends WorkflowError>(E error, T value, WorkflowContext finalContext)
         implements WorkflowResult<T, E> {
         public Failure {
             Objects.requireNonNull(error, "Error cannot be null");
+            // finalContext can be null for failures that occur before workflow state is established
         }
     }
 
@@ -76,7 +79,20 @@ public sealed interface WorkflowResult<T, E extends WorkflowError>
      * @return A Success result
      */
     static <T, E extends WorkflowError> WorkflowResult<T, E> success(T value) {
-        return new Success<>(value);
+        return new Success<>(value, WorkflowContext.empty());
+    }
+
+    /**
+     * Creates a successful result with final context.
+     *
+     * @param value The success value
+     * @param finalContext The final workflow context
+     * @param <T> The type of the success value
+     * @param <E> The type of the error
+     * @return A Success result
+     */
+    static <T, E extends WorkflowError> WorkflowResult<T, E> success(T value, WorkflowContext finalContext) {
+        return new Success<>(value, finalContext);
     }
 
     /**
@@ -88,14 +104,22 @@ public sealed interface WorkflowResult<T, E extends WorkflowError>
      * @return A Failure result
      */
     static <T, E extends WorkflowError> WorkflowResult<T, E> failure(E error) {
-        return new Failure<>(error, null);
+        return new Failure<>(error, null, null);
     }
 
     static <T, E extends WorkflowError> WorkflowResult<T, E> failure(
         E error,
         T value
     ) {
-        return new Failure<>(error, value);
+        return new Failure<>(error, value, null);
+    }
+
+    static <T, E extends WorkflowError> WorkflowResult<T, E> failure(
+        E error,
+        T value,
+        WorkflowContext finalContext
+    ) {
+        return new Failure<>(error, value, finalContext);
     }
 
     /**
@@ -157,6 +181,22 @@ public sealed interface WorkflowResult<T, E extends WorkflowError>
     }
 
     /**
+     * Gets the final workflow context if present.
+     *
+     * @return Optional containing the final context
+     */
+    default Optional<WorkflowContext> getFinalContext() {
+        if (this instanceof Success) {
+            return Optional.of(((Success<T, E>) this).finalContext());
+        } else if (this instanceof Failure) {
+            Failure<T, E> failure = (Failure<T, E>) this;
+            return Optional.ofNullable(failure.finalContext());
+        } else {
+            return Optional.empty();
+        }
+    }
+
+    /**
      * Gets the error if present.
      *
      * @return Optional containing the error
@@ -193,10 +233,10 @@ public sealed interface WorkflowResult<T, E extends WorkflowError>
         Objects.requireNonNull(mapper, "Mapper function cannot be null");
         if (this instanceof Success) {
             Success<T, E> success = (Success<T, E>) this;
-            return WorkflowResult.success(mapper.apply(success.value()));
+            return WorkflowResult.success(mapper.apply(success.value()), success.finalContext());
         } else if (this instanceof Failure) {
             Failure<T, E> failure = (Failure<T, E>) this;
-            return WorkflowResult.failure(failure.error());
+            return WorkflowResult.failure(failure.error(), null, failure.finalContext());
         } else if (this instanceof Suspended) {
             Suspended<T, E> suspended = (Suspended<T, E>) this;
             return WorkflowResult.suspended(
@@ -225,7 +265,7 @@ public sealed interface WorkflowResult<T, E extends WorkflowError>
             return mapper.apply(success.value());
         } else if (this instanceof Failure) {
             Failure<T, E> failure = (Failure<T, E>) this;
-            return WorkflowResult.failure(failure.error());
+            return WorkflowResult.failure(failure.error(), null, failure.finalContext());
         } else if (this instanceof Suspended) {
             Suspended<T, E> suspended = (Suspended<T, E>) this;
             return WorkflowResult.suspended(
@@ -251,10 +291,10 @@ public sealed interface WorkflowResult<T, E extends WorkflowError>
         Objects.requireNonNull(mapper, "Error mapper function cannot be null");
         if (this instanceof Success) {
             Success<T, E> success = (Success<T, E>) this;
-            return WorkflowResult.success(success.value());
+            return WorkflowResult.success(success.value(), success.finalContext());
         } else if (this instanceof Failure) {
             Failure<T, E> failure = (Failure<T, E>) this;
-            return WorkflowResult.failure(mapper.apply(failure.error()));
+            return WorkflowResult.failure(mapper.apply(failure.error()), failure.value(), failure.finalContext());
         } else if (this instanceof Suspended) {
             Suspended<T, E> suspended = (Suspended<T, E>) this;
             return WorkflowResult.suspended(
@@ -277,7 +317,8 @@ public sealed interface WorkflowResult<T, E extends WorkflowError>
         Objects.requireNonNull(recovery, "Recovery function cannot be null");
         if (this instanceof Failure) {
             Failure<T, E> failure = (Failure<T, E>) this;
-            return WorkflowResult.success(recovery.apply(failure.error()));
+            WorkflowContext context = failure.finalContext() != null ? failure.finalContext() : WorkflowContext.empty();
+            return WorkflowResult.success(recovery.apply(failure.error()), context);
         } else {
             return this;
         }
@@ -318,7 +359,7 @@ public sealed interface WorkflowResult<T, E extends WorkflowError>
             Success<T, E> success = (Success<T, E>) this;
             return predicate.test(success.value())
                 ? this
-                : WorkflowResult.failure(errorSupplier.get());
+                : WorkflowResult.failure(errorSupplier.get(), null, success.finalContext());
         } else {
             return this;
         }

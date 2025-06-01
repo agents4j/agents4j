@@ -80,6 +80,13 @@ public class ModernOrderProcessingWorkflow
         if (validationResult.isFailure()) {
             return WorkflowResult.failure(validationResult.getError().get());
         }
+        if (validationResult.isSuspended()) {
+            return WorkflowResult.suspended(
+                validationResult.getSuspension().get().suspensionId(),
+                initialStateData,
+                validationResult.getSuspension().get().reason()
+            );
+        }
 
         // Create execution context
         String executionId = UUID.randomUUID().toString();
@@ -319,6 +326,20 @@ public class ModernOrderProcessingWorkflow
             }
         }
 
+        if (paymentResult.isSuspended()) {
+            // Payment initiation was suspended, propagate the suspension
+            var suspension = paymentResult.getSuspension().get();
+            return WorkflowResult.success(
+                WorkflowExecution.suspended(
+                    stateData,
+                    context,
+                    executionId,
+                    suspension.suspensionId(),
+                    suspension.reason()
+                )
+            );
+        }
+
         // Payment initiated successfully
         var paymentId = paymentResult.getValue().get();
         var processingData = stateData.withStatus(
@@ -470,7 +491,7 @@ public class ModernOrderProcessingWorkflow
 
     // Business logic methods (would typically be injected services)
 
-    private WorkflowResult<Void, WorkflowError> performBusinessValidation(
+    private WorkflowResult<Boolean, WorkflowError> performBusinessValidation(
         OrderData orderData,
         WorkflowContext context
     ) {
@@ -494,7 +515,7 @@ public class ModernOrderProcessingWorkflow
             }
         }
 
-        return WorkflowResult.success(null);
+        return WorkflowResult.success(true);
     }
 
     private WorkflowResult<String, WorkflowError> initiatePayment(
@@ -541,7 +562,7 @@ public class ModernOrderProcessingWorkflow
         return WorkflowResult.success(isCompleted);
     }
 
-    private WorkflowResult<Void, WorkflowError> finalizeOrder(
+    private WorkflowResult<Boolean, WorkflowError> finalizeOrder(
         OrderData orderData,
         WorkflowContext context
     ) {
@@ -554,7 +575,7 @@ public class ModernOrderProcessingWorkflow
             );
         }
 
-        return WorkflowResult.success(null);
+        return WorkflowResult.success(true);
     }
 }
 
@@ -590,4 +611,119 @@ enum OrderStatus {
     APPROVED,
     COMPLETED,
     FAILED,
+}
+
+// WorkflowExecution class to represent workflow execution state
+record WorkflowExecution<S, O>(
+    String executionId,
+    S stateData,
+    WorkflowContext context,
+    Instant timestamp,
+    ExecutionStatus status,
+    O result,
+    WorkflowError error
+) {
+    public boolean isSuspended() {
+        return status == ExecutionStatus.SUSPENDED;
+    }
+    
+    public boolean isCompleted() {
+        return status == ExecutionStatus.COMPLETED;
+    }
+    
+    public boolean isFailed() {
+        return status == ExecutionStatus.FAILED;
+    }
+    
+    public String getExecutionId() {
+        return executionId;
+    }
+    
+    public S getStateData() {
+        return stateData;
+    }
+    
+    public WorkflowContext getContext() {
+        return context;
+    }
+    
+    public Instant getTimestamp() {
+        return timestamp;
+    }
+    
+    public static <S, O> WorkflowExecution<S, O> suspended(
+        S stateData,
+        WorkflowContext context,
+        String executionId,
+        String reason
+    ) {
+        return new WorkflowExecution<>(
+            executionId,
+            stateData,
+            context,
+            Instant.now(),
+            ExecutionStatus.SUSPENDED,
+            null,
+            null
+        );
+    }
+    
+    public static <S, O> WorkflowExecution<S, O> suspendedWithTimeout(
+        S stateData,
+        WorkflowContext context,
+        String executionId,
+        String suspensionId,
+        String reason,
+        java.time.Duration timeout
+    ) {
+        return new WorkflowExecution<>(
+            executionId,
+            stateData,
+            context,
+            Instant.now(),
+            ExecutionStatus.SUSPENDED,
+            null,
+            null
+        );
+    }
+    
+    public static <S, O> WorkflowExecution<S, O> completed(
+        S stateData,
+        WorkflowContext context,
+        String executionId,
+        O result
+    ) {
+        return new WorkflowExecution<>(
+            executionId,
+            stateData,
+            context,
+            Instant.now(),
+            ExecutionStatus.COMPLETED,
+            result,
+            null
+        );
+    }
+    
+    public static <S, O> WorkflowExecution<S, O> failed(
+        S stateData,
+        WorkflowContext context,
+        String executionId,
+        WorkflowError error
+    ) {
+        return new WorkflowExecution<>(
+            executionId,
+            stateData,
+            context,
+            Instant.now(),
+            ExecutionStatus.FAILED,
+            null,
+            error
+        );
+    }
+}
+
+enum ExecutionStatus {
+    SUSPENDED,
+    COMPLETED,
+    FAILED
 }
