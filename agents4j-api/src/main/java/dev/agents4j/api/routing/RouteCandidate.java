@@ -1,44 +1,68 @@
 package dev.agents4j.api.routing;
 
+import dev.agents4j.api.graph.NodeId;
 import java.util.Objects;
 
 /**
- * Represents a candidate route with its associated score.
+ * Represents a candidate route with its associated score, integrated with graph workflow navigation.
  * 
  * <p>This class is used to represent alternative routes that were considered
  * during the routing decision process, along with their confidence scores.
- * It's typically used in the alternatives list of a RoutingDecision.</p>
+ * It supports both string identifiers and NodeId objects for graph workflow integration.</p>
  * 
  * <p><b>Usage Example:</b></p>
  * <pre>{@code
  * RouteCandidate candidate = new RouteCandidate("billing-support", 0.72);
+ * RouteCandidate nodeCandidate = new RouteCandidate(NodeId.of("technical-support"), 0.95);
  * RouteCandidate highConfidence = RouteCandidate.of("technical-support", 0.95);
  * }</pre>
  */
 public class RouteCandidate {
 
-    private final String routeId;
+    private final NodeId routeNodeId;
     private final double score;
 
     /**
-     * Creates a new RouteCandidate with the specified route ID and score.
+     * Creates a new RouteCandidate with the specified route ID string and score.
      *
-     * @param routeId The route identifier
+     * @param routeId The route identifier string
      * @param score The confidence/relevance score for this route (0.0 to 1.0)
      * @throws IllegalArgumentException if routeId is null or score is invalid
      */
     public RouteCandidate(String routeId, double score) {
-        this.routeId = Objects.requireNonNull(routeId, "Route ID cannot be null");
+        Objects.requireNonNull(routeId, "Route ID cannot be null");
+        this.routeNodeId = NodeId.of(routeId);
         this.score = validateScore(score);
     }
 
     /**
-     * Gets the route identifier.
+     * Creates a new RouteCandidate with the specified NodeId and score.
      *
-     * @return The route identifier
+     * @param routeNodeId The route node identifier
+     * @param score The confidence/relevance score for this route (0.0 to 1.0)
+     * @throws IllegalArgumentException if routeNodeId is null or score is invalid
+     */
+    public RouteCandidate(NodeId routeNodeId, double score) {
+        this.routeNodeId = Objects.requireNonNull(routeNodeId, "Route node ID cannot be null");
+        this.score = validateScore(score);
+    }
+
+    /**
+     * Gets the route identifier as a string.
+     *
+     * @return The route identifier string
      */
     public String getRouteId() {
-        return routeId;
+        return routeNodeId.value();
+    }
+
+    /**
+     * Gets the route as a NodeId for graph workflow integration.
+     *
+     * @return The route node identifier
+     */
+    public NodeId getRouteNodeId() {
+        return routeNodeId;
     }
 
     /**
@@ -84,7 +108,7 @@ public class RouteCandidate {
      * Creates a new RouteCandidate with the specified route ID and score.
      * This is a convenience factory method.
      *
-     * @param routeId The route identifier
+     * @param routeId The route identifier string
      * @param score The confidence/relevance score for this route
      * @return A new RouteCandidate instance
      */
@@ -93,9 +117,21 @@ public class RouteCandidate {
     }
 
     /**
+     * Creates a new RouteCandidate with the specified NodeId and score.
+     * This is a convenience factory method for graph workflow integration.
+     *
+     * @param routeNodeId The route node identifier
+     * @param score The confidence/relevance score for this route
+     * @return A new RouteCandidate instance
+     */
+    public static RouteCandidate of(NodeId routeNodeId, double score) {
+        return new RouteCandidate(routeNodeId, score);
+    }
+
+    /**
      * Creates a RouteCandidate with maximum confidence.
      *
-     * @param routeId The route identifier
+     * @param routeId The route identifier string
      * @return A new RouteCandidate with score 1.0
      */
     public static RouteCandidate highConfidence(String routeId) {
@@ -103,9 +139,19 @@ public class RouteCandidate {
     }
 
     /**
+     * Creates a RouteCandidate with maximum confidence using NodeId.
+     *
+     * @param routeNodeId The route node identifier
+     * @return A new RouteCandidate with score 1.0
+     */
+    public static RouteCandidate highConfidence(NodeId routeNodeId) {
+        return new RouteCandidate(routeNodeId, 1.0);
+    }
+
+    /**
      * Creates a RouteCandidate with medium confidence.
      *
-     * @param routeId The route identifier
+     * @param routeId The route identifier string
      * @return A new RouteCandidate with score 0.5
      */
     public static RouteCandidate mediumConfidence(String routeId) {
@@ -113,18 +159,38 @@ public class RouteCandidate {
     }
 
     /**
+     * Creates a RouteCandidate with medium confidence using NodeId.
+     *
+     * @param routeNodeId The route node identifier
+     * @return A new RouteCandidate with score 0.5
+     */
+    public static RouteCandidate mediumConfidence(NodeId routeNodeId) {
+        return new RouteCandidate(routeNodeId, 0.5);
+    }
+
+    /**
      * Creates a RouteCandidate with low confidence.
      *
-     * @param routeId The route identifier
+     * @param routeId The route identifier string
      * @return A new RouteCandidate with score 0.25
      */
     public static RouteCandidate lowConfidence(String routeId) {
         return new RouteCandidate(routeId, 0.25);
     }
 
+    /**
+     * Creates a RouteCandidate with low confidence using NodeId.
+     *
+     * @param routeNodeId The route node identifier
+     * @return A new RouteCandidate with score 0.25
+     */
+    public static RouteCandidate lowConfidence(NodeId routeNodeId) {
+        return new RouteCandidate(routeNodeId, 0.25);
+    }
+
     @Override
     public String toString() {
-        return String.format("RouteCandidate{routeId='%s', score=%.3f}", routeId, score);
+        return String.format("RouteCandidate{routeId='%s', score=%.3f}", routeNodeId.value(), score);
     }
 
     @Override
@@ -132,11 +198,11 @@ public class RouteCandidate {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         RouteCandidate that = (RouteCandidate) o;
-        return Double.compare(that.score, score) == 0 && Objects.equals(routeId, that.routeId);
+        return Double.compare(that.score, score) == 0 && Objects.equals(routeNodeId, that.routeNodeId);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(routeId, score);
+        return Objects.hash(routeNodeId, score);
     }
 }

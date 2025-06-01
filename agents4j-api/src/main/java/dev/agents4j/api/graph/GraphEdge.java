@@ -16,7 +16,6 @@ public record GraphEdge(
     EdgeCondition condition,
     EdgeMetadata metadata
 ) {
-    
     public GraphEdge {
         Objects.requireNonNull(edgeId, "Edge ID cannot be null");
         Objects.requireNonNull(fromNode, "From node cannot be null");
@@ -24,7 +23,7 @@ public record GraphEdge(
         Objects.requireNonNull(condition, "Edge condition cannot be null");
         Objects.requireNonNull(metadata, "Edge metadata cannot be null");
     }
-    
+
     /**
      * Creates a simple edge between two nodes with always-true condition.
      *
@@ -41,7 +40,7 @@ public record GraphEdge(
             EdgeMetadata.simple()
         );
     }
-    
+
     /**
      * Creates a conditional edge between two nodes.
      *
@@ -50,7 +49,11 @@ public record GraphEdge(
      * @param condition The condition for traversal
      * @return A new GraphEdge with the specified condition
      */
-    public static GraphEdge conditional(NodeId fromNode, NodeId toNode, EdgeCondition condition) {
+    public static GraphEdge conditional(
+        NodeId fromNode,
+        NodeId toNode,
+        EdgeCondition condition
+    ) {
         return new GraphEdge(
             EdgeId.between(fromNode, toNode),
             fromNode,
@@ -59,7 +62,7 @@ public record GraphEdge(
             EdgeMetadata.simple()
         );
     }
-    
+
     /**
      * Creates a named edge between two nodes.
      *
@@ -69,7 +72,12 @@ public record GraphEdge(
      * @param condition The condition for traversal
      * @return A new GraphEdge with name and condition
      */
-    public static GraphEdge named(NodeId fromNode, NodeId toNode, String name, EdgeCondition condition) {
+    public static GraphEdge named(
+        NodeId fromNode,
+        NodeId toNode,
+        String name,
+        EdgeCondition condition
+    ) {
         return new GraphEdge(
             EdgeId.named(fromNode, toNode, name),
             fromNode,
@@ -78,18 +86,18 @@ public record GraphEdge(
             EdgeMetadata.withName(name)
         );
     }
-    
+
     /**
      * Checks if this edge can be traversed given the current workflow state.
      *
      * @param state The current workflow state
      * @return true if the edge condition is satisfied
      */
-    public boolean canTraverse(ModernGraphWorkflowState<?> state) {
+    public boolean canTraverse(GraphWorkflowState<?> state) {
         Objects.requireNonNull(state, "State cannot be null");
         return condition.evaluate(state);
     }
-    
+
     /**
      * Gets the edge name from metadata.
      *
@@ -98,7 +106,7 @@ public record GraphEdge(
     public Optional<String> getName() {
         return metadata.name();
     }
-    
+
     /**
      * Gets the edge description from metadata.
      *
@@ -107,7 +115,7 @@ public record GraphEdge(
     public Optional<String> getDescription() {
         return metadata.description();
     }
-    
+
     /**
      * Gets the edge weight from metadata.
      *
@@ -116,7 +124,7 @@ public record GraphEdge(
     public double getWeight() {
         return metadata.weight();
     }
-    
+
     /**
      * Checks if this edge represents a loop (connects node to itself).
      *
@@ -125,7 +133,7 @@ public record GraphEdge(
     public boolean isLoop() {
         return fromNode.equals(toNode);
     }
-    
+
     /**
      * Creates a new edge with updated metadata.
      *
@@ -135,7 +143,7 @@ public record GraphEdge(
     public GraphEdge withMetadata(EdgeMetadata newMetadata) {
         return new GraphEdge(edgeId, fromNode, toNode, condition, newMetadata);
     }
-    
+
     /**
      * Creates a new edge with updated condition.
      *
@@ -145,13 +153,17 @@ public record GraphEdge(
     public GraphEdge withCondition(EdgeCondition newCondition) {
         return new GraphEdge(edgeId, fromNode, toNode, newCondition, metadata);
     }
-    
+
     @Override
     public String toString() {
-        return String.format("GraphEdge{%s -> %s, condition=%s}", 
-            fromNode.value(), toNode.value(), condition.getDescription());
+        return String.format(
+            "GraphEdge{%s -> %s, condition=%s}",
+            fromNode.value(),
+            toNode.value(),
+            condition.getDescription()
+        );
     }
-    
+
     /**
      * Metadata associated with a graph edge.
      */
@@ -162,21 +174,26 @@ public record GraphEdge(
         Map<String, Object> properties,
         Optional<Instant> createdAt
     ) {
-        
         public EdgeMetadata {
             Objects.requireNonNull(name, "Name optional cannot be null");
-            Objects.requireNonNull(description, "Description optional cannot be null");
+            Objects.requireNonNull(
+                description,
+                "Description optional cannot be null"
+            );
             Objects.requireNonNull(properties, "Properties cannot be null");
-            Objects.requireNonNull(createdAt, "Created at optional cannot be null");
-            
+            Objects.requireNonNull(
+                createdAt,
+                "Created at optional cannot be null"
+            );
+
             if (weight < 0) {
                 throw new IllegalArgumentException("Weight cannot be negative");
             }
-            
+
             // Make properties immutable
             properties = Map.copyOf(properties);
         }
-        
+
         /**
          * Creates simple edge metadata with default values.
          *
@@ -191,7 +208,7 @@ public record GraphEdge(
                 Optional.of(Instant.now())
             );
         }
-        
+
         /**
          * Creates edge metadata with a name.
          *
@@ -208,7 +225,7 @@ public record GraphEdge(
                 Optional.of(Instant.now())
             );
         }
-        
+
         /**
          * Creates edge metadata with name and description.
          *
@@ -216,7 +233,10 @@ public record GraphEdge(
          * @param description The edge description
          * @return EdgeMetadata with name and description
          */
-        public static EdgeMetadata withNameAndDescription(String name, String description) {
+        public static EdgeMetadata withNameAndDescription(
+            String name,
+            String description
+        ) {
             Objects.requireNonNull(name, "Name cannot be null");
             Objects.requireNonNull(description, "Description cannot be null");
             return new EdgeMetadata(
@@ -227,7 +247,7 @@ public record GraphEdge(
                 Optional.of(Instant.now())
             );
         }
-        
+
         /**
          * Creates edge metadata with all properties.
          *
@@ -237,7 +257,12 @@ public record GraphEdge(
          * @param properties Additional properties
          * @return EdgeMetadata with all specified properties
          */
-        public static EdgeMetadata of(String name, String description, double weight, Map<String, Object> properties) {
+        public static EdgeMetadata of(
+            String name,
+            String description,
+            double weight,
+            Map<String, Object> properties
+        ) {
             return new EdgeMetadata(
                 Optional.ofNullable(name),
                 Optional.ofNullable(description),
@@ -246,7 +271,7 @@ public record GraphEdge(
                 Optional.of(Instant.now())
             );
         }
-        
+
         /**
          * Creates a new metadata with updated weight.
          *
@@ -257,9 +282,15 @@ public record GraphEdge(
             if (newWeight < 0) {
                 throw new IllegalArgumentException("Weight cannot be negative");
             }
-            return new EdgeMetadata(name, description, newWeight, properties, createdAt);
+            return new EdgeMetadata(
+                name,
+                description,
+                newWeight,
+                properties,
+                createdAt
+            );
         }
-        
+
         /**
          * Creates a new metadata with additional property.
          *
@@ -271,9 +302,15 @@ public record GraphEdge(
             Objects.requireNonNull(key, "Property key cannot be null");
             var newProperties = new java.util.HashMap<>(properties);
             newProperties.put(key, value);
-            return new EdgeMetadata(name, description, weight, newProperties, createdAt);
+            return new EdgeMetadata(
+                name,
+                description,
+                weight,
+                newProperties,
+                createdAt
+            );
         }
-        
+
         /**
          * Gets a property value.
          *

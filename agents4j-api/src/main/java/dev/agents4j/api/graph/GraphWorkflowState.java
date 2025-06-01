@@ -2,7 +2,6 @@ package dev.agents4j.api.graph;
 
 import dev.agents4j.api.context.ContextKey;
 import dev.agents4j.api.context.WorkflowContext;
-
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -16,7 +15,7 @@ import java.util.Optional;
  *
  * @param <S> The type of the workflow state data
  */
-public record ModernGraphWorkflowState<S>(
+public record GraphWorkflowState<S>(
     WorkflowId workflowId,
     S data,
     WorkflowContext context,
@@ -24,15 +23,17 @@ public record ModernGraphWorkflowState<S>(
     GraphPosition position,
     StateMetadata metadata
 ) {
-    
-    public ModernGraphWorkflowState {
+    public GraphWorkflowState {
         Objects.requireNonNull(workflowId, "Workflow ID cannot be null");
         Objects.requireNonNull(context, "Context cannot be null");
-        Objects.requireNonNull(currentNode, "Current node optional cannot be null");
+        Objects.requireNonNull(
+            currentNode,
+            "Current node optional cannot be null"
+        );
         Objects.requireNonNull(position, "Graph position cannot be null");
         Objects.requireNonNull(metadata, "State metadata cannot be null");
     }
-    
+
     /**
      * Creates a new graph workflow state starting at the specified node.
      *
@@ -40,11 +41,15 @@ public record ModernGraphWorkflowState<S>(
      * @param initialData The initial state data
      * @param startNode The starting node ID
      * @param <S> The type of the state data
-     * @return A new ModernGraphWorkflowState
+     * @return A new GraphWorkflowState
      */
-    public static <S> ModernGraphWorkflowState<S> create(WorkflowId workflowId, S initialData, NodeId startNode) {
+    public static <S> GraphWorkflowState<S> create(
+        WorkflowId workflowId,
+        S initialData,
+        NodeId startNode
+    ) {
         Objects.requireNonNull(startNode, "Start node cannot be null");
-        return new ModernGraphWorkflowState<>(
+        return new GraphWorkflowState<>(
             workflowId,
             initialData,
             dev.agents4j.api.context.ExecutionContext.empty(),
@@ -53,7 +58,7 @@ public record ModernGraphWorkflowState<S>(
             StateMetadata.initial()
         );
     }
-    
+
     /**
      * Creates a new graph workflow state with initial context.
      *
@@ -62,13 +67,20 @@ public record ModernGraphWorkflowState<S>(
      * @param startNode The starting node ID
      * @param initialContext The initial workflow context
      * @param <S> The type of the state data
-     * @return A new ModernGraphWorkflowState
+     * @return A new GraphWorkflowState
      */
-    public static <S> ModernGraphWorkflowState<S> create(WorkflowId workflowId, S initialData, 
-                                                        NodeId startNode, WorkflowContext initialContext) {
+    public static <S> GraphWorkflowState<S> create(
+        WorkflowId workflowId,
+        S initialData,
+        NodeId startNode,
+        WorkflowContext initialContext
+    ) {
         Objects.requireNonNull(startNode, "Start node cannot be null");
-        Objects.requireNonNull(initialContext, "Initial context cannot be null");
-        return new ModernGraphWorkflowState<>(
+        Objects.requireNonNull(
+            initialContext,
+            "Initial context cannot be null"
+        );
+        return new GraphWorkflowState<>(
             workflowId,
             initialData,
             initialContext,
@@ -77,15 +89,15 @@ public record ModernGraphWorkflowState<S>(
             StateMetadata.initial()
         );
     }
-    
+
     /**
      * Creates a new state with updated data.
      *
      * @param newData The new state data
-     * @return A new ModernGraphWorkflowState with updated data
+     * @return A new GraphWorkflowState with updated data
      */
-    public ModernGraphWorkflowState<S> withData(S newData) {
-        return new ModernGraphWorkflowState<>(
+    public GraphWorkflowState<S> withData(S newData) {
+        return new GraphWorkflowState<>(
             workflowId,
             newData,
             context,
@@ -94,17 +106,17 @@ public record ModernGraphWorkflowState<S>(
             metadata.advance()
         );
     }
-    
+
     /**
      * Creates a new state with a context value added.
      *
      * @param key The typed context key
      * @param value The context value
      * @param <T> The type of the context value
-     * @return A new ModernGraphWorkflowState with updated context
+     * @return A new GraphWorkflowState with updated context
      */
-    public <T> ModernGraphWorkflowState<S> withContext(ContextKey<T> key, T value) {
-        return new ModernGraphWorkflowState<>(
+    public <T> GraphWorkflowState<S> withContext(ContextKey<T> key, T value) {
+        return new GraphWorkflowState<>(
             workflowId,
             data,
             context.with(key, value),
@@ -113,16 +125,16 @@ public record ModernGraphWorkflowState<S>(
             metadata.advance()
         );
     }
-    
+
     /**
      * Creates a new state with updated context.
      *
      * @param newContext The new workflow context
-     * @return A new ModernGraphWorkflowState with updated context
+     * @return A new GraphWorkflowState with updated context
      */
-    public ModernGraphWorkflowState<S> withContext(WorkflowContext newContext) {
+    public GraphWorkflowState<S> withContext(WorkflowContext newContext) {
         Objects.requireNonNull(newContext, "New context cannot be null");
-        return new ModernGraphWorkflowState<>(
+        return new GraphWorkflowState<>(
             workflowId,
             data,
             newContext,
@@ -131,16 +143,16 @@ public record ModernGraphWorkflowState<S>(
             metadata.advance()
         );
     }
-    
+
     /**
      * Creates a new state by moving to the specified node.
      *
      * @param nodeId The target node ID
-     * @return A new ModernGraphWorkflowState at the target node
+     * @return A new GraphWorkflowState at the target node
      */
-    public ModernGraphWorkflowState<S> moveToNode(NodeId nodeId) {
+    public GraphWorkflowState<S> moveToNode(NodeId nodeId) {
         Objects.requireNonNull(nodeId, "Node ID cannot be null");
-        return new ModernGraphWorkflowState<>(
+        return new GraphWorkflowState<>(
             workflowId,
             data,
             context,
@@ -149,18 +161,21 @@ public record ModernGraphWorkflowState<S>(
             metadata.advance()
         );
     }
-    
+
     /**
      * Creates a new state by traversing an edge to the target node.
      *
      * @param edgeId The edge being traversed
      * @param targetNode The target node ID
-     * @return A new ModernGraphWorkflowState after edge traversal
+     * @return A new GraphWorkflowState after edge traversal
      */
-    public ModernGraphWorkflowState<S> traverseEdge(EdgeId edgeId, NodeId targetNode) {
+    public GraphWorkflowState<S> traverseEdge(
+        EdgeId edgeId,
+        NodeId targetNode
+    ) {
         Objects.requireNonNull(edgeId, "Edge ID cannot be null");
         Objects.requireNonNull(targetNode, "Target node cannot be null");
-        return new ModernGraphWorkflowState<>(
+        return new GraphWorkflowState<>(
             workflowId,
             data,
             context,
@@ -169,20 +184,27 @@ public record ModernGraphWorkflowState<S>(
             metadata.advance()
         );
     }
-    
+
     /**
      * Creates a new state with data, context, and node updates all applied.
      *
      * @param newData The new state data
      * @param contextUpdates The context to merge with current context
      * @param nodeId The new current node ID
-     * @return A new ModernGraphWorkflowState with all updates applied
+     * @return A new GraphWorkflowState with all updates applied
      */
-    public ModernGraphWorkflowState<S> withDataContextAndNode(S newData, WorkflowContext contextUpdates, NodeId nodeId) {
+    public GraphWorkflowState<S> withDataContextAndNode(
+        S newData,
+        WorkflowContext contextUpdates,
+        NodeId nodeId
+    ) {
         Objects.requireNonNull(nodeId, "Node ID cannot be null");
-        Objects.requireNonNull(contextUpdates, "Context updates cannot be null");
-        
-        return new ModernGraphWorkflowState<>(
+        Objects.requireNonNull(
+            contextUpdates,
+            "Context updates cannot be null"
+        );
+
+        return new GraphWorkflowState<>(
             workflowId,
             newData,
             context.merge(contextUpdates),
@@ -191,7 +213,7 @@ public record ModernGraphWorkflowState<S>(
             metadata.advance()
         );
     }
-    
+
     /**
      * Gets a typed context value.
      *
@@ -202,7 +224,7 @@ public record ModernGraphWorkflowState<S>(
     public <T> Optional<T> getContext(ContextKey<T> key) {
         return context.get(key);
     }
-    
+
     /**
      * Gets a typed context value with a default.
      *
@@ -214,7 +236,7 @@ public record ModernGraphWorkflowState<S>(
     public <T> T getContextOrDefault(ContextKey<T> key, T defaultValue) {
         return context.getOrDefault(key, defaultValue);
     }
-    
+
     /**
      * Checks if a context key exists.
      *
@@ -224,7 +246,7 @@ public record ModernGraphWorkflowState<S>(
     public boolean hasContext(ContextKey<?> key) {
         return context.contains(key);
     }
-    
+
     /**
      * Checks if the workflow has visited the current node before (cycle detection).
      *
@@ -233,7 +255,7 @@ public record ModernGraphWorkflowState<S>(
     public boolean hasCycle() {
         return position.hasCycle();
     }
-    
+
     /**
      * Checks if a specific node has been visited.
      *
@@ -243,7 +265,7 @@ public record ModernGraphWorkflowState<S>(
     public boolean hasVisited(NodeId nodeId) {
         return position.hasVisited(nodeId);
     }
-    
+
     /**
      * Gets the complete path taken through the graph.
      *
@@ -252,7 +274,7 @@ public record ModernGraphWorkflowState<S>(
     public List<NodeId> getPath() {
         return position.getPath();
     }
-    
+
     /**
      * Gets the current depth in the graph traversal.
      *
@@ -261,7 +283,7 @@ public record ModernGraphWorkflowState<S>(
     public int getDepth() {
         return position.depth();
     }
-    
+
     /**
      * Gets the workflow version.
      *
@@ -270,7 +292,7 @@ public record ModernGraphWorkflowState<S>(
     public long getVersion() {
         return metadata.version();
     }
-    
+
     /**
      * Gets the last modified timestamp.
      *
@@ -279,7 +301,7 @@ public record ModernGraphWorkflowState<S>(
     public Instant getLastModified() {
         return metadata.lastModified();
     }
-    
+
     /**
      * Gets the creation timestamp.
      *
@@ -288,7 +310,7 @@ public record ModernGraphWorkflowState<S>(
     public Instant getCreatedAt() {
         return metadata.createdAt();
     }
-    
+
     /**
      * Gets the previous node ID if available.
      *
@@ -297,7 +319,7 @@ public record ModernGraphWorkflowState<S>(
     public Optional<NodeId> getPreviousNode() {
         return position.previousNodeId();
     }
-    
+
     /**
      * Gets the path as a string representation.
      *
@@ -306,16 +328,16 @@ public record ModernGraphWorkflowState<S>(
     public String getPathString() {
         return position.getPathString();
     }
-    
+
     /**
      * Creates a new state by resetting to a specific node (e.g., for error recovery).
      *
      * @param nodeId The node to reset to
-     * @return A new ModernGraphWorkflowState reset to the specified node
+     * @return A new GraphWorkflowState reset to the specified node
      */
-    public ModernGraphWorkflowState<S> resetToNode(NodeId nodeId) {
+    public GraphWorkflowState<S> resetToNode(NodeId nodeId) {
         Objects.requireNonNull(nodeId, "Node ID cannot be null");
-        return new ModernGraphWorkflowState<>(
+        return new GraphWorkflowState<>(
             workflowId,
             data,
             context,
@@ -324,7 +346,7 @@ public record ModernGraphWorkflowState<S>(
             metadata.advance()
         );
     }
-    
+
     /**
      * Gets the age of the workflow state.
      *
@@ -333,7 +355,7 @@ public record ModernGraphWorkflowState<S>(
     public java.time.Duration getAge() {
         return metadata.getAge();
     }
-    
+
     /**
      * Gets the time since last modification.
      *
@@ -342,11 +364,11 @@ public record ModernGraphWorkflowState<S>(
     public java.time.Duration getTimeSinceLastModified() {
         return metadata.getTimeSinceLastModified();
     }
-    
+
     @Override
     public String toString() {
         return String.format(
-            "ModernGraphWorkflowState{id=%s, currentNode=%s, depth=%d, version=%d, contextSize=%d}",
+            "GraphWorkflowState{id=%s, currentNode=%s, depth=%d, version=%d, contextSize=%d}",
             workflowId.value(),
             currentNode.map(NodeId::value).orElse("none"),
             getDepth(),
