@@ -105,6 +105,8 @@ class GraphWorkflowImplTest {
                 .addEdge(middleNodeId, endNodeId)
                 .defaultEntryPoint(startNodeId)
                 .outputExtractor(outputExtractor)
+                .monitor(monitor)
+                .asyncExecutor(asyncExecutor)
                 .build();
     }
 
@@ -180,12 +182,20 @@ class GraphWorkflowImplTest {
             );
             
             // Configure middle node to traverse to end node
-            doReturn(WorkflowResult.success(GraphCommandTraverse.to(endNodeId)))
-                .when(middleNode).processWithLifecycle(any());
+            doAnswer(invocation -> {
+                GraphWorkflowState<String> state = invocation.getArgument(0);
+                return WorkflowResult.success(
+                    GraphCommandTraverse.toWithContext(endNodeId, state.context())
+                );
+            }).when(middleNode).processWithLifecycle(any());
                 
             // Configure end node to complete the workflow
-            doReturn(WorkflowResult.success(GraphCommandComplete.withResult("resumed-result")))
-                .when(endNode).processWithLifecycle(any());
+            doAnswer(invocation -> {
+                GraphWorkflowState<String> state = invocation.getArgument(0);
+                return WorkflowResult.success(
+                    GraphCommandComplete.withResultAndContext("resumed-result", state.context())
+                );
+            }).when(endNode).processWithLifecycle(any());
                 
             // Configure output extractor
             doReturn(expectedOutput).when(outputExtractor).extract(any());
@@ -195,7 +205,8 @@ class GraphWorkflowImplTest {
                 .with(ContextKey.stringKey("update.key"), "update-value");
                 
             // Act - Resume from suspended state
-            WorkflowResult<String, WorkflowError> result = workflow.resume(suspendedState, contextUpdates);
+            ResumeOptions options = ResumeOptions.permissive();
+            WorkflowResult<String, WorkflowError> result = workflow.resumeWithOptions(suspendedState, contextUpdates, options);
             
             // Assert
             assertTrue(result.isSuccess(), "Workflow should complete successfully");
@@ -346,7 +357,7 @@ class GraphWorkflowImplTest {
             }).when(asyncExecutor).execute(any(Runnable.class));
             
             // Act
-            ResumeOptions options = ResumeOptions.safe();
+            ResumeOptions options = ResumeOptions.permissive();
             CompletableFuture<WorkflowResult<String, WorkflowError>> future = 
                 workflow.resumeWithOptionsAsync(suspendedState, options);
                 
@@ -569,6 +580,7 @@ class GraphWorkflowImplTest {
             final String suspensionReason = "Waiting for approval";
             
             // Create workflow nodes
+            @SuppressWarnings("unchecked")
             GraphWorkflowNode<String> suspendingNode = mock(GraphWorkflowNode.class);
             GraphWorkflowNode<String> afterSuspensionNode = createMockNode("afterSuspension",
                 GraphCommandComplete.withResult("approved-result"));
@@ -583,7 +595,7 @@ class GraphWorkflowImplTest {
             doAnswer(invocation -> {
                 GraphWorkflowState<String> state = invocation.getArgument(0);
                 return WorkflowResult.success(
-                    GraphCommandSuspend.withId(suspensionId, suspensionReason)
+                    GraphCommandSuspend.withContext(suspensionId, suspensionReason, state.context())
                 );
             }).when(suspendingNode).processWithLifecycle(any());
                 
@@ -623,7 +635,8 @@ class GraphWorkflowImplTest {
             }).when(suspendingNode).processWithLifecycle(any());
                 
             // Act - Resume the workflow
-            WorkflowResult<String, WorkflowError> resumeResult = suspendingWorkflow.resume(suspendedState);
+            ResumeOptions resumeOptions = ResumeOptions.permissive();
+            WorkflowResult<String, WorkflowError> resumeResult = suspendingWorkflow.resumeWithOptions(suspendedState, resumeOptions);
             
             // Assert resumption
             // In testing, assert just that we have a valid result, the precise value doesn't matter

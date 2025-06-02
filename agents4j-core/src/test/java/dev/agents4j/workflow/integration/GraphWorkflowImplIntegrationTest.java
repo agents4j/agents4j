@@ -7,12 +7,14 @@ import dev.agents4j.api.context.ContextKey;
 import dev.agents4j.api.context.ExecutionContext;
 import dev.agents4j.api.graph.GraphCommand;
 import dev.agents4j.api.graph.GraphCommandComplete;
+import dev.agents4j.api.graph.GraphCommandSuspend;
 import dev.agents4j.api.graph.GraphCommandTraverse;
 import dev.agents4j.api.graph.GraphWorkflowNode;
 import dev.agents4j.api.graph.GraphWorkflowState;
 import dev.agents4j.api.graph.NodeId;
 import dev.agents4j.api.result.WorkflowResult;
 import dev.agents4j.api.result.error.WorkflowError;
+import dev.agents4j.api.suspension.ResumeOptions;
 import dev.agents4j.workflow.GraphWorkflowImpl;
 import dev.agents4j.workflow.builder.GraphWorkflowBuilder;
 import dev.agents4j.workflow.output.OutputExtractor;
@@ -284,7 +286,7 @@ class GraphWorkflowImplIntegrationTest {
         @DisplayName("Should resume workflow from intermediate state")
         void shouldResumeWorkflowFromIntermediateState() {
             // Create a state positioned at node B
-            var workflow = GraphWorkflowImpl.<String, String>builder()
+            var workflow = GraphWorkflowBuilder.<String, String>create(String.class)
                 .name("resume-test")
                 .addNode(nodeSuspending)
                 .addNode(nodeB)
@@ -301,7 +303,8 @@ class GraphWorkflowImplIntegrationTest {
 
             @SuppressWarnings("unchecked")
             var suspendedState = (GraphWorkflowState<String>) suspension.suspensionState();
-            var result = workflow.resume(suspendedState);
+            ResumeOptions options = ResumeOptions.permissive();
+            var result = workflow.resumeWithOptions(suspendedState, options);
 
             assertTrue(result.isSuccess());
             assertEquals(
@@ -515,6 +518,7 @@ class GraphWorkflowImplIntegrationTest {
         private final ContextKey<String> contextKey;
         private final ContextKey<Instant> timeKey;
         private final NodeId nextNode;
+        private boolean hasSuspended = false;
 
         public SuspendingNode(
             NodeId nodeId,
@@ -550,11 +554,54 @@ class GraphWorkflowImplIntegrationTest {
         public WorkflowResult<GraphCommand<String>, WorkflowError> process(
             GraphWorkflowState<String> state
         ) {
-            return WorkflowResult.suspended(
-                "suspended-id",
-                state,
-                "for testing suspension"
-            );
+            try {
+                // Write to context
+                var updatedContext = state
+                    .context()
+                    .with(contextKey, message)
+                    .with(timeKey, Instant.now());
+
+                // First time: suspend, second time: traverse to next node
+                if (!hasSuspended) {
+                    hasSuspended = true;
+                    // Create a suspend command
+                    return WorkflowResult.success(
+                        GraphCommandSuspend.<String>withContext(
+                            "suspended-id",
+                            "for testing suspension",
+                            updatedContext
+                        ),
+                        updatedContext
+                    );
+                } else {
+                    // After resumption, traverse to next node
+                    if (nextNode != null) {
+                        return WorkflowResult.success(
+                            GraphCommandTraverse.<String>toWithContext(
+                                nextNode,
+                                updatedContext
+                            ),
+                            updatedContext
+                        );
+                    } else {
+                        return WorkflowResult.success(
+                            GraphCommandComplete.<String>withResultAndContext(
+                                message,
+                                updatedContext
+                            ),
+                            updatedContext
+                        );
+                    }
+                }
+            } catch (Exception e) {
+                return WorkflowResult.failure(
+                    dev.agents4j.api.result.error.ExecutionError.of(
+                        "TEST_ERROR",
+                        e.getMessage(),
+                        nodeId.value()
+                    )
+                );
+            }
         }
     }
 

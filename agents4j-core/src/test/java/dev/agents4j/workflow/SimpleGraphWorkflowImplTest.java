@@ -174,7 +174,7 @@ class SimpleGraphWorkflowImplTest {
         middleNode.setAction(NodeAction.TRAVERSE_TO_NEXT);
 
         // Act - Resume workflow with enhanced options
-        ResumeOptions options = ResumeOptions.safe();
+        ResumeOptions options = ResumeOptions.permissive();
         WorkflowResult<String, WorkflowError> resumeResult =
             workflow.resumeWithOptions(suspendedState, options);
 
@@ -320,18 +320,19 @@ class SimpleGraphWorkflowImplTest {
                         nextNodeId = NodeId.of("next");
                     }
                     return WorkflowResult.success(
-                        GraphCommandTraverse.to(nextNodeId)
+                        GraphCommandTraverse.toWithContext(nextNodeId, updatedContext)
                     );
                 case COMPLETE:
                     return WorkflowResult.success(
-                        GraphCommandComplete.withResult("completed")
+                        GraphCommandComplete.withResultAndContext("completed", updatedContext)
                     );
                 case SUSPEND:
                     // Create a suspend command with the suspension ID and reason
                     GraphCommandSuspend<String> suspendCommand =
-                        GraphCommandSuspend.withId(
+                        GraphCommandSuspend.withContext(
                             suspensionId,
-                            suspensionReason
+                            suspensionReason,
+                            updatedContext
                         );
                     return WorkflowResult.success(suspendCommand);
                 default:
