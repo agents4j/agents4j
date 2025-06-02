@@ -1,4 +1,4 @@
-package dev.agents4j.langchain4j.workflow.history;
+package dev.agents4j.workflow.history;
 
 import dev.agents4j.api.context.WorkflowContext;
 import dev.agents4j.api.graph.GraphWorkflowState;

@@ -2,8 +2,8 @@ package agents4j.integration.examples;
 
 import dev.agents4j.api.context.WorkflowContext;
 import dev.agents4j.api.result.WorkflowResult;
-import dev.agents4j.langchain4j.workflow.history.NodeInteraction;
-import dev.agents4j.langchain4j.workflow.history.ProcessingHistory;
+import dev.agents4j.workflow.history.NodeInteraction;
+import dev.agents4j.workflow.history.ProcessingHistory;
 import dev.agents4j.integration.examples.SnarkyResponseResource;
 import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.Test;

@@ -2,11 +2,10 @@ package dev.agents4j.integration.examples;
 
 import dev.agents4j.api.GraphWorkflow;
 import dev.agents4j.api.graph.GraphWorkflowNode;
-import dev.agents4j.api.graph.NodeId;
 import dev.agents4j.langchain4j.workflow.GraphAgentFactory;
-import dev.agents4j.langchain4j.workflow.history.NodeInteraction;
-import dev.agents4j.langchain4j.workflow.history.ProcessingHistory;
-import dev.agents4j.langchain4j.workflow.history.ProcessingHistoryUtils;
+import dev.agents4j.workflow.GraphWorkflowFactory;
+import dev.agents4j.workflow.history.ProcessingHistory;
+import dev.agents4j.workflow.history.ProcessingHistoryUtils;
 import dev.langchain4j.model.chat.ChatModel;
 import io.smallrye.common.annotation.Blocking;
 import jakarta.inject.Inject;
@@ -27,7 +26,7 @@ import java.util.stream.Collectors;
 import org.jboss.logging.Logger;
 
 /**
- * A REST resource that demonstrates using GraphAgentFactory.createSequence
+ * A REST resource that demonstrates using GraphWorkflowFactory.createSequence
  * to create a workflow that responds to questions with snarky answers.
  */
 @Path("/api/snarky")
@@ -106,7 +105,7 @@ public class SnarkyResponseResource {
 
             // Create a sequence workflow with the two nodes
             LOG.debug("Creating sequence workflow...");
-            this.snarkyWorkflow = GraphAgentFactory.createSequence(
+            this.snarkyWorkflow = GraphWorkflowFactory.createSequence(
                 "snarky-workflow",
                 snarkyNode,
                 disclaimerNode
