@@ -1,7 +1,8 @@
 package dev.agents4j.api.result;
 
-import dev.agents4j.api.context.WorkflowContext;
+import dev.agents4j.api.context.*;
 import dev.agents4j.api.result.error.WorkflowError;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Consumer;
@@ -27,11 +28,17 @@ public sealed interface WorkflowResult<T, E extends WorkflowError>
      * @param <T> The type of the success value
      * @param <E> The type of the error
      */
-    record Success<T, E extends WorkflowError>(T value, WorkflowContext finalContext)
+    record Success<T, E extends WorkflowError>(
+        T value,
+        WorkflowContext finalContext
+    )
         implements WorkflowResult<T, E> {
         public Success {
             Objects.requireNonNull(value, "Success value cannot be null");
-            Objects.requireNonNull(finalContext, "Final context cannot be null");
+            Objects.requireNonNull(
+                finalContext,
+                "Final context cannot be null"
+            );
         }
     }
 
@@ -41,7 +48,11 @@ public sealed interface WorkflowResult<T, E extends WorkflowError>
      * @param <T> The type of the success value
      * @param <E> The type of the error
      */
-    record Failure<T, E extends WorkflowError>(E error, T value, WorkflowContext finalContext)
+    record Failure<T, E extends WorkflowError>(
+        E error,
+        T value,
+        WorkflowContext finalContext
+    )
         implements WorkflowResult<T, E> {
         public Failure {
             Objects.requireNonNull(error, "Error cannot be null");
@@ -54,7 +65,18 @@ public sealed interface WorkflowResult<T, E extends WorkflowError>
      *
      * @param <T> The type of the success value
      * @param <E> The type of the error
+     * @deprecated Use {@link dev.agents4j.api.enhanced.WorkflowSuspension} for type-safe suspension handling.
+     * This record will be removed in version 2.0.0. The {@code suspensionState} field returns an untyped Object,
+     * which requires unsafe casting and can cause ClassCastException at runtime.
+     *
+     * Migration path:
+     * 1. Use {@link dev.agents4j.api.enhanced.EnhancedGraphWorkflow#extractTypedSuspension(WorkflowResult)}
+     * 2. Or upgrade to {@link dev.agents4j.api.enhanced.EnhancedGraphWorkflow} interface
+     *
+     * @see dev.agents4j.api.enhanced.WorkflowSuspension
+     * @see dev.agents4j.api.enhanced.EnhancedGraphWorkflow
      */
+    @Deprecated(since = "0.3.0", forRemoval = true)
     record Suspended<T, E extends WorkflowError>(
         String suspensionId,
         Object suspensionState,
@@ -91,7 +113,10 @@ public sealed interface WorkflowResult<T, E extends WorkflowError>
      * @param <E> The type of the error
      * @return A Success result
      */
-    static <T, E extends WorkflowError> WorkflowResult<T, E> success(T value, WorkflowContext finalContext) {
+    static <T, E extends WorkflowError> WorkflowResult<T, E> success(
+        T value,
+        WorkflowContext finalContext
+    ) {
         return new Success<>(value, finalContext);
     }
 
@@ -126,12 +151,27 @@ public sealed interface WorkflowResult<T, E extends WorkflowError>
      * Creates a suspended result.
      *
      * @param suspensionId The suspension identifier
-     * @param suspensionState The state to preserve for resumption
-     * @param reason The reason for suspension
+     * @param suspensionState The suspended state
+     * @param reason The suspension reason
      * @param <T> The type of the success value
      * @param <E> The type of the error
      * @return A Suspended result
+     * @deprecated Use {@link dev.agents4j.api.enhanced.EnhancedGraphWorkflow#createSuspension(Object, String)}
+     * to create type-safe suspensions. This method creates an untyped suspension that requires unsafe casting.
+     * Will be removed in version 2.0.0.
+     *
+     * Migration example:
+     * <pre>{@code
+     * // Old way (unsafe):
+     * WorkflowResult<T, E> result = WorkflowResult.suspended("id", state, "reason");
+     *
+     * // New way (type-safe):
+     * EnhancedGraphWorkflow<T, O> workflow = ...;
+     * WorkflowSuspension<GraphWorkflowState<T>> suspension =
+     *     workflow.createSuspension(state, "reason");
+     * }</pre>
      */
+    @Deprecated(since = "0.3.0", forRemoval = true)
     static <T, E extends WorkflowError> WorkflowResult<T, E> suspended(
         String suspensionId,
         Object suspensionState,
@@ -233,10 +273,17 @@ public sealed interface WorkflowResult<T, E extends WorkflowError>
         Objects.requireNonNull(mapper, "Mapper function cannot be null");
         if (this instanceof Success) {
             Success<T, E> success = (Success<T, E>) this;
-            return WorkflowResult.success(mapper.apply(success.value()), success.finalContext());
+            return WorkflowResult.success(
+                mapper.apply(success.value()),
+                success.finalContext()
+            );
         } else if (this instanceof Failure) {
             Failure<T, E> failure = (Failure<T, E>) this;
-            return WorkflowResult.failure(failure.error(), null, failure.finalContext());
+            return WorkflowResult.failure(
+                failure.error(),
+                null,
+                failure.finalContext()
+            );
         } else if (this instanceof Suspended) {
             Suspended<T, E> suspended = (Suspended<T, E>) this;
             return WorkflowResult.suspended(
@@ -265,7 +312,11 @@ public sealed interface WorkflowResult<T, E extends WorkflowError>
             return mapper.apply(success.value());
         } else if (this instanceof Failure) {
             Failure<T, E> failure = (Failure<T, E>) this;
-            return WorkflowResult.failure(failure.error(), null, failure.finalContext());
+            return WorkflowResult.failure(
+                failure.error(),
+                null,
+                failure.finalContext()
+            );
         } else if (this instanceof Suspended) {
             Suspended<T, E> suspended = (Suspended<T, E>) this;
             return WorkflowResult.suspended(
@@ -291,10 +342,17 @@ public sealed interface WorkflowResult<T, E extends WorkflowError>
         Objects.requireNonNull(mapper, "Error mapper function cannot be null");
         if (this instanceof Success) {
             Success<T, E> success = (Success<T, E>) this;
-            return WorkflowResult.success(success.value(), success.finalContext());
+            return WorkflowResult.success(
+                success.value(),
+                success.finalContext()
+            );
         } else if (this instanceof Failure) {
             Failure<T, E> failure = (Failure<T, E>) this;
-            return WorkflowResult.failure(mapper.apply(failure.error()), failure.value(), failure.finalContext());
+            return WorkflowResult.failure(
+                mapper.apply(failure.error()),
+                failure.value(),
+                failure.finalContext()
+            );
         } else if (this instanceof Suspended) {
             Suspended<T, E> suspended = (Suspended<T, E>) this;
             return WorkflowResult.suspended(
@@ -317,8 +375,13 @@ public sealed interface WorkflowResult<T, E extends WorkflowError>
         Objects.requireNonNull(recovery, "Recovery function cannot be null");
         if (this instanceof Failure) {
             Failure<T, E> failure = (Failure<T, E>) this;
-            WorkflowContext context = failure.finalContext() != null ? failure.finalContext() : WorkflowContext.empty();
-            return WorkflowResult.success(recovery.apply(failure.error()), context);
+            WorkflowContext context = failure.finalContext() != null
+                ? failure.finalContext()
+                : WorkflowContext.empty();
+            return WorkflowResult.success(
+                recovery.apply(failure.error()),
+                context
+            );
         } else {
             return this;
         }
@@ -359,7 +422,11 @@ public sealed interface WorkflowResult<T, E extends WorkflowError>
             Success<T, E> success = (Success<T, E>) this;
             return predicate.test(success.value())
                 ? this
-                : WorkflowResult.failure(errorSupplier.get(), null, success.finalContext());
+                : WorkflowResult.failure(
+                    errorSupplier.get(),
+                    null,
+                    success.finalContext()
+                );
         } else {
             return this;
         }

@@ -12,8 +12,10 @@ import dev.agents4j.api.graph.*;
 import dev.agents4j.api.result.WorkflowResult;
 import dev.agents4j.api.result.error.ExecutionError;
 import dev.agents4j.api.result.error.WorkflowError;
+import dev.agents4j.api.suspension.ResumeOptions;
 import dev.agents4j.api.validation.ValidationResult;
 
+import dev.agents4j.workflow.builder.GraphWorkflowBuilder;
 import dev.agents4j.workflow.config.WorkflowConfiguration;
 import dev.agents4j.workflow.monitor.WorkflowMonitor;
 import dev.agents4j.workflow.output.OutputExtractor;
@@ -67,7 +69,7 @@ class GraphWorkflowImplTest {
     private NodeId endNodeId;
     private String testInput;
     private WorkflowContext initialContext;
-    private GraphWorkflowImpl<String, String> workflow;
+    private GraphWorkflow<String, String> workflow;
 
     @BeforeEach
     void setUp() {
@@ -93,18 +95,16 @@ class GraphWorkflowImplTest {
         initialContext = WorkflowContext.empty().with(TEST_KEY, "test-value");
         
         // Create a basic workflow with three nodes
-        workflow = (GraphWorkflowImpl<String, String>) GraphWorkflowImpl.<String, String>builder()
-            .name("Test Workflow")
-            .addNode(startNode)
-            .addNode(middleNode)
-            .addNode(endNode)
-            .addEdge(startNodeId, middleNodeId)
-            .addEdge(middleNodeId, endNodeId)
-            .defaultEntryPoint(startNodeId)
-            .outputExtractor(outputExtractor)
-            .monitor(monitor)
-            .asyncExecutor(asyncExecutor)
-            .build();
+        workflow = GraphWorkflowBuilder.<String, String>create(String.class)
+                .name("Test Workflow")
+                .addNode(startNode)
+                .addNode(middleNode)
+                .addNode(endNode)
+                .addEdge(startNodeId, middleNodeId)
+                .addEdge(middleNodeId, endNodeId)
+                .defaultEntryPoint(startNodeId)
+                .outputExtractor(outputExtractor)
+                .build();
     }
 
     @Nested
@@ -346,8 +346,9 @@ class GraphWorkflowImplTest {
             }).when(asyncExecutor).execute(any(Runnable.class));
             
             // Act
+            ResumeOptions options = ResumeOptions.safe();
             CompletableFuture<WorkflowResult<String, WorkflowError>> future = 
-                workflow.resumeAsync(suspendedState);
+                workflow.resumeWithOptionsAsync(suspendedState, options);
                 
             // Assert
             WorkflowResult<String, WorkflowError> result = future.get(1, TimeUnit.SECONDS);
@@ -426,7 +427,7 @@ class GraphWorkflowImplTest {
             .build();
             
         // Act
-        GraphWorkflow<String, String> customWorkflow = GraphWorkflowImpl.<String, String>builder()
+        GraphWorkflow<String, String> customWorkflow = GraphWorkflowBuilder.<String, String>create(String.class)
             .name("Custom Workflow")
             .addNode(startNode)
             .addEdge(startNodeId, endNodeId)
@@ -449,7 +450,7 @@ class GraphWorkflowImplTest {
         when(middleNode.isEntryPoint()).thenReturn(true);
         
         // Act
-        GraphWorkflow<String, String> multiEntryWorkflow = GraphWorkflowImpl.<String, String>builder()
+        GraphWorkflow<String, String> multiEntryWorkflow = GraphWorkflowBuilder.<String, String>create(String.class)
             .name("Multi-Entry Workflow")
             .addNode(startNode)
             .addNode(middleNode)
@@ -529,7 +530,7 @@ class GraphWorkflowImplTest {
             doReturn("conditional-output").when(outputExtractor).extract(any());
                 
             // Create conditional workflow
-            GraphWorkflow<String, String> conditionalWorkflow = GraphWorkflowImpl.<String, String>builder()
+            GraphWorkflow<String, String> conditionalWorkflow = GraphWorkflowBuilder.<String, String>create(String.class)
                 .name("Conditional Workflow")
                 .addNode(decisionNode)
                 .addNode(branchANode)
@@ -589,7 +590,7 @@ class GraphWorkflowImplTest {
             doReturn("suspension-output").when(outputExtractor).extract(any());
                 
             // Create workflow with suspension
-            GraphWorkflow<String, String> suspendingWorkflow = GraphWorkflowImpl.<String, String>builder()
+            GraphWorkflow<String, String> suspendingWorkflow = GraphWorkflowBuilder.<String, String>create(String.class)
                 .name("Suspending Workflow")
                 .addNode(suspendingNode)
                 .addNode(afterSuspensionNode)

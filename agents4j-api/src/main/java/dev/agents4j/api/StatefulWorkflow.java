@@ -75,7 +75,19 @@ public interface StatefulWorkflow<S, O> {
      *
      * @param execution The suspended workflow execution
      * @return A WorkflowResult containing the execution outcome
+     * @deprecated StatefulWorkflow resume methods lack explicit context merge strategies and validation.
+     * Consider migrating to {@link dev.agents4j.api.enhanced.EnhancedGraphWorkflow} for safer resumption
+     * with configurable validation and context merge behavior. Will be reviewed for removal in version 2.0.0.
+     *
+     * Migration example:
+     * <pre>{@code
+     * // Enhanced alternative with explicit behavior:
+     * EnhancedGraphWorkflow<S, O> enhanced = ...;
+     * ResumeOptions options = ResumeOptions.safe();
+     * WorkflowResult<O, WorkflowError> result = enhanced.resumeWithOptions(state, options);
+     * }</pre>
      */
+    @Deprecated(since = "0.3.0")
     WorkflowResult<WorkflowExecution<S, O>, WorkflowError> resume(
         WorkflowExecution<S, O> execution
     );
@@ -86,7 +98,27 @@ public interface StatefulWorkflow<S, O> {
      * @param execution The suspended workflow execution
      * @param contextUpdates Additional context updates to apply
      * @return A WorkflowResult containing the execution outcome
+     * @deprecated StatefulWorkflow resume with context updates has undefined behavior for context conflicts.
+     * Use {@link dev.agents4j.api.enhanced.EnhancedGraphWorkflow#resumeWithOptions(Object, dev.agents4j.api.context.WorkflowContext, dev.agents4j.api.suspension.ResumeOptions)}
+     * with explicit {@link dev.agents4j.api.context.ContextMergeStrategy} for predictable behavior.
+     * Will be reviewed for removal in version 2.0.0.
+     *
+     * Migration example:
+     * <pre>{@code
+     * // Old way (undefined behavior):
+     * workflow.resume(execution, contextUpdates);
+     *
+     * // New way (explicit behavior):
+     * EnhancedGraphWorkflow<S, O> enhanced = ...;
+     * ResumeOptions options = ResumeOptions.builder()
+     *     .contextMergeStrategy(ContextMergeStrategy.MERGE_SAFE)
+     *     .validateState(true)
+     *     .build();
+     * WorkflowResult<O, WorkflowError> result =
+     *     enhanced.resumeWithOptions(state, contextUpdates, options);
+     * }</pre>
      */
+    @Deprecated(since = "0.3.0")
     WorkflowResult<WorkflowExecution<S, O>, WorkflowError> resume(
         WorkflowExecution<S, O> execution,
         WorkflowContext contextUpdates
@@ -112,7 +144,11 @@ public interface StatefulWorkflow<S, O> {
      *
      * @param execution The suspended workflow execution
      * @return A CompletableFuture containing the execution result
+     * @deprecated Asynchronous resume without validation or explicit context merge strategy.
+     * Use {@link dev.agents4j.api.enhanced.EnhancedGraphWorkflow#resumeWithOptionsAsync(Object, dev.agents4j.api.suspension.ResumeOptions)}
+     * for safer asynchronous resumption. Will be reviewed for removal in version 2.0.0.
      */
+    @Deprecated(since = "0.3.0")
     default CompletableFuture<
         WorkflowResult<WorkflowExecution<S, O>, WorkflowError>
     > resumeAsync(WorkflowExecution<S, O> execution) {
