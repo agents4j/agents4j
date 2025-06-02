@@ -92,15 +92,20 @@ public class GraphWorkflowFactory {
      * @return A configured workflow
      * @deprecated Use {@link #createSequence(String, GraphWorkflowNode, GraphWorkflowNode, Class)} for type safety
      */
+    @Deprecated
+    @SuppressWarnings("unchecked")
     public static <T> GraphWorkflow<T, String> createSequence(
         String name,
         GraphWorkflowNode<T> firstNode,
         GraphWorkflowNode<T> secondNode
     ) {
-        return GraphWorkflowBuilder.<T, String>builder()
+        // Use Object.class as fallback for backward compatibility
+        // Due to type erasure, we can't determine T at runtime anyway
+        return (GraphWorkflow<T, String>) GraphWorkflowBuilder.<Object, String>create(Object.class)
             .name(name)
-            .addNode(firstNode)
-            .addNode(secondNode)
+            .version("1.0.0")
+            .addNode((GraphWorkflowNode<Object>) firstNode)
+            .addNode((GraphWorkflowNode<Object>) secondNode)
             .addEdge(firstNode.getNodeId(), secondNode.getNodeId())
             .defaultEntryPoint(firstNode.getNodeId())
             .outputExtractor(createResponseExtractor())
