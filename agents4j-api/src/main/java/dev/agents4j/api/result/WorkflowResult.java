@@ -2,7 +2,7 @@ package dev.agents4j.api.result;
 
 import dev.agents4j.api.context.*;
 import dev.agents4j.api.result.error.WorkflowError;
-import java.util.Map;
+import dev.agents4j.api.suspension.WorkflowSuspension;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Consumer;
@@ -62,33 +62,38 @@ public sealed interface WorkflowResult<T, E extends WorkflowError>
 
     /**
      * Represents a suspended workflow operation that can be resumed later.
+     * Now uses WorkflowSuspension internally for type safety and rich metadata.
      *
      * @param <T> The type of the success value
      * @param <E> The type of the error
-     * @deprecated Use {@link dev.agents4j.api.enhanced.WorkflowSuspension} for type-safe suspension handling.
-     * This record will be removed in version 2.0.0. The {@code suspensionState} field returns an untyped Object,
-     * which requires unsafe casting and can cause ClassCastException at runtime.
-     *
-     * Migration path:
-     * 1. Use {@link dev.agents4j.api.enhanced.EnhancedGraphWorkflow#extractTypedSuspension(WorkflowResult)}
-     * 2. Or upgrade to {@link dev.agents4j.api.enhanced.EnhancedGraphWorkflow} interface
-     *
-     * @see dev.agents4j.api.enhanced.WorkflowSuspension
-     * @see dev.agents4j.api.enhanced.EnhancedGraphWorkflow
      */
-    @Deprecated(since = "0.3.0", forRemoval = true)
     record Suspended<T, E extends WorkflowError>(
-        String suspensionId,
-        Object suspensionState,
-        String reason
+        WorkflowSuspension<?> suspension
     )
         implements WorkflowResult<T, E> {
         public Suspended {
-            Objects.requireNonNull(
-                suspensionId,
-                "Suspension ID cannot be null"
-            );
-            Objects.requireNonNull(reason, "Suspension reason cannot be null");
+            Objects.requireNonNull(suspension, "Suspension cannot be null");
+        }
+
+        /**
+         * Gets the suspension ID for backward compatibility.
+         */
+        public String suspensionId() {
+            return suspension.getSuspensionId();
+        }
+
+        /**
+         * Gets the suspension state for backward compatibility.
+         */
+        public Object suspensionState() {
+            return suspension.getSuspendedState();
+        }
+
+        /**
+         * Gets the suspension reason for backward compatibility.
+         */
+        public String reason() {
+            return suspension.getReason();
         }
     }
 
@@ -148,7 +153,7 @@ public sealed interface WorkflowResult<T, E extends WorkflowError>
     }
 
     /**
-     * Creates a suspended result.
+     * Creates a suspended result (legacy method for backward compatibility).
      *
      * @param suspensionId The suspension identifier
      * @param suspensionState The suspended state
@@ -156,28 +161,37 @@ public sealed interface WorkflowResult<T, E extends WorkflowError>
      * @param <T> The type of the success value
      * @param <E> The type of the error
      * @return A Suspended result
-     * @deprecated Use {@link dev.agents4j.api.enhanced.EnhancedGraphWorkflow#createSuspension(Object, String)}
-     * to create type-safe suspensions. This method creates an untyped suspension that requires unsafe casting.
-     * Will be removed in version 2.0.0.
-     *
-     * Migration example:
-     * <pre>{@code
-     * // Old way (unsafe):
-     * WorkflowResult<T, E> result = WorkflowResult.suspended("id", state, "reason");
-     *
-     * // New way (type-safe):
-     * EnhancedGraphWorkflow<T, O> workflow = ...;
-     * WorkflowSuspension<GraphWorkflowState<T>> suspension =
-     *     workflow.createSuspension(state, "reason");
-     * }</pre>
+     * @deprecated Use {@link #suspended(WorkflowSuspension)} for better type safety
      */
-    @Deprecated(since = "0.3.0", forRemoval = true)
+    @Deprecated(since = "0.2.3", forRemoval = false)
     static <T, E extends WorkflowError> WorkflowResult<T, E> suspended(
         String suspensionId,
         Object suspensionState,
         String reason
     ) {
-        return new Suspended<>(suspensionId, suspensionState, reason);
+        // Handle null suspension state for backward compatibility
+        Object stateToUse = suspensionState != null ? suspensionState : "null";
+        WorkflowSuspension<Object> suspension = WorkflowSuspension.of(
+            suspensionId,
+            stateToUse,
+            reason,
+            "unknown" // Default version for legacy calls
+        );
+        return new Suspended<>(suspension);
+    }
+
+    /**
+     * Creates a type-safe suspended result.
+     *
+     * @param suspension The workflow suspension
+     * @param <T> The type of the success value
+     * @param <E> The type of the error
+     * @return A type-safe Suspended result
+     */
+    static <T, E extends WorkflowError> WorkflowResult<T, E> suspended(
+        WorkflowSuspension<?> suspension
+    ) {
+        return new Suspended<>(suspension);
     }
 
     /**
@@ -263,6 +277,43 @@ public sealed interface WorkflowResult<T, E extends WorkflowError>
     }
 
     /**
+     * Gets the type-safe WorkflowSuspension if suspended.
+     *
+     * @return Optional containing the WorkflowSuspension
+     */
+    default Optional<WorkflowSuspension<?>> getWorkflowSuspension() {
+        if (this instanceof Suspended) {
+            return Optional.of(((Suspended<T, E>) this).suspension);
+        } else {
+            return Optional.empty();
+        }
+    }
+
+    /**
+     * Gets the type-safe WorkflowSuspension with specific state type if suspended.
+     *
+     * @param stateType The expected type of the suspension state
+     * @param <S> The type of the suspension state
+     * @return Optional containing the typed WorkflowSuspension
+     */
+    default <S> Optional<WorkflowSuspension<S>> getWorkflowSuspension(
+        Class<S> stateType
+    ) {
+        if (this instanceof Suspended) {
+            WorkflowSuspension<?> suspension =
+                ((Suspended<T, E>) this).suspension;
+            if (stateType.isInstance(suspension.getSuspendedState())) {
+                @SuppressWarnings("unchecked")
+                WorkflowSuspension<S> typedSuspension = (WorkflowSuspension<
+                        S
+                    >) suspension;
+                return Optional.of(typedSuspension);
+            }
+        }
+        return Optional.empty();
+    }
+
+    /**
      * Maps the success value to a new type.
      *
      * @param mapper The mapping function
@@ -286,11 +337,7 @@ public sealed interface WorkflowResult<T, E extends WorkflowError>
             );
         } else if (this instanceof Suspended) {
             Suspended<T, E> suspended = (Suspended<T, E>) this;
-            return WorkflowResult.suspended(
-                suspended.suspensionId(),
-                suspended.suspensionState(),
-                suspended.reason()
-            );
+            return WorkflowResult.suspended(suspended.suspension);
         } else {
             throw new IllegalStateException("Unknown WorkflowResult type");
         }
@@ -319,11 +366,7 @@ public sealed interface WorkflowResult<T, E extends WorkflowError>
             );
         } else if (this instanceof Suspended) {
             Suspended<T, E> suspended = (Suspended<T, E>) this;
-            return WorkflowResult.suspended(
-                suspended.suspensionId(),
-                suspended.suspensionState(),
-                suspended.reason()
-            );
+            return WorkflowResult.suspended(suspended.suspension);
         } else {
             throw new IllegalStateException("Unknown WorkflowResult type");
         }
@@ -355,11 +398,7 @@ public sealed interface WorkflowResult<T, E extends WorkflowError>
             );
         } else if (this instanceof Suspended) {
             Suspended<T, E> suspended = (Suspended<T, E>) this;
-            return WorkflowResult.suspended(
-                suspended.suspensionId(),
-                suspended.suspensionState(),
-                suspended.reason()
-            );
+            return WorkflowResult.suspended(suspended.suspension);
         } else {
             throw new IllegalStateException("Unknown WorkflowResult type");
         }

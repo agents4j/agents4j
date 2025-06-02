@@ -57,7 +57,7 @@ public class GraphWorkflowImpl<I, O> implements GraphWorkflow<I, O> {
     private final NodeId defaultEntryPointId;
     private final WorkflowMonitor monitor;
     private final Executor asyncExecutor;
-    private final WorkflowStateSerializer<
+    private WorkflowStateSerializer<
         GraphWorkflowState<I>
     > stateSerializer;
 
@@ -167,6 +167,11 @@ public class GraphWorkflowImpl<I, O> implements GraphWorkflow<I, O> {
             configuration,
             monitor,
             asyncExecutor
+        );
+        
+        this.stateSerializer = Objects.requireNonNull(
+            customSerializer,
+            "Custom serializer cannot be null"
         );
     }
 

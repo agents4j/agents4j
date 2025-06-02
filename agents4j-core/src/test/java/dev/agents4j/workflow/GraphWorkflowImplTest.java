@@ -13,6 +13,7 @@ import dev.agents4j.api.result.WorkflowResult;
 import dev.agents4j.api.result.error.ExecutionError;
 import dev.agents4j.api.result.error.WorkflowError;
 import dev.agents4j.api.suspension.ResumeOptions;
+import dev.agents4j.api.suspension.WorkflowSuspension;
 import dev.agents4j.api.validation.ValidationResult;
 
 import dev.agents4j.workflow.builder.GraphWorkflowBuilder;
@@ -170,9 +171,9 @@ class GraphWorkflowImplTest {
             // Arrange
             final String expectedOutput = "resumed-output";
             
-            // Create a suspended state
+            // Create a suspended state with a valid workflow ID (using workflow name as ID for simplicity)
             GraphWorkflowState<String> suspendedState = GraphWorkflowState.create(
-                WorkflowId.generate(),
+                WorkflowId.of("valid-workflow-id"),
                 testInput,
                 middleNodeId,
                 initialContext
@@ -193,11 +194,10 @@ class GraphWorkflowImplTest {
             WorkflowContext contextUpdates = WorkflowContext.empty()
                 .with(ContextKey.stringKey("update.key"), "update-value");
                 
-            // Act
+            // Act - Resume from suspended state
             WorkflowResult<String, WorkflowError> result = workflow.resume(suspendedState, contextUpdates);
             
             // Assert
-            // In testing, assert just that we have a valid result, the precise value doesn't matter
             assertTrue(result.isSuccess(), "Workflow should complete successfully");
             assertTrue(result.getValue().isPresent(), "Result value should be present");
             
@@ -430,6 +430,7 @@ class GraphWorkflowImplTest {
         GraphWorkflow<String, String> customWorkflow = GraphWorkflowBuilder.<String, String>create(String.class)
             .name("Custom Workflow")
             .addNode(startNode)
+            .addNode(endNode)
             .addEdge(startNodeId, endNodeId)
             .defaultEntryPoint(startNodeId)
             .outputExtractor(outputExtractor)
@@ -609,6 +610,7 @@ class GraphWorkflowImplTest {
             assertEquals(suspensionReason, suspendResult.getSuspension().get().reason());
             
             // Get suspended state - the suspensionState is the actual workflow state
+            @SuppressWarnings("unchecked")
             GraphWorkflowState<String> suspendedState = (GraphWorkflowState<String>) 
                 suspendResult.getSuspension().get().suspensionState();
             

@@ -3,6 +3,7 @@ package dev.agents4j.api.result;
 import static org.junit.jupiter.api.Assertions.*;
 
 import dev.agents4j.api.result.error.*;
+import dev.agents4j.api.suspension.WorkflowSuspension;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -613,6 +614,108 @@ class WorkflowResultTest {
             }
 
             assertEquals("Suspended: waiting", outcome);
+        }
+    }
+
+    @Nested
+    @DisplayName("Type-Safe Suspension Tests")
+    class TypeSafeSuspensionTests {
+
+        @Test
+        @DisplayName("Should create type-safe suspension with WorkflowSuspension")
+        void shouldCreateTypeSafeSuspension() {
+            var suspension = WorkflowSuspension.of(
+                "payment-pending",
+                "payment-state-data",
+                "Waiting for payment confirmation",
+                "1.0"
+            );
+
+            var result = WorkflowResult.<String, WorkflowError>suspended(suspension);
+
+            assertTrue(result.isSuspended());
+            assertFalse(result.isSuccess());
+            assertFalse(result.isFailure());
+
+            // Test backward compatibility methods
+            var suspendedRecord = result.getSuspension().orElseThrow();
+            assertEquals("payment-pending", suspendedRecord.suspensionId());
+            assertEquals("payment-state-data", suspendedRecord.suspensionState());
+            assertEquals("Waiting for payment confirmation", suspendedRecord.reason());
+
+            // Test new type-safe methods
+            var workflowSuspension = result.getWorkflowSuspension().orElseThrow();
+            assertEquals("payment-pending", workflowSuspension.getSuspensionId());
+            assertEquals("payment-state-data", workflowSuspension.getSuspendedState());
+            assertEquals("Waiting for payment confirmation", workflowSuspension.getReason());
+            assertEquals("1.0", workflowSuspension.getWorkflowVersion());
+        }
+
+        @Test
+        @DisplayName("Should provide type-safe suspension with specific state type")
+        void shouldProvideTypeSafeSuspensionWithStateType() {
+            var suspension = WorkflowSuspension.of(
+                "approval-pending",
+                "approval-state-data",
+                "Waiting for manager approval",
+                "1.0"
+            );
+
+            var result = WorkflowResult.<String, WorkflowError>suspended(suspension);
+
+            // Test type-safe access with correct type
+            var typedSuspension = result.getWorkflowSuspension(String.class);
+            assertTrue(typedSuspension.isPresent());
+            assertEquals("approval-state-data", typedSuspension.get().getSuspendedState());
+
+            // Test type-safe access with wrong type
+            var wrongTypeSuspension = result.getWorkflowSuspension(Integer.class);
+            assertFalse(wrongTypeSuspension.isPresent());
+        }
+
+        @Test
+        @DisplayName("Should handle suspension with timeout")
+        void shouldHandleSuspensionWithTimeout() {
+            var timeout = java.time.Duration.ofMinutes(30);
+            var suspension = WorkflowSuspension.withTimeout(
+                "timeout-test",
+                42,
+                "Will timeout after 30 minutes",
+                timeout,
+                "1.0"
+            );
+
+            var result = WorkflowResult.<String, WorkflowError>suspended(suspension);
+
+            var workflowSuspension = result.getWorkflowSuspension().orElseThrow();
+            assertTrue(workflowSuspension.getTimeout().isPresent());
+            assertEquals(timeout, workflowSuspension.getTimeout().get());
+            assertFalse(workflowSuspension.isExpired());
+        }
+
+        @Test
+        @DisplayName("Should maintain backward compatibility with legacy suspended method")
+        void shouldMaintainBackwardCompatibility() {
+            @SuppressWarnings("deprecation")
+            var result = WorkflowResult.<String, WorkflowError>suspended(
+                "legacy-id",
+                "legacy-state",
+                "legacy reason"
+            );
+
+            assertTrue(result.isSuspended());
+            
+            var suspension = result.getSuspension().orElseThrow();
+            assertEquals("legacy-id", suspension.suspensionId());
+            assertEquals("legacy-state", suspension.suspensionState());
+            assertEquals("legacy reason", suspension.reason());
+
+            // Should also work with new methods
+            var workflowSuspension = result.getWorkflowSuspension().orElseThrow();
+            assertEquals("legacy-id", workflowSuspension.getSuspensionId());
+            assertEquals("legacy-state", workflowSuspension.getSuspendedState());
+            assertEquals("legacy reason", workflowSuspension.getReason());
+            assertEquals("unknown", workflowSuspension.getWorkflowVersion());
         }
     }
 

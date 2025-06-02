@@ -163,6 +163,38 @@ public interface GraphWorkflow<S, O> {
     }
 
     /**
+     * Creates a type-safe suspended WorkflowResult.
+     *
+     * @param state The workflow state to suspend
+     * @param reason The reason for suspension
+     * @return A type-safe suspended WorkflowResult
+     */
+    default WorkflowResult<O, WorkflowError> suspendWorkflow(
+        GraphWorkflowState<S> state,
+        String reason
+    ) {
+        var suspension = createSuspension(state, reason);
+        return WorkflowResult.suspended(suspension);
+    }
+
+    /**
+     * Creates a type-safe suspended WorkflowResult with timeout.
+     *
+     * @param state The workflow state to suspend
+     * @param reason The reason for suspension
+     * @param timeout The suspension timeout
+     * @return A type-safe suspended WorkflowResult
+     */
+    default WorkflowResult<O, WorkflowError> suspendWorkflowWithTimeout(
+        GraphWorkflowState<S> state,
+        String reason,
+        java.time.Duration timeout
+    ) {
+        var suspension = createSuspensionWithTimeout(state, reason, timeout);
+        return WorkflowResult.suspended(suspension);
+    }
+
+    /**
      * Extracts a type-safe suspension from a WorkflowResult.
      *
      * @param result The workflow result that may contain a suspension

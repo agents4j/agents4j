@@ -626,31 +626,31 @@ record WorkflowExecution<S, O>(
     public boolean isSuspended() {
         return status == ExecutionStatus.SUSPENDED;
     }
-    
+
     public boolean isCompleted() {
         return status == ExecutionStatus.COMPLETED;
     }
-    
+
     public boolean isFailed() {
         return status == ExecutionStatus.FAILED;
     }
-    
+
     public String getExecutionId() {
         return executionId;
     }
-    
+
     public S getStateData() {
         return stateData;
     }
-    
+
     public WorkflowContext getContext() {
         return context;
     }
-    
+
     public Instant getTimestamp() {
         return timestamp;
     }
-    
+
     public static <S, O> WorkflowExecution<S, O> suspended(
         S stateData,
         WorkflowContext context,
@@ -667,7 +667,7 @@ record WorkflowExecution<S, O>(
             null
         );
     }
-    
+
     public static <S, O> WorkflowExecution<S, O> suspendedWithTimeout(
         S stateData,
         WorkflowContext context,
@@ -686,7 +686,7 @@ record WorkflowExecution<S, O>(
             null
         );
     }
-    
+
     public static <S, O> WorkflowExecution<S, O> completed(
         S stateData,
         WorkflowContext context,
@@ -703,7 +703,7 @@ record WorkflowExecution<S, O>(
             null
         );
     }
-    
+
     public static <S, O> WorkflowExecution<S, O> failed(
         S stateData,
         WorkflowContext context,
@@ -725,5 +725,5 @@ record WorkflowExecution<S, O>(
 enum ExecutionStatus {
     SUSPENDED,
     COMPLETED,
-    FAILED
+    FAILED,
 }
