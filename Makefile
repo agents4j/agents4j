@@ -33,10 +33,17 @@ run:
 	@echo "Running agents4j quarkus integration app..."
 	./gradlew quarkus-integration:quarkusDev
 
+
 .PHONY: test
 test:
 	@echo "Running all tests..."
 	./gradlew test
+	@echo "All tests completed."
+
+.PHONY: test-debug
+test-debug:
+	@echo "Running all tests..."
+	./gradlew test --debug
 	@echo "All tests completed."
 
 .PHONY: test-api
