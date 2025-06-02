@@ -1,24 +1,10 @@
 package dev.agents4j.integration.examples;
 
 import dev.agents4j.api.GraphWorkflow;
-import dev.agents4j.api.context.ContextKey;
-import dev.agents4j.api.context.WorkflowContext;
-import dev.agents4j.api.graph.GraphCommand;
-import dev.agents4j.api.graph.GraphCommandComplete;
 import dev.agents4j.api.graph.GraphWorkflowNode;
-import dev.agents4j.api.graph.GraphWorkflowState;
-import dev.agents4j.api.graph.NodeId;
-import dev.agents4j.api.result.WorkflowResult;
-import dev.agents4j.api.result.error.ExecutionError;
-import dev.agents4j.api.result.error.WorkflowError;
-import dev.agents4j.workflow.GraphWorkflowFactory;
-import dev.agents4j.workflow.history.NodeInteraction;
+import dev.agents4j.langchain4j.workflow.GraphAgentFactory;
 import dev.agents4j.workflow.history.ProcessingHistory;
 import dev.agents4j.workflow.history.ProcessingHistoryUtils;
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatModel;
 import io.smallrye.common.annotation.Blocking;
 import jakarta.inject.Inject;
@@ -31,15 +17,10 @@ import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
-import java.time.Instant;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
-import java.util.function.Function;
-import java.util.logging.Level;
-
 import java.util.stream.Collectors;
 import org.jboss.logging.Logger;
 
@@ -77,55 +58,45 @@ public class SnarkyResponseResource {
                 throw new IllegalStateException("ChatModel cannot be null");
             }
 
-            // Create the first node that processes the question with a snarky system prompt
-            LOG.debug("Creating snarky-responder node...");
-            GraphWorkflowNode<QuestionRequest> snarkyNode = new SequenceLLMNode<>(
-                "snarky-responder",
-                chatModel,
-                "You are a snarky assistant. Reply with something snarky, witty, and slightly condescending, " +
-                "but still ultimately helpful. Keep responses brief and punchy.",
-                state -> {
-                    String question = state.data().question();
-                    LOG.debug(
-                        "Snarky node processing question: '" +
-                        question +
-                        "'"
-                    );
-                    return question;
-                }
-            );
-            LOG.debug("Snarky-responder node created successfully");
-
-            // Create a follow-up node that adds a disclaimer
-            LOG.debug("Creating disclaimer-adder node...");
-            GraphWorkflowNode<QuestionRequest> disclaimerNode = new SequenceLLMNode<>(
-                "disclaimer-adder",
-                chatModel,
-                "Add a brief, humorous disclaimer to the end of this snarky response. " +
-                "Keep it short and don't change the original response.",
-                state -> {
-                    String previousOutput =
-                        ProcessingHistoryUtils.getLatestOutputFromNode(
-                            state,
-                            "snarky-responder"
-                        ).orElse("");
-                    LOG.debug(
-                        "Disclaimer node processing previous output: '" +
-                        previousOutput +
-                        "'"
-                    );
-                    return previousOutput;
-                }
-            );
-            LOG.debug("Disclaimer-adder node created successfully");
-
-            // Create a sequence workflow with the two nodes
-            LOG.debug("Creating sequence workflow...");
-            this.snarkyWorkflow = GraphWorkflowFactory.createSequence(
+            // Create a sequence workflow using the enhanced GraphAgentFactory
+            LOG.debug("Creating sequence workflow with proper node routing...");
+            this.snarkyWorkflow = GraphAgentFactory.createLLMSequence(
                 "snarky-workflow",
-                snarkyNode,
-                disclaimerNode,
-                QuestionRequest.class
+                QuestionRequest.class,
+                GraphAgentFactory.llmNode(
+                    "snarky-responder",
+                    chatModel,
+                    "You are a snarky assistant. Reply with something snarky, witty, and slightly condescending, " +
+                    "but still ultimately helpful. Keep responses brief and punchy.",
+                    state -> {
+                        String question = state.data().question();
+                        LOG.debug(
+                            "Snarky node processing question: '" +
+                            question +
+                            "'"
+                        );
+                        return question;
+                    }
+                ),
+                GraphAgentFactory.llmNode(
+                    "disclaimer-adder",
+                    chatModel,
+                    "Add a brief, humorous disclaimer to the end of this snarky response. " +
+                    "Keep it short and don't change the original response.",
+                    state -> {
+                        String previousOutput =
+                            ProcessingHistoryUtils.getLatestOutputFromNode(
+                                state,
+                                "snarky-responder"
+                            ).orElse("");
+                        LOG.debug(
+                            "Disclaimer node processing previous output: '" +
+                            previousOutput +
+                            "'"
+                        );
+                        return previousOutput;
+                    }
+                )
             );
             LOG.info("Snarky workflow created successfully");
         } catch (Exception e) {
@@ -383,113 +354,5 @@ public class SnarkyResponseResource {
      */
     public record ErrorResponse(String error, String details) {}
 
-    /**
-     * A specialized LLM node for sequence workflows that completes instead of traversing,
-     * letting the workflow engine handle the sequencing through edges.
-     */
-    private static class SequenceLLMNode<T> implements GraphWorkflowNode<T> {
-        private static final java.util.logging.Logger LOGGER = java.util.logging.Logger.getLogger(SequenceLLMNode.class.getName());
-        
-        private final NodeId id;
-        private final ChatModel model;
-        private final String systemPrompt;
-        private final Function<GraphWorkflowState<T>, String> userMessageExtractor;
-        private final String name;
 
-        public SequenceLLMNode(
-            String nodeId,
-            ChatModel model,
-            String systemPrompt,
-            Function<GraphWorkflowState<T>, String> userMessageExtractor
-        ) {
-            this.id = NodeId.of(nodeId);
-            this.model = model;
-            this.systemPrompt = systemPrompt;
-            this.userMessageExtractor = userMessageExtractor;
-            this.name = "SequenceLLM-" + nodeId;
-        }
-
-        @Override
-        public WorkflowResult<GraphCommand<T>, WorkflowError> process(GraphWorkflowState<T> state) {
-            LOGGER.info(() -> "Processing in sequence LLM node: " + id.value());
-            
-            try {
-                // Extract the user message from the state using the provided extractor
-                String userMessage = userMessageExtractor.apply(state);
-                LOGGER.fine(() -> "Extracted user message: " + userMessage);
-
-                // Create chat messages
-                List<ChatMessage> messages = new ArrayList<>();
-                messages.add(SystemMessage.from(systemPrompt));
-                messages.add(UserMessage.from(userMessage));
-
-                LOGGER.info(() -> "Sending request to LLM with " + messages.size() + " messages");
-                
-                // Get LLM response
-                long startTime = System.currentTimeMillis();
-                AiMessage response = model.chat(messages).aiMessage();
-                long duration = System.currentTimeMillis() - startTime;
-                
-                String responseText = response.text();
-                LOGGER.info(() -> "Received LLM response in " + duration + "ms");
-                LOGGER.fine(() -> "Response content: " + responseText);
-
-                // Get or create the processing history
-                ProcessingHistory history = ProcessingHistoryUtils.getOrCreateHistory(state);
-
-                // Add this interaction to the history
-                NodeInteraction interaction = new NodeInteraction(
-                    id,
-                    getName(),
-                    userMessage,
-                    responseText,
-                    Instant.now()
-                );
-                history.addInteraction(interaction);
-                LOGGER.fine(() -> "Added interaction to history. Total interactions: " + 
-                             history.getAllInteractions().size());
-
-                // Create updated context with the response and history
-                WorkflowContext updatedContext = state
-                    .context()
-                    // Keep the response key for backward compatibility
-                    .with(ContextKey.of("response", Object.class), responseText)
-                    // Store the processing history
-                    .with(ProcessingHistory.HISTORY_KEY, history);
-
-                LOGGER.info(() -> "LLM processing complete, letting workflow handle sequencing");
-                
-                // Use GraphCommandComplete to let the workflow engine handle sequencing
-                return WorkflowResult.success(
-                    GraphCommandComplete.withResultAndContext(responseText, updatedContext)
-                );
-            } catch (Exception e) {
-                LOGGER.log(Level.SEVERE, "Error processing with LLM: " + e.getMessage(), e);
-                
-                return WorkflowResult.failure(
-                    ExecutionError.withCause(
-                        "llm-processing-error",
-                        "Error processing with LLM: " + e.getMessage(),
-                        id.value(),
-                        e
-                    )
-                );
-            }
-        }
-
-        @Override
-        public NodeId getNodeId() {
-            return id;
-        }
-
-        @Override
-        public String getName() {
-            return name;
-        }
-
-        @Override
-        public String getDescription() {
-            return "Sequence LLM Node: " + systemPrompt.substring(0, Math.min(50, systemPrompt.length())) + "...";
-        }
-    }
 }
