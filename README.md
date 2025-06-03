@@ -150,7 +150,7 @@ agents4j/
 ├── agents4j-api/          # Core API interfaces and contracts
 ├── agents4j-core/         # Core implementations
 ├── agents4j-langchain4j/  # LangChain4J integration
-├── quarkus-integration/   # REST API service
+├── quarkus-integration/   # Example REST API service
 ├── docs/                  # Documentation and assets
 ├── build.gradle          # Main build configuration
 ├── settings.gradle       # Project settings
@@ -183,33 +183,64 @@ The Quarkus integration module provides a complete REST API for workflow executi
 
 ### Start the API Server
 
-```bash
-./gradlew :quarkus-integration:quarkusDev
-```
-
-### API Endpoints
-
-- `POST /workflows/{workflowId}/start` - Start a workflow execution
-- `POST /workflows/{workflowId}/resume/{executionId}` - Resume a suspended workflow
-- `GET /workflows/{workflowId}/status/{executionId}` - Get workflow execution status
-- `GET /workflows` - List available workflows
-
-## CLI Tool
-
-Agents4J includes a command-line interface for experimentation and testing:
-
-### Setup
-
 1. Set your OpenAI API key:
    ```bash
    export OPENAI_API_KEY=your-api-key-here
    ```
 
 2. Build and run:
-   ```bash
-   ./gradlew :quarkus-integration:build
-   java -jar quarkus-integration/build/libs/agents4j-cli.jar
-   ```
+```bash
+./gradlew :quarkus-integration:quarkusDev
+```
+or
+```bash
+make run
+```
+
+Swagger UI:
+```
+http://localhost:8080/swagger-ui/
+```
+
+### Example
+
+Request -
+```bash
+curl -X 'POST' \
+  'http://localhost:8080/api/snarky' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "question": "why is the sky blue"
+}'
+```
+
+Response -
+```json
+{
+  "response": "Oh, look at you asking the age-old question. The sky appears blue because of Rayleigh scattering. Short answer: science. \n\nDisclaimer: No blue skies were harmed in the making of this response.",
+  "originalQuestion": "why is the sky blue",
+  "processingHistory": [
+    {
+      "nodeId": "snarky-responder",
+      "nodeName": "LLM Node",
+      "input": "why is the sky blue",
+      "output": "Oh, look at you asking the age-old question. The sky appears blue because of Rayleigh scattering. Short answer: science.",
+      "timestamp": "2025-06-03T20:17:51.773890Z"
+    },
+    {
+      "nodeId": "disclaimer-adder",
+      "nodeName": "CompletingLLM-disclaimer-adder",
+      "input": "Oh, look at you asking the age-old question. The sky appears blue because of Rayleigh scattering. Short answer: science.",
+      "output": "Oh, look at you asking the age-old question. The sky appears blue because of Rayleigh scattering. Short answer: science. \n\nDisclaimer: No blue skies were harmed in the making of this response.",
+      "timestamp": "2025-06-03T20:17:52.544234Z"
+    }
+  ]
+}
+```
+
+
+
 
 ## Key Concepts
 
