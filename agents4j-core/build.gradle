@@ -76,6 +76,11 @@ jreleaser {
       }
     }
   }
+  release {
+    github {
+      enabled = false
+    }
+  }
 }
 
 publishing {

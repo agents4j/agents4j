@@ -1,5 +1,6 @@
 plugins {
-    id 'java'
+    id 'signing'
+    id 'org.jreleaser' version '1.18.0'
 }
 
 // Read version from VERSION file
@@ -8,7 +9,7 @@ def projectVersion = versionFile.exists() ? versionFile.text.trim() : '0.1.0'
 
 allprojects {
     version = projectVersion
-    
+
     repositories {
         mavenCentral()
         mavenLocal()
@@ -27,7 +28,7 @@ subprojects {
         resolutionStrategy {
             // Force specific versions of Jackson to avoid multi-release JAR issues
             force 'com.fasterxml.jackson.core:jackson-core:2.14.2'
-            force 'com.fasterxml.jackson.core:jackson-databind:2.14.2' 
+            force 'com.fasterxml.jackson.core:jackson-databind:2.14.2'
             force 'com.fasterxml.jackson.core:jackson-annotations:2.14.2'
         }
     }
