@@ -184,6 +184,14 @@ public enum ContextMergeStrategy {
         private final Object resumeValue;
         private final Object resolvedValue;
 
+        /**
+         * Creates a new context conflict.
+         * 
+         * @param key the context key that has a conflict
+         * @param suspendedValue the value from the suspended context
+         * @param resumeValue the value from the resume context
+         * @param resolvedValue the resolved value (null if unresolved)
+         */
         public ContextConflict(
             ContextKey<?> key,
             Object suspendedValue,
@@ -196,22 +204,47 @@ public enum ContextMergeStrategy {
             this.resolvedValue = resolvedValue;
         }
 
+        /**
+         * Gets the context key that has a conflict.
+         * 
+         * @return the context key
+         */
         public ContextKey<?> getKey() {
             return key;
         }
 
+        /**
+         * Gets the value from the suspended context.
+         * 
+         * @return the suspended value
+         */
         public Object getSuspendedValue() {
             return suspendedValue;
         }
 
+        /**
+         * Gets the value from the resume context.
+         * 
+         * @return the resume value
+         */
         public Object getResumeValue() {
             return resumeValue;
         }
 
+        /**
+         * Gets the resolved value for this conflict.
+         * 
+         * @return the resolved value, or null if unresolved
+         */
         public Object getResolvedValue() {
             return resolvedValue;
         }
 
+        /**
+         * Checks if this conflict has been resolved.
+         * 
+         * @return true if the conflict is resolved, false otherwise
+         */
         public boolean isResolved() {
             return resolvedValue != null;
         }
@@ -261,6 +294,13 @@ public enum ContextMergeStrategy {
         private final List<ContextConflict> conflicts;
         private final List<String> warnings;
 
+        /**
+         * Creates a new context merge result.
+         * 
+         * @param mergedContext the merged workflow context
+         * @param conflicts list of conflicts found during merge
+         * @param warnings list of warnings generated during merge
+         */
         public ContextMergeResult(
             WorkflowContext mergedContext,
             List<ContextConflict> conflicts,
@@ -281,26 +321,56 @@ public enum ContextMergeStrategy {
             );
         }
 
+        /**
+         * Gets the merged workflow context.
+         * 
+         * @return the merged context
+         */
         public WorkflowContext getMergedContext() {
             return mergedContext;
         }
 
+        /**
+         * Gets the list of conflicts found during merge.
+         * 
+         * @return the conflicts list
+         */
         public List<ContextConflict> getConflicts() {
             return conflicts;
         }
 
+        /**
+         * Gets the list of warnings generated during merge.
+         * 
+         * @return the warnings list
+         */
         public List<String> getWarnings() {
             return warnings;
         }
 
+        /**
+         * Checks if there are any conflicts.
+         * 
+         * @return true if conflicts exist, false otherwise
+         */
         public boolean hasConflicts() {
             return !conflicts.isEmpty();
         }
 
+        /**
+         * Checks if there are any warnings.
+         * 
+         * @return true if warnings exist, false otherwise
+         */
         public boolean hasWarnings() {
             return !warnings.isEmpty();
         }
 
+        /**
+         * Checks if there are any unresolved conflicts.
+         * 
+         * @return true if any conflicts remain unresolved, false otherwise
+         */
         public boolean hasUnresolvedConflicts() {
             return conflicts
                 .stream()

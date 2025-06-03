@@ -8,6 +8,13 @@ import java.util.Objects;
  */
 public record EdgeId(String value) {
     
+    /**
+     * Creates a new edge ID with validation.
+     * 
+     * @param value the unique identifier for this edge
+     * @throws NullPointerException if value is null
+     * @throws IllegalArgumentException if value is empty or blank
+     */
     public EdgeId {
         Objects.requireNonNull(value, "Edge ID value cannot be null");
         if (value.trim().isEmpty()) {

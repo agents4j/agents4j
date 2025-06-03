@@ -539,18 +539,39 @@ public interface GraphWorkflow<S, O> {
      * Result of state validation.
      */
     record StateValidationResult(boolean _valid, String message) {
+        /**
+         * Creates a valid state validation result.
+         * 
+         * @return a valid StateValidationResult instance
+         */
         public static StateValidationResult valid() {
             return new StateValidationResult(true, "Valid");
         }
 
+        /**
+         * Creates an invalid state validation result with a message.
+         * 
+         * @param message the validation error message
+         * @return an invalid StateValidationResult instance
+         */
         public static StateValidationResult invalid(String message) {
             return new StateValidationResult(false, message);
         }
 
+        /**
+         * Checks if the validation result is valid.
+         * 
+         * @return true if valid, false otherwise
+         */
         public boolean isValid() {
             return _valid;
         }
 
+        /**
+         * Gets the validation message.
+         * 
+         * @return the validation message
+         */
         public String getMessage() {
             return message;
         }

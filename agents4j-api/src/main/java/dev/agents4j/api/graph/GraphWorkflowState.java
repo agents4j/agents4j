@@ -10,7 +10,7 @@ import java.util.Optional;
 
 /**
  * Modern graph workflow state that provides type-safe context management
- * and graph-specific navigation capabilities. Replaces the unsafe Map<String, Object>
+ * and graph-specific navigation capabilities. Replaces the unsafe Map&lt;String, Object&gt;
  * approach with compile-time type safety.
  *
  * @param <S> The type of the workflow state data
@@ -23,6 +23,17 @@ public record GraphWorkflowState<S>(
     GraphPosition position,
     StateMetadata metadata
 ) {
+    /**
+     * Creates a new graph workflow state with validation.
+     * 
+     * @param workflowId the unique workflow identifier
+     * @param data the workflow state data
+     * @param context the workflow execution context
+     * @param currentNode the current node in the graph (optional)
+     * @param position the current position in the graph
+     * @param metadata the state metadata
+     * @throws NullPointerException if any required parameter is null
+     */
     public GraphWorkflowState {
         Objects.requireNonNull(workflowId, "Workflow ID cannot be null");
         Objects.requireNonNull(context, "Context cannot be null");

@@ -17,6 +17,17 @@ public record ExecutionError(
     Throwable cause
 )
     implements WorkflowError {
+    /**
+     * Creates a new execution error with validation.
+     * 
+     * @param code the error code
+     * @param message the error message
+     * @param details optional error details
+     * @param timestamp when the error occurred
+     * @param nodeId the node where the error occurred (optional)
+     * @param cause the underlying cause (optional)
+     * @throws NullPointerException if any required parameter is null
+     */
     public ExecutionError {
         Objects.requireNonNull(code, "Error code cannot be null");
         Objects.requireNonNull(message, "Error message cannot be null");
@@ -26,6 +37,13 @@ public record ExecutionError(
             : Collections.emptyMap();
     }
 
+    /**
+     * Creates a basic execution error.
+     * 
+     * @param code the error code
+     * @param message the error message
+     * @return a new ExecutionError instance
+     */
     public static ExecutionError of(
         String code,
         String message,
@@ -41,6 +59,14 @@ public record ExecutionError(
         );
     }
 
+    /**
+     * Creates an execution error with a cause.
+     * 
+     * @param code the error code
+     * @param message the error message
+     * @param cause the underlying cause
+     * @return a new ExecutionError instance
+     */
     public static ExecutionError withCause(
         String code,
         String message,
@@ -62,6 +88,13 @@ public record ExecutionError(
         );
     }
 
+    /**
+     * Creates a timeout execution error.
+     * 
+     * @param nodeId the node that timed out
+     * @param timeoutMs the timeout duration in milliseconds
+     * @return a new ExecutionError instance for timeout
+     */
     public static ExecutionError timeout(String nodeId, long timeoutMs) {
         return new ExecutionError(
             "EXECUTION_TIMEOUT",

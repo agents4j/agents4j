@@ -10,6 +10,13 @@ import java.util.Objects;
  */
 public record ContextKey<T>(String name, Class<T> type) {
     
+    /**
+     * Creates a new context key with validation.
+     * 
+     * @param name the unique name for this context key
+     * @param type the type class for type safety
+     * @throws NullPointerException if name or type is null
+     */
     public ContextKey {
         Objects.requireNonNull(name, "Context key name cannot be null");
         Objects.requireNonNull(type, "Context key type cannot be null");

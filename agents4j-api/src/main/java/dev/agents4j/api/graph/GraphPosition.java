@@ -18,6 +18,17 @@ public record GraphPosition(
     int depth
 ) {
     
+    /**
+     * Creates a new graph position with validation.
+     * 
+     * @param currentNodeId the current node identifier
+     * @param previousNodeId the previous node identifier (optional)
+     * @param visitedNodes list of all visited nodes
+     * @param edgeTraversalHistory history of edge traversals
+     * @param depth the current depth in the graph
+     * @throws NullPointerException if any required parameter is null
+     * @throws IllegalArgumentException if depth is negative
+     */
     public GraphPosition {
         Objects.requireNonNull(currentNodeId, "Current node ID cannot be null");
         Objects.requireNonNull(previousNodeId, "Previous node ID optional cannot be null");

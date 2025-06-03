@@ -14,6 +14,14 @@ public record GraphCommandComplete<S>(
     String reason
 ) implements GraphCommand<S> {
     
+    /**
+     * Creates a new graph command complete with validation.
+     * 
+     * @param result the result of the command execution
+     * @param contextUpdates optional context updates to apply
+     * @param stateData optional state data updates
+     * @throws NullPointerException if any required parameter is null
+     */
     public GraphCommandComplete {
         Objects.requireNonNull(result, "Result cannot be null");
         Objects.requireNonNull(
@@ -29,6 +37,13 @@ public record GraphCommandComplete<S>(
             : "Workflow completed successfully";
     }
 
+    /**
+     * Creates a command to complete workflow execution with a result.
+     * 
+     * @param <S> the state type
+     * @param result the result to return
+     * @return a new GraphCommandComplete instance
+     */
     public static <S> GraphCommandComplete<S> withResult(Object result) {
         return new GraphCommandComplete<>(
             result,

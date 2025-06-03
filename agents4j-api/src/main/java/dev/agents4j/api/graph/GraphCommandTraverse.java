@@ -15,6 +15,16 @@ public record GraphCommandTraverse<S>(
     String reason
 ) implements GraphCommand<S> {
     
+    /**
+     * Creates a new graph command traverse with validation.
+     * 
+     * @param targetNode the node to traverse to
+     * @param contextUpdates optional context updates to apply
+     * @param stateData optional state data updates
+     * @param condition optional condition for the traversal
+     * @param reason optional reason for the traversal
+     * @throws NullPointerException if any required parameter is null
+     */
     public GraphCommandTraverse {
         Objects.requireNonNull(targetNode, "Target node cannot be null");
         Objects.requireNonNull(

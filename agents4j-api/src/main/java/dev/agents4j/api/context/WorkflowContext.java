@@ -5,7 +5,7 @@ import java.util.Set;
 
 /**
  * Type-safe context interface for workflow execution.
- * Replaces the unsafe Map<String, Object> pattern with compile-time type safety.
+ * Replaces the unsafe Map&lt;String, Object&gt; pattern with compile-time type safety.
  */
 public sealed interface WorkflowContext 
     permits ExecutionContext, ValidationContext, SecurityContext {

@@ -69,6 +69,13 @@ public sealed interface EdgeCondition
         String description
     )
         implements EdgeCondition {
+        /**
+         * Creates a new conditional edge condition.
+         * 
+         * @param predicate the predicate to evaluate
+         * @param description description of the condition
+         * @throws NullPointerException if predicate or description is null
+         */
         public Conditional {
             Objects.requireNonNull(predicate, "Predicate cannot be null");
             Objects.requireNonNull(description, "Description cannot be null");
@@ -95,6 +102,14 @@ public sealed interface EdgeCondition
         String description
     )
         implements EdgeCondition {
+        /**
+         * Creates a new context-based edge condition.
+         * 
+         * @param contextKey the context key to evaluate
+         * @param valuePredicate the predicate to apply to the context value
+         * @param description description of the condition
+         * @throws NullPointerException if any parameter is null
+         */
         public ContextBased {
             Objects.requireNonNull(contextKey, "Context key cannot be null");
             Objects.requireNonNull(
@@ -124,6 +139,13 @@ public sealed interface EdgeCondition
      */
     record And(EdgeCondition left, EdgeCondition right)
         implements EdgeCondition {
+        /**
+         * Creates a new AND edge condition.
+         * 
+         * @param left the left condition
+         * @param right the right condition
+         * @throws NullPointerException if either condition is null
+         */
         public And {
             Objects.requireNonNull(left, "Left condition cannot be null");
             Objects.requireNonNull(right, "Right condition cannot be null");
@@ -151,6 +173,13 @@ public sealed interface EdgeCondition
      */
     record Or(EdgeCondition left, EdgeCondition right)
         implements EdgeCondition {
+        /**
+         * Creates a new OR edge condition.
+         * 
+         * @param left the left condition
+         * @param right the right condition
+         * @throws NullPointerException if either condition is null
+         */
         public Or {
             Objects.requireNonNull(left, "Left condition cannot be null");
             Objects.requireNonNull(right, "Right condition cannot be null");
@@ -177,6 +206,12 @@ public sealed interface EdgeCondition
      * Logical NOT of a condition.
      */
     record Not(EdgeCondition condition) implements EdgeCondition {
+        /**
+         * Creates a new NOT edge condition.
+         * 
+         * @param condition the condition to negate
+         * @throws NullPointerException if condition is null
+         */
         public Not {
             Objects.requireNonNull(condition, "Condition cannot be null");
         }

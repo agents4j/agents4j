@@ -16,6 +16,16 @@ public record GraphCommandFork<S>(
     String reason
 ) implements GraphCommand<S> {
     
+    /**
+     * Creates a new graph command fork with validation.
+     * 
+     * @param targetNodes the set of nodes to fork to
+     * @param strategy the fork execution strategy
+     * @param contextUpdates optional context updates to apply
+     * @param stateData optional state data updates
+     * @param reason optional reason for the fork
+     * @throws NullPointerException if any required parameter is null
+     */
     public GraphCommandFork {
         Objects.requireNonNull(targetNodes, "Target nodes cannot be null");
         Objects.requireNonNull(strategy, "Fork strategy cannot be null");
@@ -42,12 +52,25 @@ public record GraphCommandFork<S>(
         targetNodes = Set.copyOf(targetNodes);
     }
 
+    /**
+     * Strategy for executing forked branches.
+     */
     public enum ForkStrategy {
+        /** Execute all branches in parallel */
         PARALLEL, // Execute all branches in parallel
+        /** Execute branches one after another */
         SEQUENTIAL, // Execute branches one after another
+        /** Execute based on conditions */
         CONDITIONAL, // Execute based on conditions
     }
 
+    /**
+     * Creates a parallel fork command.
+     * 
+     * @param <S> the state type
+     * @param nodes the nodes to execute in parallel
+     * @return a new GraphCommandFork instance
+     */
     public static <S> GraphCommandFork<S> parallel(Set<NodeId> nodes) {
         return new GraphCommandFork<>(
             nodes,
@@ -58,6 +81,13 @@ public record GraphCommandFork<S>(
         );
     }
 
+    /**
+     * Creates a sequential fork command.
+     * 
+     * @param <S> the state type
+     * @param nodes the nodes to execute sequentially
+     * @return a new GraphCommandFork instance
+     */
     public static <S> GraphCommandFork<S> sequential(Set<NodeId> nodes) {
         return new GraphCommandFork<>(
             nodes,
@@ -68,6 +98,13 @@ public record GraphCommandFork<S>(
         );
     }
 
+    /**
+     * Creates a conditional fork command.
+     * 
+     * @param <S> the state type
+     * @param nodes the nodes to execute conditionally
+     * @return a new GraphCommandFork instance
+     */
     public static <S> GraphCommandFork<S> conditional(Set<NodeId> nodes) {
         return new GraphCommandFork<>(
             nodes,
@@ -78,6 +115,14 @@ public record GraphCommandFork<S>(
         );
     }
 
+    /**
+     * Creates a parallel fork command with context updates.
+     * 
+     * @param <S> the state type
+     * @param nodes the nodes to execute in parallel
+     * @param context the context updates to apply
+     * @return a new GraphCommandFork instance
+     */
     public static <S> GraphCommandFork<S> parallelWithContext(
         Set<NodeId> nodes,
         WorkflowContext context

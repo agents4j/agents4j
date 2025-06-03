@@ -8,6 +8,13 @@ import java.util.Objects;
  */
 public record NodeId(String value) {
     
+    /**
+     * Creates a new node ID with validation.
+     * 
+     * @param value the unique identifier for this node
+     * @throws NullPointerException if value is null
+     * @throws IllegalArgumentException if value is empty or blank
+     */
     public NodeId {
         Objects.requireNonNull(value, "Node ID value cannot be null");
         if (value.trim().isEmpty()) {

@@ -16,6 +16,16 @@ public record GraphEdge(
     EdgeCondition condition,
     EdgeMetadata metadata
 ) {
+    /**
+     * Creates a new graph edge with validation.
+     * 
+     * @param edgeId the unique identifier for this edge
+     * @param fromNode the source node
+     * @param toNode the target node
+     * @param condition the condition for traversing this edge
+     * @param metadata the edge metadata
+     * @throws NullPointerException if any parameter is null
+     */
     public GraphEdge {
         Objects.requireNonNull(edgeId, "Edge ID cannot be null");
         Objects.requireNonNull(fromNode, "From node cannot be null");
@@ -154,6 +164,11 @@ public record GraphEdge(
         return new GraphEdge(edgeId, fromNode, toNode, newCondition, metadata);
     }
 
+    /**
+     * Checks if this edge has a condition.
+     * 
+     * @return true if the edge has a condition, false otherwise
+     */
     public boolean hasCondition() {
         return condition != null;
     }
@@ -178,6 +193,16 @@ public record GraphEdge(
         Map<String, Object> properties,
         Optional<Instant> createdAt
     ) {
+        /**
+         * Creates a new edge metadata with validation.
+         * 
+         * @param name optional name for the edge
+         * @param description optional description of the edge
+         * @param weight the weight of the edge
+         * @param properties additional properties for the edge
+         * @param createdAt optional creation timestamp
+         * @throws NullPointerException if any required parameter is null
+         */
         public EdgeMetadata {
             Objects.requireNonNull(name, "Name optional cannot be null");
             Objects.requireNonNull(
