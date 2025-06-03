@@ -82,12 +82,12 @@ publishing {
     publications {
         mavenJava(MavenPublication) {
             groupId = 'dev.agents4j'
-            artifactId = 'agents4j'
+            artifactId = 'agents4j-core'
 
             from components.java
 
             pom {
-                name = 'agents4j'
+                name = 'agents4j-core'
                 description = 'Java Agent Library'
                 url = 'https://github.com/agents4j/agents4j'
 

@@ -63,7 +63,7 @@ publishing {
 
             pom {
                 name = 'agents4j-api'
-                description = 'Core API interfaces and contracts for Agents4J'
+                description = 'API interfaces and contracts for Agents4J'
                 url = 'https://github.com/agents4j/agents4j'
 
                 inceptionYear = '2025'
