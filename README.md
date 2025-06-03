@@ -1,4 +1,4 @@
-![Agents4J Logo](./docs/logo.png)
+![Agents4J Logo](./docs/logo-small.png)
 
 # Agents4J
 
@@ -34,6 +34,8 @@ Agents4J follows a modular architecture with clear separation of concerns:
 
 ## Quick Start
 
+Include in your `build.gradle` or `pom.xml`:
+
 ### Prerequisites
 
 - JDK 17 or later
@@ -46,9 +48,29 @@ Add the dependencies to your `build.gradle`:
 
 ```gradle
 dependencies {
-    implementation 'dev.agents4j:agents4j-core:0.2.3-SNAPSHOT'
-    implementation 'dev.agents4j:agents4j-langchain4j:0.2.3-SNAPSHOT'
+    implementation 'dev.agents4j:agents4j-api:${agents4j.version}' // for the spec only
+    implementation 'dev.agents4j:agents4j-core:${agents4j.version}' // for the core implementation
+    implementation 'dev.agents4j:agents4j-langchain4j:${agents4j.version}' // for LangChain4J integration
 }
+```
+
+Or Maven
+
+```maven
+<dependencies>
+    <dependency>
+        <!-- For core implementation -->
+        <groupId>dev.agents4j</groupId>
+        <artifactId>agents4j-core</artifactId>
+        <version>${agents4j.version}</version>
+    </dependency>
+    <dependency>
+        <!-- For LangChain4J integration -->
+        <groupId>dev.agents4j</groupId>
+        <artifactId>agents4j-langchain4j</artifactId>
+        <version>${agents4j.version}</version>
+    </dependency>
+</dependencies>
 ```
 
 ### Basic Usage
