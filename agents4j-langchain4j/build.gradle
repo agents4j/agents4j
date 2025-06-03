@@ -2,6 +2,7 @@ plugins {
     id 'java-library'
     id 'maven-publish'
     id 'signing'
+    id 'org.jreleaser' version '1.18.0'
 }
 
 java {
@@ -21,20 +22,20 @@ repositories {
 dependencies {
     // API dependency - contains all the interfaces and contracts
     api project(':agents4j-api')
-    
+
     // Core implementation dependency
     implementation project(':agents4j-core')
-    
+
     // LangChain4J BOM for consistent version management
     api platform('dev.langchain4j:langchain4j-bom:1.0.0')
 
     // LangChain4J dependencies - versions managed by BOM
     api 'dev.langchain4j:langchain4j'
     api 'dev.langchain4j:langchain4j-core'
-    
+
     // Optional LangChain4J integrations that users might want
     implementation 'dev.langchain4j:langchain4j-open-ai'
-    
+
     // Testing dependencies
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testImplementation 'org.mockito:mockito-core:5.3.1'
@@ -47,6 +48,25 @@ testing {
             useJUnitJupiter('5.8.1')
         }
     }
+}
+
+jreleaser {
+  gitRootSearch = true
+  signing {
+    active = 'ALWAYS'
+    armored = true
+  }
+  deploy {
+    maven {
+      mavenCentral {
+        'release-deploy' {
+          active = 'ALWAYS'
+          url = 'https://central.sonatype.com/api/v1/publisher'
+          stagingRepository('build/staging-deploy')
+        }
+      }
+    }
+  }
 }
 
 publishing {
