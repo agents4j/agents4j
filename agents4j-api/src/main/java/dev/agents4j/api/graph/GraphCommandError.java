@@ -14,11 +14,11 @@ public record GraphCommandError<S>(
     Optional<WorkflowContext> contextUpdates,
     Optional<S> stateData,
     boolean isRecoverable
-) implements GraphCommand<S> {
-    
+)
+    implements GraphCommand<S> {
     /**
      * Creates a new graph command error with validation.
-     * 
+     *
      * @param error the workflow error that occurred
      * @param fallbackNode optional fallback node to navigate to
      * @param contextUpdates optional context updates to apply
@@ -36,15 +36,12 @@ public record GraphCommandError<S>(
             contextUpdates,
             "Context updates optional cannot be null"
         );
-        Objects.requireNonNull(
-            stateData,
-            "State data optional cannot be null"
-        );
+        Objects.requireNonNull(stateData, "State data optional cannot be null");
     }
 
     /**
      * Creates a basic error command with just the error.
-     * 
+     *
      * @param <S> the state type
      * @param error the workflow error that occurred
      * @return a new GraphCommandError instance
@@ -61,7 +58,7 @@ public record GraphCommandError<S>(
 
     /**
      * Creates an error command with a fallback node.
-     * 
+     *
      * @param <S> the state type
      * @param error the workflow error that occurred
      * @param fallbackNode the node to navigate to on error
@@ -82,7 +79,7 @@ public record GraphCommandError<S>(
 
     /**
      * Creates a recoverable error command.
-     * 
+     *
      * @param <S> the state type
      * @param error the workflow error that occurred
      * @return a new recoverable GraphCommandError instance
@@ -99,7 +96,7 @@ public record GraphCommandError<S>(
 
     /**
      * Creates a fatal error command.
-     * 
+     *
      * @param <S> the state type
      * @param error the workflow error that occurred
      * @return a new fatal GraphCommandError instance
@@ -116,10 +113,10 @@ public record GraphCommandError<S>(
 
     /**
      * Creates an error command with context updates.
-     * 
+     *
      * @param <S> the state type
      * @param error the workflow error that occurred
-     * @param contextUpdates the context updates to apply
+     * @param context the context updates to apply
      * @return a new GraphCommandError instance
      */
     public static <S> GraphCommandError<S> withContext(

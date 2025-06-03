@@ -81,7 +81,7 @@ public class SnarkyResponseResource {
                 GraphAgentFactory.llmNode(
                     "disclaimer-adder",
                     chatModel,
-                    "Add a brief, humorous disclaimer to the end of this snarky response. " +
+                    "Return the original text, but add a brief, humorous disclaimer to the end of this snarky response. " +
                     "Keep it short and don't change the original response.",
                     state -> {
                         String previousOutput =
@@ -353,6 +353,4 @@ public class SnarkyResponseResource {
      * Record representing an error response.
      */
     public record ErrorResponse(String error, String details) {}
-
-
 }
