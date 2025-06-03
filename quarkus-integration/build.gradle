@@ -1,8 +1,6 @@
 plugins {
     id 'java'
     id 'io.quarkus' version '3.6.4'
-    id 'signing'
-    id 'org.jreleaser' version '1.18.0'
 }
 
 repositories {
@@ -46,27 +44,4 @@ test {
 compileJava {
     options.encoding = 'UTF-8'
     options.compilerArgs << '-parameters'
-}
-
-
-jreleaser {
-  gitRootSearch = true
-  signing {
-    active = 'ALWAYS'
-    armored = true
-  }
-  deploy {
-    maven {
-      mavenCentral {
-        'release-deploy' {
-          active = 'NEVER'
-        }
-      }
-    }
-  }
-  release {
-    github {
-      enabled = true
-    }
-  }
 }
