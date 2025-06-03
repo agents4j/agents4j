@@ -286,7 +286,9 @@ class GraphWorkflowImplIntegrationTest {
         @DisplayName("Should resume workflow from intermediate state")
         void shouldResumeWorkflowFromIntermediateState() {
             // Create a state positioned at node B
-            var workflow = GraphWorkflowBuilder.<String, String>create(String.class)
+            var workflow = GraphWorkflowBuilder.<String, String>create(
+                String.class
+            )
                 .name("resume-test")
                 .addNode(nodeSuspending)
                 .addNode(nodeB)
@@ -302,7 +304,9 @@ class GraphWorkflowImplIntegrationTest {
             var suspension = suspendedResult.getSuspension().orElseThrow();
 
             @SuppressWarnings("unchecked")
-            var suspendedState = (GraphWorkflowState<String>) suspension.suspensionState();
+            var suspendedState = (GraphWorkflowState<
+                    String
+                >) suspension.suspensionState();
             ResumeOptions options = ResumeOptions.permissive();
             var result = workflow.resumeWithOptions(suspendedState, options);
 
@@ -318,7 +322,9 @@ class GraphWorkflowImplIntegrationTest {
         void shouldResumeWorkflowAsynchronously()
             throws ExecutionException, InterruptedException {
             // Create a state positioned at node C
-            var finalNodeWorkflow = GraphWorkflowBuilder.<String, String>create(String.class)
+            var finalNodeWorkflow = GraphWorkflowBuilder.<String, String>create(
+                String.class
+            )
                 .name("async-resume-test")
                 .addNode(nodeC)
                 .defaultEntryPoint(NODE_C)
@@ -388,7 +394,9 @@ class GraphWorkflowImplIntegrationTest {
         void shouldHandleNodeProcessingErrorsGracefully() {
             var errorNode = new ErrorTestNode(NodeId.of("errorNode"));
 
-            var errorWorkflow = GraphWorkflowBuilder.<String, String>create(String.class)
+            var errorWorkflow = GraphWorkflowBuilder.<String, String>create(
+                String.class
+            )
                 .name("error-test-workflow")
                 .addNode(errorNode)
                 .defaultEntryPoint(NodeId.of("errorNode"))
@@ -566,9 +574,8 @@ class GraphWorkflowImplIntegrationTest {
                     hasSuspended = true;
                     // Create a suspend command
                     return WorkflowResult.success(
-                        GraphCommandSuspend.<String>withContext(
+                        GraphCommandSuspend.withContext(
                             "suspended-id",
-                            "for testing suspension",
                             updatedContext
                         ),
                         updatedContext

@@ -14,11 +14,11 @@ public record GraphCommandSuspend<S>(
     Optional<Duration> timeout,
     Optional<WorkflowContext> contextUpdates,
     Optional<S> stateData
-) implements GraphCommand<S> {
-    
+)
+    implements GraphCommand<S> {
     /**
      * Creates a new graph command suspend with validation.
-     * 
+     *
      * @param suspensionId the unique identifier for this suspension
      * @param contextUpdates optional context updates to apply
      * @param stateData optional state data updates
@@ -27,25 +27,17 @@ public record GraphCommandSuspend<S>(
      * @throws NullPointerException if any required parameter is null
      */
     public GraphCommandSuspend {
-        Objects.requireNonNull(
-            suspensionId,
-            "Suspension ID cannot be null"
-        );
+        Objects.requireNonNull(suspensionId, "Suspension ID cannot be null");
         Objects.requireNonNull(reason, "Suspension reason cannot be null");
         Objects.requireNonNull(timeout, "Timeout optional cannot be null");
         Objects.requireNonNull(
             contextUpdates,
             "Context updates optional cannot be null"
         );
-        Objects.requireNonNull(
-            stateData,
-            "State data optional cannot be null"
-        );
+        Objects.requireNonNull(stateData, "State data optional cannot be null");
 
         if (suspensionId.trim().isEmpty()) {
-            throw new IllegalArgumentException(
-                "Suspension ID cannot be empty"
-            );
+            throw new IllegalArgumentException("Suspension ID cannot be empty");
         }
         if (reason.trim().isEmpty()) {
             throw new IllegalArgumentException(
@@ -54,22 +46,9 @@ public record GraphCommandSuspend<S>(
         }
     }
 
-    public static <S> GraphCommandSuspend<S> withId(
-        String suspensionId,
-        String reason
-    ) {
-        return new GraphCommandSuspend<>(
-            suspensionId,
-            reason,
-            Optional.empty(),
-            Optional.empty(),
-            Optional.empty()
-        );
-    }
-
     /**
      * Creates a suspend command with an ID and reason.
-     * 
+     *
      * @param <S> the state type
      * @param suspensionId the unique identifier for this suspension
      * @param reason the reason for suspension
@@ -90,7 +69,7 @@ public record GraphCommandSuspend<S>(
 
     /**
      * Creates a suspend command with a timeout.
-     * 
+     *
      * @param <S> the state type
      * @param suspensionId the unique identifier for this suspension
      * @param timeout the timeout duration
@@ -111,7 +90,7 @@ public record GraphCommandSuspend<S>(
 
     /**
      * Creates a suspend command with context updates.
-     * 
+     *
      * @param <S> the state type
      * @param suspensionId the unique identifier for this suspension
      * @param context the context updates to apply
@@ -131,8 +110,31 @@ public record GraphCommandSuspend<S>(
     }
 
     /**
+     * Creates a suspend command with context updates.
+     *
+     * @param <S> the state type
+     * @param suspensionId the unique identifier for this suspension
+     * @param reason the reason for the suspension
+     * @param context the context updates to apply
+     * @return a new GraphCommandSuspend instance
+     */
+    public static <S> GraphCommandSuspend<S> withContext(
+        String suspensionId,
+        String reason,
+        WorkflowContext context
+    ) {
+        return new GraphCommandSuspend<>(
+            suspensionId,
+            reason,
+            Optional.empty(),
+            Optional.of(context),
+            Optional.empty()
+        );
+    }
+
+    /**
      * Creates a suspend command with state data.
-     * 
+     *
      * @param <S> the state type
      * @param suspensionId the unique identifier for this suspension
      * @param stateData the state data to include
