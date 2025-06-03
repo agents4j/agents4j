@@ -12,3 +12,4 @@ dev.properties
 .settings
 
 local.mk
+.DS_Store
