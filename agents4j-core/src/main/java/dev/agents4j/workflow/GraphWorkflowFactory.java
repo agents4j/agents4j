@@ -57,33 +57,6 @@ public class GraphWorkflowFactory {
     }
 
     /**
-     * Creates a simple linear workflow with two nodes using enhanced implementation.
-     *
-     * @param name The workflow name
-     * @param firstNode The first node
-     * @param secondNode The second node
-     * @param inputType The input type class for type safety
-     * @param <T> The input/output type
-     * @return A configured enhanced workflow
-     */
-    public static <T> GraphWorkflow<T, String> createSequence(
-        String name,
-        GraphWorkflowNode<T> firstNode,
-        GraphWorkflowNode<T> secondNode,
-        Class<T> inputType
-    ) {
-        return GraphWorkflowBuilder.<T, String>create(inputType)
-            .name(name)
-            .version("1.0.0")
-            .addNode(firstNode)
-            .addNode(secondNode)
-            .addEdge(firstNode.getNodeId(), secondNode.getNodeId())
-            .defaultEntryPoint(firstNode.getNodeId())
-            .outputExtractor(createResponseExtractor())
-            .build();
-    }
-
-    /**
      * Creates a linear sequence workflow with an arbitrary number of nodes.
      *
      * @param name The workflow name
@@ -99,10 +72,15 @@ public class GraphWorkflowFactory {
         GraphWorkflowNode<T>... nodes
     ) {
         if (nodes.length == 0) {
-            throw new IllegalArgumentException("At least one node is required for a sequence");
+            throw new IllegalArgumentException(
+                "At least one node is required for a sequence"
+            );
         }
-        
-        GraphWorkflowBuilder<T, String> builder = GraphWorkflowBuilder.<T, String>create(inputType)
+
+        GraphWorkflowBuilder<T, String> builder = GraphWorkflowBuilder.<
+                T,
+                String
+            >create(inputType)
             .name(name)
             .version("1.0.0")
             .outputExtractor(createResponseExtractor());
@@ -117,9 +95,7 @@ public class GraphWorkflowFactory {
             builder.addEdge(nodes[i].getNodeId(), nodes[i + 1].getNodeId());
         }
 
-        return builder
-            .defaultEntryPoint(nodes[0].getNodeId())
-            .build();
+        return builder.defaultEntryPoint(nodes[0].getNodeId()).build();
     }
 
     /**
@@ -137,37 +113,9 @@ public class GraphWorkflowFactory {
         Class<T> inputType,
         List<GraphWorkflowNode<T>> nodes
     ) {
-        GraphWorkflowNode<T>[] nodeArray = nodes.toArray(new GraphWorkflowNode[0]);
+        GraphWorkflowNode<T>[] nodeArray = nodes.toArray(
+            new GraphWorkflowNode[0]
+        );
         return createSequence(name, inputType, nodeArray);
-    }
-
-    /**
-     * Creates a simple linear workflow with two nodes (legacy method for backward compatibility).
-     *
-     * @param name The workflow name
-     * @param firstNode The first node
-     * @param secondNode The second node
-     * @param <T> The input/output type
-     * @return A configured workflow
-     * @deprecated Use {@link #createSequence(String, GraphWorkflowNode, GraphWorkflowNode, Class)} for type safety
-     */
-    @Deprecated
-    @SuppressWarnings("unchecked")
-    public static <T> GraphWorkflow<T, String> createSequence(
-        String name,
-        GraphWorkflowNode<T> firstNode,
-        GraphWorkflowNode<T> secondNode
-    ) {
-        // Use Object.class as fallback for backward compatibility
-        // Due to type erasure, we can't determine T at runtime anyway
-        return (GraphWorkflow<T, String>) GraphWorkflowBuilder.<Object, String>create(Object.class)
-            .name(name)
-            .version("1.0.0")
-            .addNode((GraphWorkflowNode<Object>) firstNode)
-            .addNode((GraphWorkflowNode<Object>) secondNode)
-            .addEdge(firstNode.getNodeId(), secondNode.getNodeId())
-            .defaultEntryPoint(firstNode.getNodeId())
-            .outputExtractor(createResponseExtractor())
-            .build();
     }
 }

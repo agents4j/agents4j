@@ -1,44 +1,30 @@
 package dev.agents4j.langchain4j.workflow;
 
 import dev.agents4j.api.GraphWorkflow;
-import dev.agents4j.api.context.ContextKey;
-import dev.agents4j.api.context.WorkflowContext;
-import dev.agents4j.api.graph.GraphCommand;
-import dev.agents4j.api.graph.GraphCommandComplete;
 import dev.agents4j.api.graph.GraphWorkflowNode;
 import dev.agents4j.api.graph.GraphWorkflowState;
 import dev.agents4j.api.graph.NodeId;
-import dev.agents4j.api.result.WorkflowResult;
-import dev.agents4j.api.result.error.ExecutionError;
-import dev.agents4j.api.result.error.WorkflowError;
-import dev.agents4j.api.routing.RoutingStrategy;
+import dev.agents4j.langchain4j.workflow.factory.ContentRouterFactory;
+import dev.agents4j.langchain4j.workflow.factory.LLMNodeFactory;
+import dev.agents4j.langchain4j.workflow.factory.WorkflowSequenceFactory;
 import dev.agents4j.langchain4j.workflow.routing.GraphLLMContentRouter;
-import dev.agents4j.workflow.GraphWorkflowFactory;
-import dev.agents4j.workflow.builder.GraphWorkflowBuilder;
-import dev.agents4j.workflow.history.NodeInteraction;
-import dev.agents4j.workflow.history.ProcessingHistory;
-import dev.agents4j.workflow.history.ProcessingHistoryUtils;
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatModel;
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Arrays;
+
 import java.util.List;
 import java.util.Set;
 import java.util.function.Function;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import java.util.stream.Collectors;
 
 /**
- * Factory for creating Graph-based agent workflows and components.
- * This factory provides convenient methods for constructing
- * components compatible with the GraphWorkflow API.
+ * Simplified factory for creating Graph-based agent workflows and components.
+ * This factory provides convenient methods for constructing components
+ * compatible with the GraphWorkflow API, delegating to specialized factories
+ * for focused functionality.
  */
 public class GraphAgentFactory {
+
+    // =====================================
+    // Content Router Factory Methods
+    // =====================================
 
     /**
      * Creates a GraphLLMContentRouter for use in graph-based workflows.
@@ -54,16 +40,8 @@ public class GraphAgentFactory {
         ChatModel model,
         Set<NodeId> routes
     ) {
-        RoutingStrategy strategy = RoutingStrategy.basic(
-            "LLM content classification",
-            Object.class,
-            routes
-        );
-
-        return GraphLLMContentRouter.<T>builder()
-            .nodeId(nodeId)
-            .model(model)
-            .strategy(strategy)
+        return ContentRouterFactory.<T>contentRouter(nodeId, model)
+            .routes(routes)
             .build();
     }
 
@@ -81,12 +59,14 @@ public class GraphAgentFactory {
         ChatModel model,
         String... routeNames
     ) {
-        Set<NodeId> routes = Arrays.stream(routeNames)
-            .map(NodeId::of)
-            .collect(Collectors.toSet());
-
-        return createContentRouter(nodeId, model, routes);
+        return ContentRouterFactory.<T>contentRouter(nodeId, model)
+            .routes(routeNames)
+            .build();
     }
+
+    // =====================================
+    // LLM Node Factory Methods
+    // =====================================
 
     /**
      * Creates a simple LLM node for a graph workflow.
@@ -102,10 +82,7 @@ public class GraphAgentFactory {
         ChatModel model,
         String systemPrompt
     ) {
-        return LLMGraphWorkflowNode.<T>builder()
-            .nodeId(nodeId)
-            .model(model)
-            .systemPrompt(systemPrompt)
+        return LLMNodeFactory.<T>llmNode(nodeId, model, systemPrompt)
             .build();
     }
 
@@ -125,10 +102,7 @@ public class GraphAgentFactory {
         String systemPrompt,
         Function<GraphWorkflowState<T>, String> userMessageExtractor
     ) {
-        return LLMGraphWorkflowNode.<T>builder()
-            .nodeId(nodeId)
-            .model(model)
-            .systemPrompt(systemPrompt)
+        return LLMNodeFactory.<T>llmNode(nodeId, model, systemPrompt)
             .userMessageExtractor(userMessageExtractor)
             .build();
     }
@@ -149,11 +123,8 @@ public class GraphAgentFactory {
         String systemPrompt,
         String nextNodeId
     ) {
-        return LLMGraphWorkflowNode.<T>builder()
-            .nodeId(nodeId)
-            .model(model)
-            .systemPrompt(systemPrompt)
-            .nextNodeId(nextNodeId)
+        return LLMNodeFactory.<T>llmNode(nodeId, model, systemPrompt)
+            .nextNode(nextNodeId)
             .build();
     }
 
@@ -175,12 +146,9 @@ public class GraphAgentFactory {
         Function<GraphWorkflowState<T>, String> userMessageExtractor,
         String nextNodeId
     ) {
-        return LLMGraphWorkflowNode.<T>builder()
-            .nodeId(nodeId)
-            .model(model)
-            .systemPrompt(systemPrompt)
+        return LLMNodeFactory.<T>llmNode(nodeId, model, systemPrompt)
             .userMessageExtractor(userMessageExtractor)
-            .nextNodeId(nextNodeId)
+            .nextNode(nextNodeId)
             .build();
     }
 
@@ -199,7 +167,9 @@ public class GraphAgentFactory {
         ChatModel model,
         String systemPrompt
     ) {
-        return new CompletingLLMNode<>(nodeId, model, systemPrompt, null);
+        return LLMNodeFactory.<T>llmNode(nodeId, model, systemPrompt)
+            .completing()
+            .build();
     }
 
     /**
@@ -219,8 +189,15 @@ public class GraphAgentFactory {
         String systemPrompt,
         Function<GraphWorkflowState<T>, String> userMessageExtractor
     ) {
-        return new CompletingLLMNode<>(nodeId, model, systemPrompt, userMessageExtractor);
+        return LLMNodeFactory.<T>llmNode(nodeId, model, systemPrompt)
+            .userMessageExtractor(userMessageExtractor)
+            .completing()
+            .build();
     }
+
+    // =====================================
+    // Workflow Sequence Factory Methods
+    // =====================================
 
     /**
      * Creates a linear sequence workflow from multiple LLM node specifications.
@@ -232,7 +209,6 @@ public class GraphAgentFactory {
      * @return A configured sequence workflow
      */
     @SafeVarargs
-    @SuppressWarnings("unchecked")
     public static <T> GraphWorkflow<T, String> createLLMSequence(
         String name,
         Class<T> inputType,
@@ -241,53 +217,20 @@ public class GraphAgentFactory {
         if (nodeSpecs.length == 0) {
             throw new IllegalArgumentException("At least one node specification is required");
         }
-
-        GraphWorkflowBuilder<T, String> builder = GraphWorkflowBuilder.<T, String>create(inputType)
-            .name(name)
-            .version("1.0.0")
-            .outputExtractor(GraphWorkflowFactory.createResponseExtractor());
-
-        // Create nodes with proper next node IDs
-        @SuppressWarnings("unchecked")
-        GraphWorkflowNode<T>[] nodes = new GraphWorkflowNode[nodeSpecs.length];
-        for (int i = 0; i < nodeSpecs.length; i++) {
-            LLMNodeSpec<T> spec = nodeSpecs[i];
-            String nextNodeId = (i < nodeSpecs.length - 1) ? nodeSpecs[i + 1].nodeId() : null;
-            
-            // Always use sequence nodes for proper routing in sequences
+        
+        WorkflowSequenceFactory.SequenceWorkflowBuilder<T> builder = WorkflowSequenceFactory.sequence(name, inputType);
+        for (LLMNodeSpec<T> spec : nodeSpecs) {
             if (spec.userMessageExtractor() != null) {
-                if (nextNodeId != null) {
-                    nodes[i] = createSequenceLLMNode(spec.nodeId(), spec.model(), spec.systemPrompt(), 
-                                                   spec.userMessageExtractor(), nextNodeId);
-                } else {
-                    // Last node - use completing LLM node that will complete the workflow
-                    nodes[i] = createCompletingLLMNode(spec.nodeId(), spec.model(), spec.systemPrompt(), 
-                                                     spec.userMessageExtractor());
-                }
+                builder.addNode(spec.nodeId(), spec.model(), spec.systemPrompt(), spec.userMessageExtractor());
             } else {
-                if (nextNodeId != null) {
-                    nodes[i] = createSequenceLLMNode(spec.nodeId(), spec.model(), spec.systemPrompt(), nextNodeId);
-                } else {
-                    // Last node - use completing LLM node that will complete the workflow
-                    nodes[i] = createCompletingLLMNode(spec.nodeId(), spec.model(), spec.systemPrompt());
-                }
+                builder.addNode(spec.nodeId(), spec.model(), spec.systemPrompt());
             }
-            
-            builder.addNode(nodes[i]);
         }
-
-        // Add edges between consecutive nodes
-        for (int i = 0; i < nodes.length - 1; i++) {
-            builder.addEdge(nodes[i].getNodeId(), nodes[i + 1].getNodeId());
-        }
-
-        return builder
-            .defaultEntryPoint(nodes[0].getNodeId())
-            .build();
+        return builder.build();
     }
 
     /**
-     * Creates a linear sequence workflow from multiple LLM node specifications (varargs convenience method).
+     * Creates a linear sequence workflow from multiple LLM node specifications (List convenience method).
      *
      * @param <T> The input/output type
      * @param name The workflow name
@@ -295,15 +238,29 @@ public class GraphAgentFactory {
      * @param nodeSpecs The specifications for each LLM node in the sequence
      * @return A configured sequence workflow
      */
-    @SuppressWarnings("unchecked")
     public static <T> GraphWorkflow<T, String> createLLMSequence(
         String name,
         Class<T> inputType,
         List<LLMNodeSpec<T>> nodeSpecs
     ) {
-        LLMNodeSpec<T>[] specArray = nodeSpecs.toArray(new LLMNodeSpec[0]);
-        return createLLMSequence(name, inputType, specArray);
+        if (nodeSpecs == null || nodeSpecs.isEmpty()) {
+            throw new IllegalArgumentException("At least one node specification is required");
+        }
+        
+        WorkflowSequenceFactory.SequenceWorkflowBuilder<T> builder = WorkflowSequenceFactory.sequence(name, inputType);
+        for (LLMNodeSpec<T> spec : nodeSpecs) {
+            if (spec.userMessageExtractor() != null) {
+                builder.addNode(spec.nodeId(), spec.model(), spec.systemPrompt(), spec.userMessageExtractor());
+            } else {
+                builder.addNode(spec.nodeId(), spec.model(), spec.systemPrompt());
+            }
+        }
+        return builder.build();
     }
+
+    // =====================================
+    // Builder-style Helper Methods
+    // =====================================
 
     /**
      * Builder-style helper for creating LLM node specifications.
@@ -337,6 +294,51 @@ public class GraphAgentFactory {
         return new LLMNodeSpec<>(nodeId, model, systemPrompt, userMessageExtractor);
     }
 
+    // =====================================
+    // Enhanced API Methods (New)
+    // =====================================
+
+    /**
+     * Creates a builder for constructing content routers with fluent API.
+     *
+     * @param <T> The type of content to be routed
+     * @param nodeId The node ID for the router
+     * @param model The ChatModel to use for content classification
+     * @return A new ContentRouterBuilder instance
+     */
+    public static <T> ContentRouterFactory.ContentRouterBuilder<T> contentRouter(String nodeId, ChatModel model) {
+        return ContentRouterFactory.<T>contentRouter(nodeId, model);
+    }
+
+    /**
+     * Creates a builder for constructing LLM workflow nodes with enhanced capabilities.
+     *
+     * @param <T> The type of input/output for the node
+     * @param nodeId The node ID
+     * @param model The ChatModel to use
+     * @param systemPrompt The system prompt for the LLM
+     * @return A new LLMNodeBuilder instance
+     */
+    public static <T> LLMNodeFactory.LLMNodeBuilder<T> node(String nodeId, ChatModel model, String systemPrompt) {
+        return LLMNodeFactory.<T>llmNode(nodeId, model, systemPrompt);
+    }
+
+    /**
+     * Creates a builder for constructing sequence workflows.
+     *
+     * @param <T> The input type for the workflow
+     * @param name The workflow name
+     * @param inputType The input type class for type safety
+     * @return A new SequenceWorkflowBuilder instance
+     */
+    public static <T> WorkflowSequenceFactory.SequenceWorkflowBuilder<T> sequence(String name, Class<T> inputType) {
+        return WorkflowSequenceFactory.sequence(name, inputType);
+    }
+
+    // =====================================
+    // Backward Compatibility Types
+    // =====================================
+
     /**
      * Specification for an LLM node in a sequence.
      *
@@ -352,116 +354,4 @@ public class GraphAgentFactory {
         String systemPrompt,
         Function<GraphWorkflowState<T>, String> userMessageExtractor
     ) {}
-
-    /**
-     * A specialized LLM node that completes the workflow instead of traversing to the next node.
-     * This is ideal for the last node in a sequence workflow.
-     */
-    private static class CompletingLLMNode<T> implements GraphWorkflowNode<T> {
-        private static final Logger LOGGER = Logger.getLogger(CompletingLLMNode.class.getName());
-        
-        private final NodeId id;
-        private final ChatModel model;
-        private final String systemPrompt;
-        private final Function<GraphWorkflowState<T>, String> userMessageExtractor;
-        private final String name;
-
-        public CompletingLLMNode(
-            String nodeId,
-            ChatModel model,
-            String systemPrompt,
-            Function<GraphWorkflowState<T>, String> userMessageExtractor
-        ) {
-            this.id = NodeId.of(nodeId);
-            this.model = model;
-            this.systemPrompt = systemPrompt;
-            this.userMessageExtractor = userMessageExtractor != null 
-                ? userMessageExtractor 
-                : state -> state.data().toString();
-            this.name = "CompletingLLM-" + nodeId;
-        }
-
-        @Override
-        public WorkflowResult<GraphCommand<T>, WorkflowError> process(GraphWorkflowState<T> state) {
-            LOGGER.info(() -> "Processing in completing LLM node: " + id.value());
-            
-            try {
-                // Extract the user message from the state using the provided extractor
-                String userMessage = userMessageExtractor.apply(state);
-                LOGGER.fine(() -> "Extracted user message: " + userMessage);
-
-                // Create chat messages
-                List<ChatMessage> messages = new ArrayList<>();
-                messages.add(SystemMessage.from(systemPrompt));
-                messages.add(UserMessage.from(userMessage));
-
-                LOGGER.info(() -> "Sending request to LLM with " + messages.size() + " messages");
-                
-                // Get LLM response
-                long startTime = System.currentTimeMillis();
-                AiMessage response = model.chat(messages).aiMessage();
-                long duration = System.currentTimeMillis() - startTime;
-                
-                String responseText = response.text();
-                LOGGER.info(() -> "Received LLM response in " + duration + "ms");
-                LOGGER.fine(() -> "Response content: " + responseText);
-
-                // Get or create the processing history
-                ProcessingHistory history = ProcessingHistoryUtils.getOrCreateHistory(state);
-
-                // Add this interaction to the history
-                NodeInteraction interaction = new NodeInteraction(
-                    id,
-                    getName(),
-                    userMessage,
-                    responseText,
-                    Instant.now()
-                );
-                history.addInteraction(interaction);
-                LOGGER.fine(() -> "Added interaction to history. Total interactions: " + 
-                             history.getAllInteractions().size());
-
-                // Create updated context with the response and history
-                WorkflowContext updatedContext = state
-                    .context()
-                    // Keep the response key for backward compatibility
-                    .with(ContextKey.of("response", Object.class), responseText)
-                    // Store the processing history
-                    .with(ProcessingHistory.HISTORY_KEY, history);
-
-                LOGGER.info(() -> "LLM processing complete, completing workflow");
-                
-                // Use GraphCommandComplete to complete the workflow
-                return WorkflowResult.success(
-                    GraphCommandComplete.withResultAndContext(responseText, updatedContext)
-                );
-            } catch (Exception e) {
-                LOGGER.log(Level.SEVERE, "Error processing with LLM: " + e.getMessage(), e);
-                
-                return WorkflowResult.failure(
-                    ExecutionError.withCause(
-                        "llm-processing-error",
-                        "Error processing with LLM: " + e.getMessage(),
-                        id.value(),
-                        e
-                    )
-                );
-            }
-        }
-
-        @Override
-        public NodeId getNodeId() {
-            return id;
-        }
-
-        @Override
-        public String getName() {
-            return name;
-        }
-
-        @Override
-        public String getDescription() {
-            return "Completing LLM Node: " + systemPrompt.substring(0, Math.min(50, systemPrompt.length())) + "...";
-        }
-    }
 }

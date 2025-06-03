@@ -22,7 +22,7 @@ class GraphWorkflowFactoryTest {
 
     @Mock
     private GraphWorkflowNode<String> firstNode;
-    
+
     @Mock
     private GraphWorkflowNode<String> secondNode;
 
@@ -36,25 +36,28 @@ class GraphWorkflowFactoryTest {
     @Test
     @DisplayName("Should create response extractor correctly")
     void shouldCreateResponseExtractorCorrectly() {
-        OutputExtractor<String, String> extractor = GraphWorkflowFactory.createResponseExtractor();
-        
+        OutputExtractor<String, String> extractor =
+            GraphWorkflowFactory.createResponseExtractor();
+
         assertNotNull(extractor);
     }
 
     @Test
-    @DisplayName("Should create type-safe sequence workflow with explicit input type")
+    @DisplayName(
+        "Should create type-safe sequence workflow with explicit input type"
+    )
     void shouldCreateTypeSafeSequenceWorkflow() {
         var workflow = GraphWorkflowFactory.createSequence(
             "type-safe-sequence",
+            String.class,
             firstNode,
-            secondNode,
-            String.class
+            secondNode
         );
 
         assertNotNull(workflow);
         assertEquals("type-safe-sequence", workflow.getName());
         assertEquals("1.0.0", workflow.getVersion());
-        
+
         // Verify type safety is maintained
         assertTrue(workflow instanceof GraphWorkflowImpl);
         var typedWorkflow = (GraphWorkflowImpl<String, String>) workflow;
@@ -67,6 +70,7 @@ class GraphWorkflowFactoryTest {
         @SuppressWarnings("deprecation")
         var workflow = GraphWorkflowFactory.createSequence(
             "legacy-sequence",
+            String.class,
             firstNode,
             secondNode
         );
@@ -81,16 +85,16 @@ class GraphWorkflowFactoryTest {
     void shouldCreateSequenceWorkflowCorrectly() {
         var workflow = GraphWorkflowFactory.createSequence(
             "test-sequence",
+            String.class,
             firstNode,
-            secondNode,
-            String.class
+            secondNode
         );
 
         assertNotNull(workflow);
         assertEquals("test-sequence", workflow.getName());
         assertEquals("1.0.0", workflow.getVersion());
         assertTrue(workflow instanceof GraphWorkflowImpl);
-        
+
         // Verify the workflow was configured with both nodes
         var graphWorkflow = (GraphWorkflowImpl<String, String>) workflow;
         assertNotNull(graphWorkflow);
@@ -103,9 +107,9 @@ class GraphWorkflowFactoryTest {
     void shouldHaveNonNullOutputExtractorInSequenceWorkflow() {
         var workflow = GraphWorkflowFactory.createSequence(
             "test-extractor",
+            String.class,
             firstNode,
-            secondNode,
-            String.class
+            secondNode
         );
 
         assertNotNull(workflow);

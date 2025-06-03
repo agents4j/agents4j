@@ -21,7 +21,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 @QuarkusTest
-public class EnhancedGraphAgentFactoryTest {
+public class GraphAgentFactoryTest {
 
     @Inject
     ChatModel chatModel;
@@ -32,24 +32,28 @@ public class EnhancedGraphAgentFactoryTest {
     }
 
     @Test
-    @DisplayName("Verify GraphAgentFactory can create sequence with proper node IDs")
+    @DisplayName(
+        "Verify GraphAgentFactory can create sequence with proper node IDs"
+    )
     public void testSequenceCreationWithNodeIds() {
         System.out.println("=== Testing Enhanced Sequence Creation ===");
 
         // Test that GraphAgentFactory can create nodes with explicit next node IDs
-        GraphWorkflowNode<String> firstNode = GraphAgentFactory.createSequenceLLMNode(
-            "step-1",
-            chatModel,
-            "Process the input text",
-            "step-2"
-        );
+        GraphWorkflowNode<String> firstNode =
+            GraphAgentFactory.createSequenceLLMNode(
+                "step-1",
+                chatModel,
+                "Process the input text",
+                "step-2"
+            );
 
-        GraphWorkflowNode<String> secondNode = GraphAgentFactory.createSequenceLLMNode(
-            "step-2",
-            chatModel,
-            "Refine the processed text",
-            "step-3"
-        );
+        GraphWorkflowNode<String> secondNode =
+            GraphAgentFactory.createSequenceLLMNode(
+                "step-2",
+                chatModel,
+                "Refine the processed text",
+                "step-3"
+            );
 
         GraphWorkflowNode<String> thirdNode = GraphAgentFactory.createLLMNode(
             "step-3",
@@ -63,13 +67,14 @@ public class EnhancedGraphAgentFactoryTest {
         assertEquals("step-3", thirdNode.getNodeId().value());
 
         // Create workflow using enhanced GraphWorkflowFactory
-        GraphWorkflow<String, String> workflow = GraphWorkflowFactory.createSequence(
-            "multi-step-workflow",
-            String.class,
-            firstNode,
-            secondNode,
-            thirdNode
-        );
+        GraphWorkflow<String, String> workflow =
+            GraphWorkflowFactory.createSequence(
+                "multi-step-workflow",
+                String.class,
+                firstNode,
+                secondNode,
+                thirdNode
+            );
 
         assertNotNull(workflow);
         assertEquals("multi-step-workflow", workflow.getName());
@@ -79,69 +84,85 @@ public class EnhancedGraphAgentFactoryTest {
     }
 
     @Test
-    @DisplayName("Verify GraphAgentFactory can create LLM sequences using builder pattern")
+    @DisplayName(
+        "Verify GraphAgentFactory can create LLM sequences using builder pattern"
+    )
     public void testLLMSequenceBuilderPattern() {
         System.out.println("=== Testing LLM Sequence Builder Pattern ===");
 
         // Create a sequence using the new LLM sequence builder
-        GraphWorkflow<String, String> workflow = GraphAgentFactory.createLLMSequence(
-            "builder-sequence",
-            String.class,
-            GraphAgentFactory.llmNode(
-                "analyzer",
-                chatModel,
-                "Analyze the input text for sentiment and topics"
-            ),
-            GraphAgentFactory.llmNode(
-                "summarizer",
-                chatModel,
-                "Create a concise summary of the analyzed content"
-            ),
-            GraphAgentFactory.llmNode(
-                "formatter",
-                chatModel,
-                "Format the summary into a professional report"
-            )
-        );
+        GraphWorkflow<String, String> workflow =
+            GraphAgentFactory.createLLMSequence(
+                "builder-sequence",
+                String.class,
+                GraphAgentFactory.llmNode(
+                    "analyzer",
+                    chatModel,
+                    "Analyze the input text for sentiment and topics"
+                ),
+                GraphAgentFactory.llmNode(
+                    "summarizer",
+                    chatModel,
+                    "Create a concise summary of the analyzed content"
+                ),
+                GraphAgentFactory.llmNode(
+                    "formatter",
+                    chatModel,
+                    "Format the summary into a professional report"
+                )
+            );
 
         assertNotNull(workflow);
         assertEquals("builder-sequence", workflow.getName());
         assertEquals("1.0.0", workflow.getVersion());
 
-        System.out.println("✓ Successfully created sequence using builder pattern");
+        System.out.println(
+            "✓ Successfully created sequence using builder pattern"
+        );
     }
 
     @Test
-    @DisplayName("Verify GraphAgentFactory can create sequences with custom message extractors")
+    @DisplayName(
+        "Verify GraphAgentFactory can create sequences with custom message extractors"
+    )
     public void testSequenceWithCustomExtractors() {
-        System.out.println("=== Testing Sequence with Custom Message Extractors ===");
+        System.out.println(
+            "=== Testing Sequence with Custom Message Extractors ==="
+        );
 
         // Create a sequence with custom message extractors
-        GraphWorkflow<TestRequest, String> workflow = GraphAgentFactory.createLLMSequence(
-            "custom-extractor-sequence",
-            TestRequest.class,
-            GraphAgentFactory.llmNode(
-                "input-processor",
-                chatModel,
-                "Process the user input",
-                state -> "User says: " + state.data().message()
-            ),
-            GraphAgentFactory.llmNode(
-                "context-adder",
-                chatModel,
-                "Add contextual information to the response",
-                state -> "Previous processing complete. Context: " + state.data().context()
-            )
-        );
+        GraphWorkflow<TestRequest, String> workflow =
+            GraphAgentFactory.createLLMSequence(
+                "custom-extractor-sequence",
+                TestRequest.class,
+                GraphAgentFactory.llmNode(
+                    "input-processor",
+                    chatModel,
+                    "Process the user input",
+                    state -> "User says: " + state.data().message()
+                ),
+                GraphAgentFactory.llmNode(
+                    "context-adder",
+                    chatModel,
+                    "Add contextual information to the response",
+                    state ->
+                        "Previous processing complete. Context: " +
+                        state.data().context()
+                )
+            );
 
         assertNotNull(workflow);
         assertEquals("custom-extractor-sequence", workflow.getName());
 
-        System.out.println("✓ Successfully created sequence with custom extractors");
+        System.out.println(
+            "✓ Successfully created sequence with custom extractors"
+        );
     }
 
     @Test
-    @DisplayName("Verify GraphAgentFactory can create sequences from List of specs")
+    @DisplayName(
+        "Verify GraphAgentFactory can create sequences from List of specs"
+    )
     public void testSequenceFromList() {
         System.out.println("=== Testing Sequence Creation from List ===");
 
@@ -164,16 +185,19 @@ public class EnhancedGraphAgentFactoryTest {
             )
         );
 
-        GraphWorkflow<String, String> workflow = GraphAgentFactory.createLLMSequence(
-            "list-based-sequence",
-            String.class,
-            specs
-        );
+        GraphWorkflow<String, String> workflow =
+            GraphAgentFactory.createLLMSequence(
+                "list-based-sequence",
+                String.class,
+                specs
+            );
 
         assertNotNull(workflow);
         assertEquals("list-based-sequence", workflow.getName());
 
-        System.out.println("✓ Successfully created sequence from List of specs");
+        System.out.println(
+            "✓ Successfully created sequence from List of specs"
+        );
     }
 
     @Test
@@ -201,12 +225,13 @@ public class EnhancedGraphAgentFactoryTest {
         assertEquals("legacy-node-2", node2.getNodeId().value());
 
         // Test that legacy sequence creation still works
-        GraphWorkflow<String, String> legacyWorkflow = GraphWorkflowFactory.createSequence(
-            "legacy-workflow",
-            node1,
-            node2,
-            String.class
-        );
+        GraphWorkflow<String, String> legacyWorkflow =
+            GraphWorkflowFactory.createSequence(
+                "legacy-workflow",
+                String.class,
+                node1,
+                node2
+            );
 
         assertNotNull(legacyWorkflow);
         assertEquals("legacy-workflow", legacyWorkflow.getName());
@@ -228,7 +253,9 @@ public class EnhancedGraphAgentFactoryTest {
             GraphWorkflowFactory.createSequence("empty-workflow", String.class);
         });
 
-        System.out.println("✓ Error handling works correctly for invalid inputs");
+        System.out.println(
+            "✓ Error handling works correctly for invalid inputs"
+        );
     }
 
     @Test
@@ -265,12 +292,15 @@ public class EnhancedGraphAgentFactoryTest {
     }
 
     @Test
-    @DisplayName("Integration test - verify enhanced workflow doesn't break existing API")
+    @DisplayName(
+        "Integration test - verify enhanced workflow doesn't break existing API"
+    )
     public void testIntegrationWithExistingAPI() {
         System.out.println("=== Testing Integration with Existing API ===");
 
         // Test that the enhanced factory works with the existing SnarkyResponseResource pattern
-        String requestBody = """
+        String requestBody =
+            """
             {
                 "question": "Test the enhanced GraphAgentFactory integration"
             }
@@ -299,17 +329,21 @@ public class EnhancedGraphAgentFactoryTest {
         int statusCode = response.getStatusCode();
         assertTrue(
             statusCode == 500 || statusCode == 200,
-            "Should get proper workflow execution, not structural errors. Got: " + statusCode
+            "Should get proper workflow execution, not structural errors. Got: " +
+            statusCode
         );
 
         if (statusCode == 500) {
             assertTrue(
-                responseBody.contains("API key") || responseBody.contains("Authentication"),
+                responseBody.contains("API key") ||
+                responseBody.contains("Authentication"),
                 "500 errors should be API-related, not workflow structure related"
             );
         }
 
-        System.out.println("✓ Enhanced factory integrates properly with existing API");
+        System.out.println(
+            "✓ Enhanced factory integrates properly with existing API"
+        );
     }
 
     /**
