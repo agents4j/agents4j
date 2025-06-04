@@ -53,7 +53,7 @@ jreleaser {
   }
   release {
     github {
-      enabled = true
+      enabled = false
     }
   }
 }
