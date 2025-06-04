@@ -79,7 +79,10 @@ jreleaser {
   release {
     github {
       enabled = true
-      skipRelease = true
+      update {
+        enabled = true
+      }
+      skipTag = true
     }
   }
 }
