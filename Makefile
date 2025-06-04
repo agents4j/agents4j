@@ -102,6 +102,24 @@ publish: publish-local
 	./gradlew jreleaserFullRelease --stacktrace
 	@echo "Release completed successfully."
 
+.PHONY publish-api:
+publish-api: publish-local
+	@echo "Releasing..."
+	./gradlew :agents4j-api:jreleaserFullRelease --stacktrace
+	@echo "Release of agents4j-api completed successfully."
+
+.PHONY publish-core:
+publish-core: publish-local
+	@echo "Releasing..."
+	./gradlew :agents4j-core:jreleaserFullRelease --stacktrace
+	@echo "Release of agents4j-core completed successfully."
+
+.PHONY publish-langchain4j:
+publish-langchain4j: publish-local
+	@echo "Releasing..."
+	./gradlew :agents4j-langchain4j:jreleaserFullRelease --stacktrace
+	@echo "Release of agents4j-langchain4j completed successfully."
+
 .PHONY: ensure-git-repo-pristine
 ensure-git-repo-pristine:
 	@echo "Ensuring git repo is pristine"
