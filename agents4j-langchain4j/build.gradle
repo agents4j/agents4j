@@ -69,7 +69,8 @@ jreleaser {
   }
   release {
     github {
-      enabled = false
+      enabled = true
+      skipRelease = true
     }
   }
 }
